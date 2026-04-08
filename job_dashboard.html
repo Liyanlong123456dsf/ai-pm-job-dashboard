@@ -488,6 +488,11 @@ navLinks.forEach(a=>a.addEventListener('click',e=>{e.preventDefault();document.g
 .typing span:nth-child(3){animation-delay:.4s}
 @keyframes blink{0%,80%,100%{opacity:.3}40%{opacity:1}}
 
+/* API Tab */
+.api-tab{flex:1;padding:8px 0;border:1px solid rgba(255,255,255,.12);background:transparent;color:rgba(255,255,255,.5);font-size:13px;font-weight:500;cursor:pointer;transition:all .2s}
+.api-tab:first-child{border-radius:8px 0 0 8px}.api-tab:last-child{border-radius:0 8px 8px 0}
+.api-tab.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+
 /* Quick questions */
 .quick-q{display:flex;flex-direction:column;gap:8px;margin-top:8px}
 .qq-btn{background:rgba(41,151,255,.08);border:1px solid rgba(41,151,255,.15);color:var(--bright-blue);padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.4;text-align:left;cursor:pointer;transition:all .2s}
@@ -524,12 +529,24 @@ navLinks.forEach(a=>a.addEventListener('click',e=>{e.preventDefault();document.g
 <div class="chat-panel" id="chatPanel">
   <!-- Settings -->
   <div class="chat-settings" id="chatSettings">
-    <h3>🔑 设置扣子智能体</h3>
-    <p>填写扣子平台的 Token 和 Bot ID，数据仅存储在本地浏览器。</p>
-    <input type="password" id="keyInput" placeholder="pat_xxxxxxxxxxxxxxxx">
-    <input type="text" id="botIdInput" placeholder="Bot ID（如 74xxx）" style="margin-top:8px;width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#fff;font-size:14px">
-    <button onclick="saveKey()">保存并开始</button>
-    <a class="settings-link" href="https://www.coze.cn/open/api" target="_blank">→ 前往扣子开放平台获取</a>
+    <h3>🔑 设置 AI 接口</h3>
+    <div style="display:flex;gap:0;margin-bottom:14px">
+      <button class="api-tab on" data-api="coze" onclick="switchApiTab('coze')">扣子 Coze</button>
+      <button class="api-tab" data-api="kimi" onclick="switchApiTab('kimi')">Kimi</button>
+    </div>
+    <div id="cozeForm">
+      <p style="font-size:12px;opacity:.6;margin-bottom:10px">填写扣子平台的 Token 和 Bot ID</p>
+      <input type="password" id="cozeKeyInput" placeholder="pat_xxxxxxxxxxxxxxxx">
+      <input type="text" id="cozeBotInput" placeholder="Bot ID（如 74xxx）" style="margin-top:8px;width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#fff;font-size:14px">
+      <button onclick="saveKey()" style="margin-top:10px">保存并开始</button>
+      <a class="settings-link" href="https://www.coze.cn/open/api" target="_blank">→ 前往扣子开放平台获取</a>
+    </div>
+    <div id="kimiForm" style="display:none">
+      <p style="font-size:12px;opacity:.6;margin-bottom:10px">填写 Kimi 开放平台 API Key</p>
+      <input type="password" id="kimiKeyInput" placeholder="sk-xxxxxxxxxxxxxxxx">
+      <button onclick="saveKey()" style="margin-top:10px">保存并开始</button>
+      <a class="settings-link" href="https://platform.kimi.ai/console/api-keys" target="_blank">→ 前往 Kimi 开放平台获取</a>
+    </div>
   </div>
 
   <!-- Header -->
@@ -613,6 +630,20 @@ Top高薪岗位：
 let chatHistory = [];
 let isStreaming = false;
 
+// API provider: 'coze' or 'kimi'
+function getApiType() { return localStorage.getItem('chat_api_type') || 'coze'; }
+function hasApiConfig() {
+  const t = getApiType();
+  if (t === 'coze') return !!(localStorage.getItem('coze_token') && localStorage.getItem('coze_bot_id'));
+  return !!localStorage.getItem('kimi_api_key');
+}
+function switchApiTab(type) {
+  localStorage.setItem('chat_api_type', type);
+  document.querySelectorAll('.api-tab').forEach(b => b.classList.toggle('on', b.dataset.api === type));
+  document.getElementById('cozeForm').style.display = type === 'coze' ? '' : 'none';
+  document.getElementById('kimiForm').style.display = type === 'kimi' ? '' : 'none';
+}
+
 // Toggle chat
 function toggleChat() {
   const panel = document.getElementById('chatPanel');
@@ -620,9 +651,7 @@ function toggleChat() {
   const isOpen = panel.classList.toggle('open');
   fab.classList.toggle('open', isOpen);
   if (isOpen) {
-    const token = localStorage.getItem('coze_token');
-    const botId = localStorage.getItem('coze_bot_id');
-    if (!token || !botId) { showSettings(); } else { hideSettings(); }
+    if (!hasApiConfig()) { showSettings(); } else { hideSettings(); }
     if (!document.getElementById('chatBody').children.length) renderWelcome();
     document.getElementById('chatTextarea').focus();
   }
@@ -633,18 +662,29 @@ document.getElementById('chatFab').onclick = toggleChat;
 function showSettings() {
   const s = document.getElementById('chatSettings');
   s.classList.add('show');
-  const token = localStorage.getItem('coze_token');
-  const botId = localStorage.getItem('coze_bot_id');
-  if (token) document.getElementById('keyInput').value = token;
-  if (botId) document.getElementById('botIdInput').value = botId;
+  const type = getApiType();
+  switchApiTab(type);
+  const ct = localStorage.getItem('coze_token');
+  const cb = localStorage.getItem('coze_bot_id');
+  const kk = localStorage.getItem('kimi_api_key');
+  if (ct) document.getElementById('cozeKeyInput').value = ct;
+  if (cb) document.getElementById('cozeBotInput').value = cb;
+  if (kk) document.getElementById('kimiKeyInput').value = kk;
 }
 function hideSettings() { document.getElementById('chatSettings').classList.remove('show'); }
 function saveKey() {
-  const token = document.getElementById('keyInput').value.trim();
-  const botId = document.getElementById('botIdInput').value.trim();
-  if (!token || !botId) { alert('请填写 Token 和 Bot ID'); return; }
-  localStorage.setItem('coze_token', token);
-  localStorage.setItem('coze_bot_id', botId);
+  const type = getApiType();
+  if (type === 'coze') {
+    const token = document.getElementById('cozeKeyInput').value.trim();
+    const botId = document.getElementById('cozeBotInput').value.trim();
+    if (!token || !botId) { alert('请填写 Token 和 Bot ID'); return; }
+    localStorage.setItem('coze_token', token);
+    localStorage.setItem('coze_bot_id', botId);
+  } else {
+    const key = document.getElementById('kimiKeyInput').value.trim();
+    if (!key) { alert('请填写 API Key'); return; }
+    localStorage.setItem('kimi_api_key', key);
+  }
   hideSettings();
   if (!document.getElementById('chatBody').children.length) renderWelcome();
 }
@@ -712,9 +752,7 @@ async function sendMsg(overrideText) {
   textarea.value = '';
   textarea.style.height = 'auto';
 
-  const cozeToken = localStorage.getItem('coze_token');
-  const cozeBotId = localStorage.getItem('coze_bot_id');
-  if (!cozeToken || !cozeBotId) { showSettings(); return; }
+  if (!hasApiConfig()) { showSettings(); return; }
 
   // Remove quick questions
   document.querySelector('.quick-q')?.remove();
@@ -729,31 +767,38 @@ async function sendMsg(overrideText) {
   isStreaming = true;
   document.getElementById('chatSendBtn').disabled = true;
 
-  // 扣子 API v3 流式对话
-  const userMsgs = chatHistory.map(m => ({ role: m.role, content: m.content, content_type: 'text' }));
+  const apiType = getApiType();
+  const userMsgs = chatHistory.map(m => ({ role: m.role, content: m.content }));
+
+  // 构建请求参数
+  let apiUrl, headers, body;
+  if (apiType === 'coze') {
+    const token = localStorage.getItem('coze_token');
+    const botId = localStorage.getItem('coze_bot_id');
+    apiUrl = 'https://api.coze.cn/v3/chat';
+    headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token };
+    body = { bot_id: botId, user_id: 'dashboard_user', stream: true, auto_save_history: false,
+             additional_messages: [{ role: 'user', content: text, content_type: 'text' }] };
+  } else {
+    const apiKey = localStorage.getItem('kimi_api_key');
+    apiUrl = 'https://api.moonshot.ai/v1/chat/completions';
+    headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey };
+    body = { model: 'moonshot-v1-8k', messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...userMsgs],
+             max_tokens: 4096, stream: true };
+  }
 
   try {
-    const res = await fetch('https://api.coze.cn/v3/chat', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + cozeToken,
-      },
-      body: JSON.stringify({
-        bot_id: cozeBotId,
-        user_id: 'dashboard_user',
-        stream: true,
-        auto_save_history: false,
-        additional_messages: [{ role: 'user', content: text, content_type: 'text' }]
-      })
-    });
+    const res = await fetch(apiUrl, { method: 'POST', headers, body: JSON.stringify(body) });
 
     if (!res.ok) {
       removeTyping();
       let errBody = '';
       try { errBody = await res.text(); } catch(e) {}
       if (res.status === 401) {
-        addAiMsg(`⚠️ **Token 认证失败**\n\n请确认：\n- Token 从 [扣子开放平台](https://www.coze.cn/open/api) 获取\n- Token 以 \`pat_\` 开头\n- Bot ID 填写正确\n\n点击右上角 ⚙ 重新设置。\n\n> ${errBody.slice(0,200)}`);
+        const hint = apiType === 'coze'
+          ? '请确认扣子 Token 以 `pat_` 开头，Bot ID 正确'
+          : '请确认 Kimi Key 以 `sk-` 开头且未过期';
+        addAiMsg(`⚠️ **认证失败**\n\n${hint}\n\n点击右上角 ⚙ 重新设置。\n\n> ${errBody.slice(0,200)}`);
       } else if (res.status === 429) {
         addAiMsg('⚠️ **请求频率超限**，请等待几秒后重试。');
       } else {
@@ -786,16 +831,17 @@ async function sendMsg(overrideText) {
         if (!payload || payload === '[DONE]') continue;
         try {
           const evt = JSON.parse(payload);
-          // 扣子 v3 流式: event=conversation.message.delta, type=answer
+          let chunk = '';
+          // 扣子 v3: conversation.message.delta
           if (evt.event === 'conversation.message.delta' && evt.message?.type === 'answer') {
-            fullText += evt.message.content || '';
-            bubble.innerHTML = renderMd(fullText);
-            document.getElementById('chatBody').scrollTop = document.getElementById('chatBody').scrollHeight;
+            chunk = evt.message.content || '';
           }
-          // 也兼容 OpenAI 格式
-          const delta = evt.choices?.[0]?.delta?.content;
-          if (delta) {
-            fullText += delta;
+          // OpenAI / Kimi 格式
+          if (evt.choices?.[0]?.delta?.content) {
+            chunk = evt.choices[0].delta.content;
+          }
+          if (chunk) {
+            fullText += chunk;
             bubble.innerHTML = renderMd(fullText);
             document.getElementById('chatBody').scrollTop = document.getElementById('chatBody').scrollHeight;
           }
