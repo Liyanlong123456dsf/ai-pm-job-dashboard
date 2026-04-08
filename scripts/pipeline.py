@@ -12,10 +12,7 @@ CONFIG_PATH = Path(__file__).parent.parent / 'config' / 'keywords.json'
 with open(CONFIG_PATH, 'r', encoding='utf-8') as f:
     _cfg = json.load(f)
 
-KW_VIDEO = _cfg['kw_video']
-KW_ECOM = _cfg['kw_ecom']
-KW_MEDIA = _cfg['kw_media']
-ALL_KW = KW_VIDEO + KW_ECOM + KW_MEDIA
+CAT_RULES = _cfg.get('cat_rules', {})
 
 
 def parse_salary(s: str) -> float:
@@ -41,16 +38,14 @@ def parse_salary(s: str) -> float:
 
 def classify(text: str) -> tuple:
     cats = []
-    v_kw = [k for k in KW_VIDEO if k in text]
-    e_kw = [k for k in KW_ECOM if k in text]
-    m_kw = [k for k in KW_MEDIA if k in text]
-    if v_kw:
-        cats.append('视频/直播')
-    if e_kw:
-        cats.append('电商')
-    if m_kw:
-        cats.append('自媒体/新媒体')
-    return cats, list(set(v_kw + e_kw + m_kw))
+    matched_kw = []
+    text_lower = text.lower()
+    for cat_name, keywords in CAT_RULES.items():
+        hits = [k for k in keywords if k.lower() in text_lower]
+        if hits:
+            cats.append(cat_name)
+            matched_kw.extend(hits)
+    return cats, list(set(matched_kw))
 
 
 def salary_tier(avg: float) -> str:
