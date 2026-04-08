@@ -546,10 +546,11 @@ navLinks.forEach(a=>a.addEventListener('click',e=>{e.preventDefault();document.g
       <a class="settings-link" href="https://www.coze.cn/open/api" target="_blank">→ 前往扣子开放平台获取</a>
     </div>
     <div id="kimiForm" style="display:none">
-      <p style="font-size:12px;opacity:.6;margin-bottom:10px">填写 Kimi 开放平台 API Key</p>
+      <p style="font-size:12px;opacity:.6;margin-bottom:10px">填写 Moonshot 开放平台 Key（<b>注意：不是</b> Kimi Code 的 sk-kimi- Key）</p>
       <input type="password" id="kimiKeyInput" placeholder="sk-xxxxxxxxxxxxxxxx">
+      <div id="kimiKeyWarn" style="display:none;color:#ff9f0a;font-size:12px;margin-top:6px">⚠️ 这是 Kimi Code Key，请改用 <a href="https://platform.moonshot.cn/console/api-keys" target="_blank" style="color:#2997ff">Moonshot 平台 Key</a>（sk- 开头）</div>
       <button onclick="saveKey()" style="margin-top:10px">保存并开始</button>
-      <a class="settings-link" href="https://platform.kimi.ai/console/api-keys" target="_blank">→ 前往 Kimi 开放平台获取</a>
+      <a class="settings-link" href="https://platform.moonshot.cn/console/api-keys" target="_blank">→ 前往 Moonshot 开放平台获取（免费）</a>
     </div>
   </div>
 
@@ -705,6 +706,11 @@ function saveKey() {
   } else {
     const key = document.getElementById('kimiKeyInput').value.trim();
     if (!key) { alert('请填写 API Key'); return; }
+    if (key.startsWith('sk-kimi-')) {
+      document.getElementById('kimiKeyWarn').style.display = 'block';
+      return;
+    }
+    document.getElementById('kimiKeyWarn').style.display = 'none';
     localStorage.setItem('kimi_api_key', key);
   }
   hideSettings();
