@@ -648,8 +648,6 @@ navLinks.forEach(a=>a.addEventListener('click',e=>{e.preventDefault();SFX.click(
     <div id="kimiForm" style="display:none">
       <p style="font-size:12px;opacity:.6;margin-bottom:10px">支持两种 Key：<b>sk-kimi-</b>（Kimi Code）或 <b>sk-</b>（Moonshot平台）</p>
       <input type="password" id="kimiKeyInput" placeholder="sk-kimi-xxx 或 sk-xxx">
-      <input type="text" id="kimiProxyInput" placeholder="CORS 代理 URL（可选，在线部署时填写）" style="margin-top:8px;width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#fff;font-size:13px">
-      <p style="font-size:11px;opacity:.4;margin-top:4px">在线使用 sk-kimi- Key 需填代理地址，如 https://xxx.workers.dev</p>
       <div id="kimiKeyNote" style="display:none;font-size:12px;margin-top:6px"></div>
       <button onclick="saveKey()" style="margin-top:10px">保存并开始</button>
       <a class="settings-link" href="https://platform.kimi.ai/console/api-keys" target="_blank">→ 获取 Kimi API Key</a>
@@ -796,8 +794,6 @@ function showSettings() {
   if (ct) document.getElementById('cozeKeyInput').value = ct;
   if (cb) document.getElementById('cozeBotInput').value = cb;
   if (kk) document.getElementById('kimiKeyInput').value = kk;
-  const kp = localStorage.getItem('kimi_proxy_url');
-  if (kp) document.getElementById('kimiProxyInput').value = kp;
 }
 function hideSettings() { document.getElementById('chatSettings').classList.remove('show'); }
 function saveKey() {
@@ -811,28 +807,14 @@ function saveKey() {
   } else {
     const key = document.getElementById('kimiKeyInput').value.trim();
     if (!key) { alert('请填写 API Key'); return; }
-    const proxyUrl = document.getElementById('kimiProxyInput').value.trim();
     localStorage.setItem('kimi_api_key', key);
-    if (proxyUrl) localStorage.setItem('kimi_proxy_url', proxyUrl);
-    else localStorage.removeItem('kimi_proxy_url');
     const note = document.getElementById('kimiKeyNote');
-    const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
     if (key.startsWith('sk-kimi-')) {
-      if (isLocal) {
-        note.innerHTML = '✅ Kimi Code Key → 本地代理（127.0.0.1:8766）';
-      } else if (proxyUrl) {
-        note.innerHTML = '✅ Kimi Code Key → 在线代理（' + proxyUrl.replace(/https?:\/\//, '').slice(0, 30) + '）';
-      } else {
-        note.innerHTML = '⚠️ 在线环境需要填写 CORS 代理 URL 才能使用 sk-kimi- Key';
-        note.style.color = '#ff9f0a';
-        note.style.display = 'block';
-        return;
-      }
-      note.style.color = '#30d158';
+      note.innerHTML = '✅ Kimi Code Key，直连 api.kimi.com';
     } else {
-      note.innerHTML = '✅ Moonshot Key，直连 API';
-      note.style.color = '#30d158';
+      note.innerHTML = '✅ Moonshot Key，直连 api.moonshot.ai';
     }
+    note.style.color = '#30d158';
     note.style.display = 'block';
   }
   hideSettings();
@@ -934,27 +916,15 @@ async function sendMsg(overrideText) {
     const apiKey = localStorage.getItem('kimi_api_key');
     const isKimiCode = apiKey.startsWith('sk-kimi-');
     if (isKimiCode) {
-      // Kimi Code → 代理转发（本地或在线）
-      const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-      const proxyUrl = localStorage.getItem('kimi_proxy_url');
-      if (isLocal) {
-        apiUrl = 'http://127.0.0.1:8766';
-      } else if (proxyUrl) {
-        apiUrl = proxyUrl;
-      } else {
-        removeTyping();
-        addAiMsg('⚠️ **需要配置 CORS 代理**\n\n在线环境使用 `sk-kimi-` Key 需要代理。\n\n请点击 ⚙ 设置，填写代理 URL（如 Cloudflare Worker 地址）。');
-        isStreaming = false;
-        document.getElementById('chatSendBtn').disabled = false;
-        return;
-      }
+      // Kimi Code → 直连 api.kimi.com (Anthropic 格式)
+      apiUrl = 'https://api.kimi.com/coding/v1/messages';
       headers = { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' };
       body = { model: 'kimi-for-coding', system: SYSTEM_PROMPT, messages: userMsgs, max_tokens: 4096, stream: true };
     } else {
       // Moonshot Key → 直连
       apiUrl = 'https://api.moonshot.ai/v1/chat/completions';
       headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey };
-      body = { model: 'moonshot-v1-8k', messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...userMsgs],
+      body = { model: 'kimi-k2.5', messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...userMsgs],
                max_tokens: 4096, stream: true };
     }
   }
