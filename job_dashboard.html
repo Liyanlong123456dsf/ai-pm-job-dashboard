@@ -521,7 +521,7 @@ navLinks.forEach(a=>a.addEventListener('click',e=>{e.preventDefault();document.g
   <div class="chat-settings" id="chatSettings">
     <h3>🔑 设置 Kimi API Key</h3>
     <p>请前往 Kimi 开放平台获取 API Key，本工具仅在本地使用，不会上传到任何服务器。</p>
-    <input type="password" id="keyInput" placeholder="sk-kimi-xxxxxxxxxxxxxxxx">
+    <input type="password" id="keyInput" placeholder="sk-xxxxxxxxxxxxxxxx">
     <button onclick="saveKey()">保存并开始</button>
     <a class="settings-link" href="https://platform.kimi.ai/console/api-keys" target="_blank">→ 前往获取 API Key</a>
   </div>
@@ -722,17 +722,15 @@ async function sendMsg(overrideText) {
   const userMsgs = chatHistory.map(m => ({ role: m.role, content: m.content }));
 
   try {
-    const res = await fetch('/api/chat', {
+    const res = await fetch('https://api.moonshot.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01'
+        'Authorization': 'Bearer ' + apiKey,
       },
       body: JSON.stringify({
-        model: 'kimi-for-coding',
-        system: SYSTEM_PROMPT,
-        messages: userMsgs,
+        model: 'kimi-k2.5',
+        messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...userMsgs],
         max_tokens: 4096,
         stream: true
       })
@@ -744,7 +742,7 @@ async function sendMsg(overrideText) {
       try { errBody = await res.text(); } catch(e) {}
       const keyPreview = apiKey.slice(0,8) + '...' + apiKey.slice(-4);
       if (res.status === 401) {
-        addAiMsg(`⚠️ **API Key 认证失败**\n\n当前 Key：\`${keyPreview}\`\n\n请确认：\n- Key 是从 Kimi Code 会员页面生成的\n- Key 以 \`sk-kimi-\` 开头\n- Key 没有过期或被删除\n\n点击右上角 ⚙ 重新设置。\n\n> 错误详情：${errBody.slice(0,200)}`);
+        addAiMsg(`⚠️ **API Key 认证失败**\n\n当前 Key：\`${keyPreview}\`\n\n请确认：\n- Key 从 [Kimi 开放平台](https://platform.kimi.ai/console/api-keys) 获取\n- Key 没有过期或被删除\n\n点击右上角 ⚙ 重新设置。\n\n> 错误详情：${errBody.slice(0,200)}`);
       } else if (res.status === 429) {
         addAiMsg('⚠️ **请求频率超限**，请等待几秒后重试。');
       } else {
@@ -778,8 +776,10 @@ async function sendMsg(overrideText) {
         if (!payload || payload === '[DONE]') continue;
         try {
           const evt = JSON.parse(payload);
-          if (evt.type === 'content_block_delta' && evt.delta?.text) {
-            fullText += evt.delta.text;
+          // OpenAI/Moonshot format
+          const delta = evt.choices?.[0]?.delta?.content;
+          if (delta) {
+            fullText += delta;
             bubble.innerHTML = renderMd(fullText);
             document.getElementById('chatBody').scrollTop = document.getElementById('chatBody').scrollHeight;
           }
