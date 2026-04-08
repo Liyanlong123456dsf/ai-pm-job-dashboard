@@ -1009,8 +1009,14 @@ async function sendMsg(overrideText) {
 
     chatHistory.push({ role: 'assistant', content: fullText });
   } catch (err) {
+    console.error('Chat fetch error:', err);
     removeTyping();
-    addAiMsg('⚠️ 网络错误，请检查网络连接后重试。');
+    const errName = err.name || '';
+    if (errName === 'TypeError' && err.message?.includes('Failed to fetch')) {
+      addAiMsg('⚠️ **CORS 跨域被拦截**\n\n浏览器阻止了对 `' + apiUrl + '` 的请求。\n\n错误详情：`' + err.message + '`\n\n> 该 API 不允许浏览器直接调用，请切换到 **扣子 Coze** 接口。');
+    } else {
+      addAiMsg('⚠️ 网络错误：`' + (err.message || err) + '`');
+    }
   }
 
   isStreaming = false;
