@@ -858,6 +858,7 @@ async function sendMsg(overrideText) {
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
+    let sseEvent = ''; // 追踪 event: 行
 
     while (true) {
       const { done, value } = await reader.read();
@@ -867,14 +868,23 @@ async function sendMsg(overrideText) {
       buffer = lines.pop() || '';
       for (const line of lines) {
         const trimmed = line.trim();
+        // 记录 SSE event 类型
+        if (trimmed.startsWith('event:')) {
+          sseEvent = trimmed.slice(6).trim();
+          continue;
+        }
         if (!trimmed.startsWith('data:')) continue;
         const payload = trimmed.startsWith('data: ') ? trimmed.slice(6) : trimmed.slice(5);
         if (!payload || payload === '[DONE]') continue;
         try {
           const evt = JSON.parse(payload);
           let chunk = '';
-          // 扣子 v3: conversation.message.delta
-          if (evt.event === 'conversation.message.delta' && evt.message?.type === 'answer') {
+          // 扣子 v3: event行=conversation.message.delta, data里type=answer
+          if (sseEvent === 'conversation.message.delta' && evt.type === 'answer' && evt.content) {
+            chunk = evt.content;
+          }
+          // 扣子也可能把event放data里
+          if (!chunk && evt.event === 'conversation.message.delta' && evt.message?.type === 'answer') {
             chunk = evt.message.content || '';
           }
           // OpenAI / Moonshot 格式
@@ -890,7 +900,8 @@ async function sendMsg(overrideText) {
             bubble.innerHTML = renderMd(fullText);
             document.getElementById('chatBody').scrollTop = document.getElementById('chatBody').scrollHeight;
           }
-        } catch(e) {}
+        } catch(e) { console.log('SSE parse err:', e, payload.slice(0,100)); }
+        sseEvent = ''; // 重置
       }
     }
 
