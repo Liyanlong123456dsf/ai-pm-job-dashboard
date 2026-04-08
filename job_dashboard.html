@@ -546,11 +546,11 @@ navLinks.forEach(a=>a.addEventListener('click',e=>{e.preventDefault();document.g
       <a class="settings-link" href="https://www.coze.cn/open/api" target="_blank">→ 前往扣子开放平台获取</a>
     </div>
     <div id="kimiForm" style="display:none">
-      <p style="font-size:12px;opacity:.6;margin-bottom:10px">填写 Moonshot 开放平台 Key（<b>注意：不是</b> Kimi Code 的 sk-kimi- Key）</p>
-      <input type="password" id="kimiKeyInput" placeholder="sk-xxxxxxxxxxxxxxxx">
-      <div id="kimiKeyWarn" style="display:none;color:#ff9f0a;font-size:12px;margin-top:6px">⚠️ 这是 Kimi Code Key，请改用 <a href="https://platform.moonshot.cn/console/api-keys" target="_blank" style="color:#2997ff">Moonshot 平台 Key</a>（sk- 开头）</div>
+      <p style="font-size:12px;opacity:.6;margin-bottom:10px">支持两种 Key：<b>sk-kimi-</b>（Kimi Code）或 <b>sk-</b>（Moonshot平台）</p>
+      <input type="password" id="kimiKeyInput" placeholder="sk-kimi-xxx 或 sk-xxx">
+      <div id="kimiKeyNote" style="display:none;font-size:12px;margin-top:6px"></div>
       <button onclick="saveKey()" style="margin-top:10px">保存并开始</button>
-      <a class="settings-link" href="https://platform.moonshot.cn/console/api-keys" target="_blank">→ 前往 Moonshot 开放平台获取（免费）</a>
+      <a class="settings-link" href="https://platform.kimi.ai/console/api-keys" target="_blank">→ 获取 Kimi API Key</a>
     </div>
   </div>
 
@@ -706,12 +706,16 @@ function saveKey() {
   } else {
     const key = document.getElementById('kimiKeyInput').value.trim();
     if (!key) { alert('请填写 API Key'); return; }
-    if (key.startsWith('sk-kimi-')) {
-      document.getElementById('kimiKeyWarn').style.display = 'block';
-      return;
-    }
-    document.getElementById('kimiKeyWarn').style.display = 'none';
     localStorage.setItem('kimi_api_key', key);
+    const note = document.getElementById('kimiKeyNote');
+    if (key.startsWith('sk-kimi-')) {
+      note.innerHTML = '✅ Kimi Code Key，将通过本地代理调用（需运行 proxy.py）';
+      note.style.color = '#30d158';
+    } else {
+      note.innerHTML = '✅ Moonshot Key，直连 API';
+      note.style.color = '#30d158';
+    }
+    note.style.display = 'block';
   }
   hideSettings();
   if (!document.getElementById('chatBody').children.length) renderWelcome();
@@ -809,10 +813,19 @@ async function sendMsg(overrideText) {
              additional_messages: [{ role: 'user', content: text, content_type: 'text' }] };
   } else {
     const apiKey = localStorage.getItem('kimi_api_key');
-    apiUrl = 'https://api.moonshot.ai/v1/chat/completions';
-    headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey };
-    body = { model: 'moonshot-v1-8k', messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...userMsgs],
-             max_tokens: 4096, stream: true };
+    const isKimiCode = apiKey.startsWith('sk-kimi-');
+    if (isKimiCode) {
+      // Kimi Code → 本地代理(避免CORS) → api.kimi.com Anthropic 格式
+      apiUrl = 'http://127.0.0.1:8766';
+      headers = { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' };
+      body = { model: 'kimi-for-coding', system: SYSTEM_PROMPT, messages: userMsgs, max_tokens: 4096, stream: true };
+    } else {
+      // Moonshot Key → 直连
+      apiUrl = 'https://api.moonshot.ai/v1/chat/completions';
+      headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey };
+      body = { model: 'moonshot-v1-8k', messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...userMsgs],
+               max_tokens: 4096, stream: true };
+    }
   }
 
   try {
@@ -864,9 +877,13 @@ async function sendMsg(overrideText) {
           if (evt.event === 'conversation.message.delta' && evt.message?.type === 'answer') {
             chunk = evt.message.content || '';
           }
-          // OpenAI / Kimi 格式
-          if (evt.choices?.[0]?.delta?.content) {
+          // OpenAI / Moonshot 格式
+          if (!chunk && evt.choices?.[0]?.delta?.content) {
             chunk = evt.choices[0].delta.content;
+          }
+          // Anthropic / Kimi Code 格式
+          if (!chunk && evt.type === 'content_block_delta' && evt.delta?.text) {
+            chunk = evt.delta.text;
           }
           if (chunk) {
             fullText += chunk;
