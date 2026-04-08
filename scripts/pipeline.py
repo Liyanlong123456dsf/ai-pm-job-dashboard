@@ -64,11 +64,11 @@ def salary_tier(avg: float) -> str:
 def clean_desc(desc) -> str:
     if isinstance(desc, list):
         desc = ' '.join(str(x) for x in desc)
-    desc = str(desc or '')[:200]
+    desc = str(desc or '')
     for noise in ['BOSS直聘', 'kanzhun', 'boss', '直聘', '来自BOSS直聘',
                   '微信扫码分享举报', '微信扫码分享', '举报', '职位描述']:
         desc = desc.replace(noise, '')
-    return re.sub(r'\s+', ' ', desc).strip()[:150]
+    return re.sub(r'\s+', ' ', desc).strip()
 
 
 def norm_city(city: str) -> str:

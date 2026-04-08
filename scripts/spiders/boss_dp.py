@@ -89,6 +89,10 @@ def simulate_human(page):
             time.sleep(random.uniform(0.3, 1.0))
 
 
+# 详情页 API（通过 securityId 获取完整职位描述）
+DETAIL_API = 'https://www.zhipin.com/wapi/zpgeek/job/detail.json'
+
+
 def extract_jobs_from_api(json_data):
     """从 BOSS API 响应中提取岗位数据"""
     jobs = []
@@ -107,6 +111,8 @@ def extract_jobs_from_api(json_data):
                 'industry': item.get('brandIndustry', ''),
                 'skills': ' '.join(item.get('skills', [])),
                 'welfare': ' '.join(item.get('welfareList', [])),
+                'security_id': item.get('securityId', ''),
+                'encrypt_job_id': item.get('encryptJobId', ''),
             })
     except Exception as e:
         logger.warning(f'解析API数据出错: {e}')
@@ -304,6 +310,9 @@ class BossDPSpider:
                 simulate_human(self.page)
                 time.sleep(rest)
 
+        # 批量获取完整职位描述
+        self.fetch_all_details()
+
         elapsed_total = (time.time() - t_start) / 60
         results = self._normalize_all()
         self.page.quit()
@@ -311,11 +320,88 @@ class BossDPSpider:
         print(f'   强相关岗位: {len(results)} 条 | 过滤非相关: {self.skipped} 条')
         return results
 
+    def fetch_all_details(self):
+        """批量获取所有岗位的完整职位描述"""
+        jobs_needing_detail = [
+            (k, j) for k, j in self.all_jobs.items()
+            if j.get('security_id') and not j.get('full_desc')
+        ]
+        if not jobs_needing_detail:
+            return
+
+        total = len(jobs_needing_detail)
+        print(f'\n📝 开始获取 {total} 个岗位的完整描述...')
+        success = 0
+        fail = 0
+
+        for idx, (key, job) in enumerate(jobs_needing_detail, 1):
+            sid = job['security_id']
+            try:
+                # 通过 DrissionPage 发起详情 API 请求
+                detail_url = f'{DETAIL_API}?securityId={sid}'
+                self.page.listen.start('wapi/zpgeek/job/detail.json')
+                self.page.get(detail_url)
+
+                # 尝试从 API 响应获取
+                try:
+                    r = self.page.listen.wait(timeout=5)
+                    if r and r.response and r.response.body:
+                        body = r.response.body
+                        if isinstance(body, str):
+                            body = json.loads(body)
+                        desc = body.get('zpData', {}).get('jobInfo', {}).get('postDescription', '')
+                        if desc:
+                            job['full_desc'] = desc
+                            success += 1
+                except:
+                    pass
+                self.page.listen.stop()
+
+                # 如果 API 拦截失败，尝试从岗位详情页抓取
+                if not job.get('full_desc'):
+                    eid = job.get('encrypt_job_id', '')
+                    if eid:
+                        detail_page_url = f'https://www.zhipin.com/job_detail/{eid}.html'
+                        self.page.get(detail_page_url)
+                        random_delay(1, 2)
+                        try:
+                            desc_text = self.page.run_js(
+                                'return document.querySelector(".job-sec-text")?.innerText || '
+                                'document.querySelector(".job-detail-section .text")?.innerText || ""'
+                            )
+                            if desc_text and len(desc_text) > 20:
+                                job['full_desc'] = desc_text
+                                success += 1
+                        except:
+                            pass
+
+                if not job.get('full_desc'):
+                    fail += 1
+
+                if idx % 20 == 0:
+                    print(f'  详情进度: {idx}/{total} (成功 {success}, 失败 {fail})')
+
+                random_delay(0.5, 1.2)
+
+                # 每 30 个岗位休息一下防封
+                if idx % 30 == 0:
+                    simulate_human(self.page)
+                    time.sleep(random.uniform(2, 4))
+
+            except Exception as e:
+                logger.warning(f'获取详情失败 [{key}]: {e}')
+                fail += 1
+                self.page.listen.stop()
+
+        print(f'  ✅ 详情获取完成: 成功 {success}/{total}, 失败 {fail}')
+
     def _normalize_all(self) -> list:
         """标准化为 pipeline 格式"""
         results = []
         for key, job in self.all_jobs.items():
             city = job.get('city', '')
+            # 优先使用完整描述，回退到 skills
+            desc = job.get('full_desc', '') or job.get('skills', '')
             results.append({
                 'title': job.get('job_name', ''),
                 'company': job.get('company', ''),
@@ -323,7 +409,7 @@ class BossDPSpider:
                 'salary': job.get('salary', ''),
                 'exp': job.get('experience', ''),
                 'edu': job.get('degree', ''),
-                'desc': job.get('skills', ''),
+                'desc': desc,
                 '_source': 'boss_dp',
             })
         return results

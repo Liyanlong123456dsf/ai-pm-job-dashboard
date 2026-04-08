@@ -22,7 +22,7 @@ class BossSpider(BaseSpider):
         if cookie:
             self.session.headers['Cookie'] = cookie
 
-    def search(self, keyword: str, city_code: str) -> list:
+    def search(self, keyword: str, city_code: str, fetch_detail: bool = True) -> list:
         results = []
         for page in range(1, 4):  # max 3 pages
             params = {
@@ -46,6 +46,12 @@ class BossSpider(BaseSpider):
                 for item in job_list:
                     job = self._parse_item(item)
                     if job:
+                        # 获取完整职位描述
+                        if fetch_detail and job.get('_security_id'):
+                            detail = self.get_detail(job['_security_id'])
+                            if detail:
+                                job['desc'] = detail
+                            self._sleep(0.5, 1.5)
                         results.append(job)
 
                 self._sleep(2, 5)
@@ -58,14 +64,16 @@ class BossSpider(BaseSpider):
 
     def _parse_item(self, item: dict) -> dict:
         try:
+            skills = item.get('skills', [])
+            labels = item.get('jobLabels', '')
             return {
-                'title': (item.get('jobName') or '')[:40],
-                'company': (item.get('brandName') or '')[:25],
+                'title': item.get('jobName') or '',
+                'company': item.get('brandName') or '',
                 'city': (item.get('cityName') or ''),
                 'salary': item.get('salaryDesc') or '',
                 'exp': item.get('jobExperience') or '',
                 'edu': item.get('jobDegree') or '',
-                'desc': (item.get('skills', []) + [item.get('jobLabels', '')]),
+                'desc': ' '.join(skills) + (' ' + labels if labels else ''),
                 '_security_id': item.get('securityId', ''),
                 '_source': 'boss',
             }
