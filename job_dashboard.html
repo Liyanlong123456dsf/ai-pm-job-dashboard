@@ -916,6 +916,15 @@ async function sendMsg(overrideText) {
   } else {
     const apiKey = localStorage.getItem('kimi_api_key');
     const isKimiCode = apiKey.startsWith('sk-kimi-');
+    const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    if (isKimiCode && !isLocal) {
+      // 远程环境无法使用本地代理
+      removeTyping();
+      addAiMsg('⚠️ **Kimi Code Key 仅限本地使用**\n\n`sk-kimi-` Key 需要本地代理转发，远程部署（GitHub Pages）无法访问。\n\n请切换到：\n- **扣子 Coze**（推荐）\n- **Moonshot Key**（`sk-` 开头，[免费获取](https://platform.moonshot.cn/console/api-keys)）\n\n点击顶部 Badge 或 ⚙ 切换。');
+      isStreaming = false;
+      document.getElementById('chatSendBtn').disabled = false;
+      return;
+    }
     if (isKimiCode) {
       // Kimi Code → 本地代理(避免CORS) → api.kimi.com Anthropic 格式
       apiUrl = 'http://127.0.0.1:8766';
