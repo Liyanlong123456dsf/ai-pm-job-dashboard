@@ -1,0 +1,21 @@
+# Chrome 持久化登录数据（含 Cookie，不能公开）
+.chrome_profile/
+
+# 日志
+logs/
+
+# 历史快照（可选上传）
+history/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
