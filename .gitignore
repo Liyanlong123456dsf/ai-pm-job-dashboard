@@ -1,21 +1,12 @@
-# Chrome 持久化登录数据（含 Cookie，不能公开）
+# 持久化登录（含Cookie，不能公开）
 .chrome_profile/
 
-# 日志
+# 运行产物
 logs/
-
-# 历史快照（可选上传）
 history/
-
-# Python
 __pycache__/
 *.pyc
-*.pyo
-.env
 
-# macOS
+# 系统文件
 .DS_Store
-
-# IDE
-.vscode/
-.idea/
+.env
