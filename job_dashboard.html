@@ -488,6 +488,10 @@ navLinks.forEach(a=>a.addEventListener('click',e=>{e.preventDefault();document.g
 .typing span:nth-child(3){animation-delay:.4s}
 @keyframes blink{0%,80%,100%{opacity:.3}40%{opacity:1}}
 
+/* API badge in header */
+.chat-api-badge{padding:3px 10px;border-radius:980px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid rgba(41,151,255,.3);background:rgba(41,151,255,.1);color:var(--bright-blue);transition:all .2s;white-space:nowrap}
+.chat-api-badge:hover{background:rgba(41,151,255,.2);border-color:rgba(41,151,255,.5)}
+
 /* API Tab */
 .api-tab{flex:1;padding:8px 0;border:1px solid rgba(255,255,255,.12);background:transparent;color:rgba(255,255,255,.5);font-size:13px;font-weight:500;cursor:pointer;transition:all .2s}
 .api-tab:first-child{border-radius:8px 0 0 8px}.api-tab:last-child{border-radius:0 8px 8px 0}
@@ -553,6 +557,7 @@ navLinks.forEach(a=>a.addEventListener('click',e=>{e.preventDefault();document.g
   <div class="chat-head">
     <h3><span class="dot-live"></span>AI 求职顾问</h3>
     <div class="chat-head-btns">
+      <button class="chat-api-badge" id="apiBadge" onclick="quickSwitchApi()" title="点击切换接口">扣子</button>
       <button class="chat-head-btn" onclick="clearChat()" title="清空对话">🗑</button>
       <button class="chat-head-btn" onclick="showSettings()" title="设置">⚙</button>
       <button class="chat-head-btn" onclick="toggleChat()" title="关闭">✕</button>
@@ -642,7 +647,24 @@ function switchApiTab(type) {
   document.querySelectorAll('.api-tab').forEach(b => b.classList.toggle('on', b.dataset.api === type));
   document.getElementById('cozeForm').style.display = type === 'coze' ? '' : 'none';
   document.getElementById('kimiForm').style.display = type === 'kimi' ? '' : 'none';
+  updateApiBadge();
 }
+function updateApiBadge() {
+  const badge = document.getElementById('apiBadge');
+  if (!badge) return;
+  const t = getApiType();
+  badge.textContent = t === 'coze' ? '扣子' : 'Kimi';
+}
+function quickSwitchApi() {
+  const cur = getApiType();
+  const next = cur === 'coze' ? 'kimi' : 'coze';
+  if (!hasApiConfig() || confirm(`切换到 ${next === 'coze' ? '扣子 Coze' : 'Kimi'}？`)) {
+    switchApiTab(next);
+    if (!hasApiConfig()) showSettings();
+  }
+}
+// 初始化 badge
+setTimeout(updateApiBadge, 0);
 
 // Toggle chat
 function toggleChat() {
