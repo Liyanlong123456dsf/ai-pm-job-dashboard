@@ -522,11 +522,12 @@ navLinks.forEach(a=>a.addEventListener('click',e=>{e.preventDefault();document.g
 <div class="chat-panel" id="chatPanel">
   <!-- Settings -->
   <div class="chat-settings" id="chatSettings">
-    <h3>🔑 设置 Kimi API Key</h3>
-    <p>请前往 Kimi 开放平台获取 API Key，本工具仅在本地使用，不会上传到任何服务器。</p>
-    <input type="password" id="keyInput" placeholder="sk-xxxxxxxxxxxxxxxx">
+    <h3>🔑 设置扣子智能体</h3>
+    <p>填写扣子平台的 Token 和 Bot ID，数据仅存储在本地浏览器。</p>
+    <input type="password" id="keyInput" placeholder="pat_xxxxxxxxxxxxxxxx">
+    <input type="text" id="botIdInput" placeholder="Bot ID（如 74xxx）" style="margin-top:8px;width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#fff;font-size:14px">
     <button onclick="saveKey()">保存并开始</button>
-    <a class="settings-link" href="https://platform.kimi.ai/console/api-keys" target="_blank">→ 前往获取 API Key</a>
+    <a class="settings-link" href="https://www.coze.cn/open/api" target="_blank">→ 前往扣子开放平台获取</a>
   </div>
 
   <!-- Header -->
@@ -617,8 +618,9 @@ function toggleChat() {
   const isOpen = panel.classList.toggle('open');
   fab.classList.toggle('open', isOpen);
   if (isOpen) {
-    const key = localStorage.getItem('kimi_api_key');
-    if (!key) { showSettings(); } else { hideSettings(); }
+    const token = localStorage.getItem('coze_token');
+    const botId = localStorage.getItem('coze_bot_id');
+    if (!token || !botId) { showSettings(); } else { hideSettings(); }
     if (!document.getElementById('chatBody').children.length) renderWelcome();
     document.getElementById('chatTextarea').focus();
   }
@@ -629,14 +631,18 @@ document.getElementById('chatFab').onclick = toggleChat;
 function showSettings() {
   const s = document.getElementById('chatSettings');
   s.classList.add('show');
-  const key = localStorage.getItem('kimi_api_key');
-  if (key) document.getElementById('keyInput').value = key;
+  const token = localStorage.getItem('coze_token');
+  const botId = localStorage.getItem('coze_bot_id');
+  if (token) document.getElementById('keyInput').value = token;
+  if (botId) document.getElementById('botIdInput').value = botId;
 }
 function hideSettings() { document.getElementById('chatSettings').classList.remove('show'); }
 function saveKey() {
-  const key = document.getElementById('keyInput').value.trim();
-  if (!key) return;
-  localStorage.setItem('kimi_api_key', key);
+  const token = document.getElementById('keyInput').value.trim();
+  const botId = document.getElementById('botIdInput').value.trim();
+  if (!token || !botId) { alert('请填写 Token 和 Bot ID'); return; }
+  localStorage.setItem('coze_token', token);
+  localStorage.setItem('coze_bot_id', botId);
   hideSettings();
   if (!document.getElementById('chatBody').children.length) renderWelcome();
 }
@@ -704,8 +710,9 @@ async function sendMsg(overrideText) {
   textarea.value = '';
   textarea.style.height = 'auto';
 
-  const apiKey = localStorage.getItem('kimi_api_key');
-  if (!apiKey) { showSettings(); return; }
+  const cozeToken = localStorage.getItem('coze_token');
+  const cozeBotId = localStorage.getItem('coze_bot_id');
+  if (!cozeToken || !cozeBotId) { showSettings(); return; }
 
   // Remove quick questions
   document.querySelector('.quick-q')?.remove();
@@ -720,32 +727,31 @@ async function sendMsg(overrideText) {
   isStreaming = true;
   document.getElementById('chatSendBtn').disabled = true;
 
-  // Kimi Code API (Anthropic Messages format)
-  // system prompt goes in "system" field, not in messages array
-  const userMsgs = chatHistory.map(m => ({ role: m.role, content: m.content }));
+  // 扣子 API v3 流式对话
+  const userMsgs = chatHistory.map(m => ({ role: m.role, content: m.content, content_type: 'text' }));
 
   try {
-    // 自动适配: sk-kimi- 用 Kimi Code API, 否则用 Moonshot API
-    const isKimiCode = apiKey.startsWith('sk-kimi-');
-    const apiUrl = isKimiCode
-      ? 'https://api.kimi.com/coding/v1/messages'
-      : 'https://api.moonshot.ai/v1/chat/completions';
-    const headers = isKimiCode
-      ? { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' }
-      : { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey };
-    const body = isKimiCode
-      ? { model: 'kimi-for-coding', system: SYSTEM_PROMPT, messages: userMsgs, max_tokens: 4096, stream: true }
-      : { model: 'kimi-k2.5', messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...userMsgs], max_tokens: 4096, stream: true };
-
-    const res = await fetch(apiUrl, { method: 'POST', headers, body: JSON.stringify(body) });
+    const res = await fetch('https://api.coze.cn/v3/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + cozeToken,
+      },
+      body: JSON.stringify({
+        bot_id: cozeBotId,
+        user_id: 'dashboard_user',
+        stream: true,
+        auto_save_history: false,
+        additional_messages: [{ role: 'user', content: text, content_type: 'text' }]
+      })
+    });
 
     if (!res.ok) {
       removeTyping();
       let errBody = '';
       try { errBody = await res.text(); } catch(e) {}
-      const keyPreview = apiKey.slice(0,8) + '...' + apiKey.slice(-4);
       if (res.status === 401) {
-        addAiMsg(`⚠️ **API Key 认证失败**\n\n当前 Key：\`${keyPreview}\`\n\n请确认：\n- Key 从 [Kimi 开放平台](https://platform.kimi.ai/console/api-keys) 获取\n- Key 没有过期或被删除\n\n点击右上角 ⚙ 重新设置。\n\n> 错误详情：${errBody.slice(0,200)}`);
+        addAiMsg(`⚠️ **Token 认证失败**\n\n请确认：\n- Token 从 [扣子开放平台](https://www.coze.cn/open/api) 获取\n- Token 以 \`pat_\` 开头\n- Bot ID 填写正确\n\n点击右上角 ⚙ 重新设置。\n\n> ${errBody.slice(0,200)}`);
       } else if (res.status === 429) {
         addAiMsg('⚠️ **请求频率超限**，请等待几秒后重试。');
       } else {
@@ -773,16 +779,19 @@ async function sendMsg(overrideText) {
       buffer = lines.pop() || '';
       for (const line of lines) {
         const trimmed = line.trim();
-        // Handle both "data: {...}" and "data:{...}" formats
         if (!trimmed.startsWith('data:')) continue;
         const payload = trimmed.startsWith('data: ') ? trimmed.slice(6) : trimmed.slice(5);
         if (!payload || payload === '[DONE]') continue;
         try {
           const evt = JSON.parse(payload);
-          // 兼容 Anthropic (Kimi Code) 和 OpenAI (Moonshot) 两种 SSE 格式
-          const delta = evt.choices?.[0]?.delta?.content
-            || (evt.type === 'content_block_delta' && evt.delta?.text)
-            || '';
+          // 扣子 v3 流式: event=conversation.message.delta, type=answer
+          if (evt.event === 'conversation.message.delta' && evt.message?.type === 'answer') {
+            fullText += evt.message.content || '';
+            bubble.innerHTML = renderMd(fullText);
+            document.getElementById('chatBody').scrollTop = document.getElementById('chatBody').scrollHeight;
+          }
+          // 也兼容 OpenAI 格式
+          const delta = evt.choices?.[0]?.delta?.content;
           if (delta) {
             fullText += delta;
             bubble.innerHTML = renderMd(fullText);
