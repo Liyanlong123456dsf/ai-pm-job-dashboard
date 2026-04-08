@@ -24,7 +24,7 @@ def load_existing() -> tuple:
             key_set.add(j['_key'])
         else:
             # Backward compat: generate key for old data
-            from .pipeline import dedup_key
+            from pipeline import dedup_key
             k = dedup_key(j)
             j['_key'] = k
             key_set.add(k)
