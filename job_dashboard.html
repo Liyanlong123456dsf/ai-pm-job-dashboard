@@ -1008,8 +1008,12 @@ async function sendMsg(overrideText) {
       }
     }
 
-    chatHistory.push({ role: 'assistant', content: fullText });
+    if (!fullText) {
+      bubble.innerHTML = renderMd('⚠️ AI 未返回内容，请重试。可能是接口格式不匹配或知识库未配置。');
+    }
+    chatHistory.push({ role: 'assistant', content: fullText || '(空回复)' });
   } catch (err) {
+    console.error('Chat error:', err);
     removeTyping();
     addAiMsg('⚠️ 网络错误，请检查网络连接后重试。');
   }
@@ -1103,12 +1107,16 @@ openModal = function(idx) {
   askBtn.onmouseenter = () => askBtn.style.opacity = '.85';
   askBtn.onmouseleave = () => askBtn.style.opacity = '1';
   askBtn.onclick = () => {
+    SFX.click();
     closeModal();
-    if (!document.getElementById('chatPanel').classList.contains('open')) toggleChat();
+    // 确保聊天面板打开
+    const panel = document.getElementById('chatPanel');
+    if (!panel.classList.contains('open')) toggleChat();
     setTimeout(() => {
-      const q = `帮我分析这个岗位：${j.title} - ${j.company} - ${j.city} - ${j.salary}，这个岗位怎么样？适合什么背景的人？需要重点准备什么？`;
+      if (!hasApiConfig()) { showSettings(); return; }
+      const q = `帮我分析这个岗位：\n- 岗位：${j.title}\n- 公司：${j.company}\n- 城市：${j.city}\n- 薪资：${j.salary}${j.exp ? '\n- 经验：'+j.exp : ''}${j.edu ? '\n- 学历：'+j.edu : ''}${j.desc ? '\n- 职责：'+j.desc.slice(0,150) : ''}\n\n这个岗位怎么样？适合什么背景的人？需要重点准备什么？`;
       sendMsg(q);
-    }, 400);
+    }, 500);
   };
   modal.appendChild(askBtn);
 };
