@@ -1,0 +1,23 @@
+[build]
+  publish = "."
+
+# Kimi Code API 代理（服务端转发，绕过 CORS）
+[[redirects]]
+  from = "/api/kimi/*"
+  to = "https://api.kimi.com/coding/v1/:splat"
+  status = 200
+  force = true
+  headers = {X-From = "netlify-proxy"}
+
+# Coze API 代理
+[[redirects]]
+  from = "/api/coze/*"
+  to = "https://api.coze.cn/v3/:splat"
+  status = 200
+  force = true
+
+# SPA fallback
+[[redirects]]
+  from = "/*"
+  to = "/job_dashboard.html"
+  status = 200

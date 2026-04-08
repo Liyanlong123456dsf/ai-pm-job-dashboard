@@ -915,13 +915,14 @@ async function sendMsg(overrideText) {
   } else {
     const apiKey = localStorage.getItem('kimi_api_key');
     const isKimiCode = apiKey.startsWith('sk-kimi-');
+    const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
     if (isKimiCode) {
-      // Kimi Code → 直连 api.kimi.com (Anthropic 格式)
-      apiUrl = 'https://api.kimi.com/coding/v1/messages';
+      // Kimi Code: 本地直连，线上走 Netlify 代理（/api/kimi/messages）
+      apiUrl = isLocal ? 'https://api.kimi.com/coding/v1/messages' : '/api/kimi/messages';
       headers = { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' };
       body = { model: 'kimi-for-coding', system: SYSTEM_PROMPT, messages: userMsgs, max_tokens: 4096, stream: true };
     } else {
-      // Moonshot Key → 直连
+      // Moonshot Key → 直连（无 CORS 问题）
       apiUrl = 'https://api.moonshot.ai/v1/chat/completions';
       headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey };
       body = { model: 'kimi-k2.5', messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...userMsgs],
