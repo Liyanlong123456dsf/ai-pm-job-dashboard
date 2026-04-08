@@ -231,6 +231,105 @@ section{padding:80px 20px;scroll-margin-top:52px}
 <div class="tip" id="tip"></div>
 
 <script>
+// === SOUND ENGINE (Web Audio API, no external files) ===
+const SFX = (() => {
+  let ctx;
+  const getCtx = () => { if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)(); return ctx; };
+
+  function play(fn) {
+    try { const c = getCtx(); if (c.state === 'suspended') c.resume(); fn(c); } catch(e) {}
+  }
+
+  return {
+    // 轻柔点击 - 卡片、按钮
+    click() {
+      play(c => {
+        const o = c.createOscillator(), g = c.createGain();
+        o.type = 'sine'; o.frequency.setValueAtTime(1200, c.currentTime);
+        o.frequency.exponentialRampToValueAtTime(800, c.currentTime + 0.06);
+        g.gain.setValueAtTime(0.08, c.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.08);
+        o.connect(g); g.connect(c.destination);
+        o.start(); o.stop(c.currentTime + 0.08);
+      });
+    },
+    // 弹窗打开 - 上升音
+    modalOpen() {
+      play(c => {
+        const o = c.createOscillator(), g = c.createGain();
+        o.type = 'sine'; o.frequency.setValueAtTime(400, c.currentTime);
+        o.frequency.exponentialRampToValueAtTime(900, c.currentTime + 0.12);
+        g.gain.setValueAtTime(0.06, c.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.15);
+        o.connect(g); g.connect(c.destination);
+        o.start(); o.stop(c.currentTime + 0.15);
+      });
+    },
+    // 弹窗关闭 - 下降音
+    modalClose() {
+      play(c => {
+        const o = c.createOscillator(), g = c.createGain();
+        o.type = 'sine'; o.frequency.setValueAtTime(800, c.currentTime);
+        o.frequency.exponentialRampToValueAtTime(350, c.currentTime + 0.1);
+        g.gain.setValueAtTime(0.05, c.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.12);
+        o.connect(g); g.connect(c.destination);
+        o.start(); o.stop(c.currentTime + 0.12);
+      });
+    },
+    // 发送消息 - 清脆短促
+    send() {
+      play(c => {
+        const o = c.createOscillator(), g = c.createGain();
+        o.type = 'triangle'; o.frequency.setValueAtTime(880, c.currentTime);
+        o.frequency.exponentialRampToValueAtTime(1320, c.currentTime + 0.06);
+        g.gain.setValueAtTime(0.07, c.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.1);
+        o.connect(g); g.connect(c.destination);
+        o.start(); o.stop(c.currentTime + 0.1);
+      });
+    },
+    // 收到回复 - 双音通知
+    receive() {
+      play(c => {
+        [660, 880].forEach((freq, i) => {
+          const o = c.createOscillator(), g = c.createGain();
+          o.type = 'sine';
+          o.frequency.setValueAtTime(freq, c.currentTime + i * 0.08);
+          g.gain.setValueAtTime(0, c.currentTime);
+          g.gain.linearRampToValueAtTime(0.06, c.currentTime + i * 0.08);
+          g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + i * 0.08 + 0.12);
+          o.connect(g); g.connect(c.destination);
+          o.start(c.currentTime + i * 0.08); o.stop(c.currentTime + i * 0.08 + 0.12);
+        });
+      });
+    },
+    // 切换/筛选 - 轻微滴答
+    toggle() {
+      play(c => {
+        const o = c.createOscillator(), g = c.createGain();
+        o.type = 'sine'; o.frequency.setValueAtTime(1000, c.currentTime);
+        g.gain.setValueAtTime(0.05, c.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.04);
+        o.connect(g); g.connect(c.destination);
+        o.start(); o.stop(c.currentTime + 0.04);
+      });
+    },
+    // 聊天面板开关 - 柔滑滑动
+    slide() {
+      play(c => {
+        const o = c.createOscillator(), g = c.createGain();
+        o.type = 'sine'; o.frequency.setValueAtTime(500, c.currentTime);
+        o.frequency.exponentialRampToValueAtTime(700, c.currentTime + 0.1);
+        g.gain.setValueAtTime(0.04, c.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.15);
+        o.connect(g); g.connect(c.destination);
+        o.start(); o.stop(c.currentTime + 0.15);
+      });
+    }
+  };
+})();
+
 // === LOAD DATA (external JSON) ===
 let DATA = [];
 let DATA_META = {};
@@ -268,7 +367,7 @@ function renderGrid(containerId, items, moreId, limit=12){
   const btn=document.getElementById(moreId);
   el._allItems=items; el._shown=limit;
   el.innerHTML=items.slice(0,limit).map(cardH).join('')||'<div class="empty">暂无匹配岗位</div>';
-  if(btn){btn.style.display=items.length>limit?'block':'none';btn.onclick=()=>{el._shown+=12;el.innerHTML=items.slice(0,el._shown).map(cardH).join('');btn.style.display=items.length>el._shown?'block':'none';}}
+  if(btn){btn.style.display=items.length>limit?'block':'none';btn.onclick=()=>{SFX.click();el._shown+=12;el.innerHTML=items.slice(0,el._shown).map(cardH).join('');btn.style.display=items.length>el._shown?'block':'none';}}
 }
 function renderPills(containerId, items, activeFn, clickFn){
   document.getElementById(containerId).innerHTML=items.map(([label,cnt])=>`<div class="pill${activeFn(label)?' on':''}" data-v="${label}">${label}<span class="cnt">${cnt}</span></div>`).join('');
@@ -280,7 +379,7 @@ function renderHero(){
   const cities=new Set(); DATA.forEach(d=>cities.add(norm(d.city)));
   const maxA=DATA.length?DATA[0].avg:0;
   const kpis=[{n:DATA.length,l:'相关岗位',sec:'explore'},{n:3,l:'细分方向',sec:'directions'},{n:cities.size,l:'覆盖城市',sec:'cities'},{n:maxA+'K',l:'最高月薪',sec:'salary'}];
-  document.getElementById('kpis').innerHTML=kpis.map(k=>`<div class="kpi" onclick="document.getElementById('${k.sec}').scrollIntoView({behavior:'smooth'})"><div class="n">${k.n}</div><div class="l">${k.l}</div></div>`).join('');
+  document.getElementById('kpis').innerHTML=kpis.map(k=>`<div class="kpi" onclick="SFX.click();document.getElementById('${k.sec}').scrollIntoView({behavior:'smooth'})"><div class="n">${k.n}</div><div class="l">${k.l}</div></div>`).join('');
   if(DATA_META.updated){
     const ts=document.createElement('p');
     ts.style.cssText='font-size:12px;color:rgba(255,255,255,.25);margin-top:20px';
@@ -300,11 +399,11 @@ function renderDir(){
     const items=DATA.filter(j=>j.cats.includes(d));
     return `<div class="dir-card${curDir===d?' on':''}" data-d="${d}"><div class="dc-n">${items.length}</div><div class="dc-l">${d}</div><div class="dc-s">均薪 ${avgS(items)}K/月</div></div>`;
   }).join('');
-  document.querySelectorAll('.dir-card').forEach(c=>c.onclick=()=>{curDir=curDir===c.dataset.d?'全部':c.dataset.d;curKw='';renderDir();});
+  document.querySelectorAll('.dir-card').forEach(c=>c.onclick=()=>{SFX.toggle();curDir=curDir===c.dataset.d?'全部':c.dataset.d;curKw='';renderDir();});
   let filtered=curDir==='全部'?DATA:DATA.filter(j=>j.cats.includes(curDir));
   const kws={}; filtered.forEach(j=>j.kw.forEach(k=>kws[k]=(kws[k]||0)+1));
   const sorted=[['全部',filtered.length],...Object.entries(kws).sort((a,b)=>b[1]-a[1]).slice(0,10)];
-  renderPills('dirPills',sorted,l=>(!curKw&&l==='全部')||l===curKw,v=>{curKw=v==='全部'?'':v;renderDir();});
+  renderPills('dirPills',sorted,l=>(!curKw&&l==='全部')||l===curKw,v=>{SFX.toggle();curKw=v==='全部'?'':v;renderDir();});
   if(curKw) filtered=filtered.filter(j=>j.kw.includes(curKw));
   renderGrid('dirCards',filtered,'dirMore');
 }
@@ -341,7 +440,7 @@ function renderSalary(){
   // Pills
   const tiers=['全部','50K+','30-50K','15-30K','8-15K','<8K'];
   const tierCounts=tiers.map(t=>[t,t==='全部'?DATA.length:DATA.filter(j=>j.tier===t).length]);
-  renderPills('salPills',tierCounts,l=>l===curTier,v=>{curTier=v;renderSalary();});
+  renderPills('salPills',tierCounts,l=>l===curTier,v=>{SFX.toggle();curTier=v;renderSalary();});
   const filtered=curTier==='全部'?DATA:DATA.filter(j=>j.tier===curTier);
   renderGrid('salCards',filtered,'salMore');
 }
@@ -357,9 +456,9 @@ function renderCities(){
     const avg=avgS(jobs);
     return `<div class="bar-row" data-c="${city}"><div class="bar-label">${city}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%">${jobs.length}</div></div><div class="bar-info">均${avg}K</div></div>`;
   }).join('');
-  document.querySelectorAll('.bar-row').forEach(r=>r.onclick=()=>{curCity=curCity===r.dataset.c?'全部':r.dataset.c;renderCities();});
+  document.querySelectorAll('.bar-row').forEach(r=>r.onclick=()=>{SFX.toggle();curCity=curCity===r.dataset.c?'全部':r.dataset.c;renderCities();});
   const pills=[['全部',DATA.length],...sorted.slice(0,8).map(([c,j])=>[c,j.length])];
-  renderPills('cityPills',pills,l=>l===curCity,v=>{curCity=v;renderCities();});
+  renderPills('cityPills',pills,l=>l===curCity,v=>{SFX.toggle();curCity=v;renderCities();});
   const filtered=curCity==='全部'?DATA:DATA.filter(j=>norm(j.city)===curCity);
   renderGrid('cityCards',filtered,'cityMore');
 }
@@ -372,7 +471,7 @@ function renderExplore(){
   const exps=['全部',...countBy(DATA,d=>d.exp||'未知').slice(0,6).map(e=>e[0])];
   const mk=(arr,key,cid)=>{
     document.getElementById(cid).innerHTML=arr.map(v=>`<div class="pill${F[key]===v?' on':''}" data-v="${v}">${v}</div>`).join('');
-    document.getElementById(cid).querySelectorAll('.pill').forEach(p=>p.onclick=()=>{F[key]=p.dataset.v;renderExplore();});
+    document.getElementById(cid).querySelectorAll('.pill').forEach(p=>p.onclick=()=>{SFX.toggle();F[key]=p.dataset.v;renderExplore();});
   };
   mk(dirs,'dir','fDir');mk(cities,'city','fCity');mk(tiers,'tier','fTier');mk(exps,'exp','fExp');
   let r=DATA;
@@ -387,6 +486,7 @@ boot();
 
 // === MODAL ===
 function openModal(idx){
+  SFX.modalOpen();
   const j=DATA[idx];
   const related=DATA.filter(d=>d!==j&&d.cats.some(c=>j.cats.includes(c))&&norm(d.city)===norm(j.city)).sort((a,b)=>b.avg-a.avg).slice(0,4);
   document.getElementById('modal').innerHTML=`
@@ -402,14 +502,14 @@ function openModal(idx){
   const o=document.getElementById('overlay');
   o.classList.add('show');
 }
-function closeModal(){document.getElementById('overlay').classList.remove('show');}
+function closeModal(){SFX.modalClose();document.getElementById('overlay').classList.remove('show');}
 document.getElementById('overlay').addEventListener('click',e=>{if(e.target.id==='overlay')closeModal();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 
 // === CARD CLICK DELEGATION ===
 document.addEventListener('click',e=>{
   const card=e.target.closest('.card[data-i]');
-  if(card) openModal(+card.dataset.i);
+  if(card){ SFX.click(); openModal(+card.dataset.i); }
 });
 
 // === TOOLTIP ===
@@ -431,7 +531,7 @@ window.addEventListener('scroll',()=>{
   secs.forEach(id=>{const el=document.getElementById(id);if(el&&el.offsetTop<=y)active=id;});
   navLinks.forEach(a=>{a.classList.toggle('active',a.dataset.sec===active);});
 },{passive:true});
-navLinks.forEach(a=>a.addEventListener('click',e=>{e.preventDefault();document.getElementById(a.dataset.sec)?.scrollIntoView({behavior:'smooth'});}));
+navLinks.forEach(a=>a.addEventListener('click',e=>{e.preventDefault();SFX.click();document.getElementById(a.dataset.sec)?.scrollIntoView({behavior:'smooth'});}));
 </script>
 
 <!-- ========== AI CHAT PANEL ========== -->
@@ -669,6 +769,7 @@ setTimeout(updateApiBadge, 0);
 
 // Toggle chat
 function toggleChat() {
+  SFX.slide();
   const panel = document.getElementById('chatPanel');
   const fab = document.getElementById('chatFab');
   const isOpen = panel.classList.toggle('open');
@@ -789,6 +890,7 @@ async function sendMsg(overrideText) {
   // Remove quick questions
   document.querySelector('.quick-q')?.remove();
 
+  SFX.send();
   addUserMsg(text);
   chatHistory.push({ role: 'user', content: text });
 
@@ -851,6 +953,7 @@ async function sendMsg(overrideText) {
     }
 
     removeTyping();
+    SFX.receive();
     const aiDiv = addAiMsg('');
     const bubble = aiDiv.querySelector('.msg-bubble');
     let fullText = '';
