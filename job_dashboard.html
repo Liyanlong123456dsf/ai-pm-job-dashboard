@@ -722,19 +722,19 @@ async function sendMsg(overrideText) {
   const userMsgs = chatHistory.map(m => ({ role: m.role, content: m.content }));
 
   try {
-    const res = await fetch('https://api.moonshot.ai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + apiKey,
-      },
-      body: JSON.stringify({
-        model: 'kimi-k2.5',
-        messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...userMsgs],
-        max_tokens: 4096,
-        stream: true
-      })
-    });
+    // 自动适配: sk-kimi- 用 Kimi Code API, 否则用 Moonshot API
+    const isKimiCode = apiKey.startsWith('sk-kimi-');
+    const apiUrl = isKimiCode
+      ? 'https://api.kimi.com/coding/v1/messages'
+      : 'https://api.moonshot.ai/v1/chat/completions';
+    const headers = isKimiCode
+      ? { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' }
+      : { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey };
+    const body = isKimiCode
+      ? { model: 'kimi-for-coding', system: SYSTEM_PROMPT, messages: userMsgs, max_tokens: 4096, stream: true }
+      : { model: 'kimi-k2.5', messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...userMsgs], max_tokens: 4096, stream: true };
+
+    const res = await fetch(apiUrl, { method: 'POST', headers, body: JSON.stringify(body) });
 
     if (!res.ok) {
       removeTyping();
@@ -776,8 +776,10 @@ async function sendMsg(overrideText) {
         if (!payload || payload === '[DONE]') continue;
         try {
           const evt = JSON.parse(payload);
-          // OpenAI/Moonshot format
-          const delta = evt.choices?.[0]?.delta?.content;
+          // 兼容 Anthropic (Kimi Code) 和 OpenAI (Moonshot) 两种 SSE 格式
+          const delta = evt.choices?.[0]?.delta?.content
+            || (evt.type === 'content_block_delta' && evt.delta?.text)
+            || '';
           if (delta) {
             fullText += delta;
             bubble.innerHTML = renderMd(fullText);
