@@ -96,10 +96,9 @@ section{padding:80px 20px;scroll-margin-top:52px}
 
 /* ===== SALARY SCATTER ===== */
 .scatter-wrap{position:relative;height:340px;background:rgba(255,255,255,.03);border-radius:16px;border:1px solid rgba(255,255,255,.06);margin-bottom:32px;overflow:hidden}
-.dot{position:absolute;border-radius:50%;transition:all .2s var(--ease);cursor:pointer;opacity:.65}
+.dot{position:absolute;border-radius:50%;transition:all .2s var(--ease);cursor:pointer;opacity:.7}
 .dot:hover{opacity:1;transform:scale(2.2);z-index:10}
-.dot.video{background:#2997ff}.dot.ecom{background:#30d158}.dot.media{background:#ff9f0a}
-.scatter-legend{display:flex;gap:20px;justify-content:center;margin-bottom:12px}
+.scatter-legend{display:flex;gap:14px 20px;justify-content:center;flex-wrap:wrap;margin-bottom:12px}
 .scatter-legend span{font-size:12px;color:rgba(255,255,255,.5);display:flex;align-items:center;gap:6px}
 .scatter-legend i{width:8px;height:8px;border-radius:50%;display:inline-block}
 .axis-label{position:absolute;font-size:10px;color:rgba(255,255,255,.3)}
@@ -190,11 +189,7 @@ section{padding:80px 20px;scroll-margin-top:52px}
   <div class="wrap">
     <h2 class="sec-h">薪资图谱</h2>
     <p class="sec-sub">气泡散点图：横轴为城市，纵轴为等效月薪，颜色为方向</p>
-    <div class="scatter-legend" id="scLegend">
-      <span><i style="background:#2997ff"></i>视频/直播</span>
-      <span><i style="background:#30d158"></i>电商</span>
-      <span><i style="background:#ff9f0a"></i>自媒体/新媒体</span>
-    </div>
+    <div class="scatter-legend" id="scLegend"></div>
     <div class="scatter-wrap" id="scatter">
       <div class="y-labels" id="yLabels"></div>
       <div class="x-labels" id="xLabels"></div>
@@ -411,30 +406,45 @@ function renderDir(){
 }
 // === 3. SALARY SCATTER + LIST ===
 let curTier='全部';
+// 方向 → 颜色映射
+const CAT_COLORS={'大模型/LLM':'#2997ff','AI Agent/智能体':'#5e5ce6','AIGC/内容创作':'#ff9f0a','多模态/具身智能':'#ff375f','AI+电商/营销':'#30d158','AI+视频/直播':'#64d2ff','智能客服/对话':'#ffd60a','AI+企业服务/SaaS':'#bf5af2','AI+行业应用':'#ac8e68','AI+新媒体':'#ff6482','AI通用':'#98989d'};
+function getCatColor(cats){
+  for(const c of cats||[]){ if(CAT_COLORS[c]) return CAT_COLORS[c]; }
+  return CAT_COLORS['AI通用'];
+}
 function renderSalary(){
+  // 动态图例
+  const usedCats={};
+  DATA.forEach(j=>(j.cats||[]).forEach(c=>{if(CAT_COLORS[c])usedCats[c]=(usedCats[c]||0)+1}));
+  const topCats=Object.entries(usedCats).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  document.getElementById('scLegend').innerHTML=topCats.map(([c])=>`<span><i style="background:${CAT_COLORS[c]}"></i>${c}</span>`).join('');
+
   // Scatter plot
   const wrap=document.getElementById('scatter');
   const cities=countBy(DATA,d=>norm(d.city)).map(e=>e[0]);
   const maxAvg=Math.max(...DATA.map(d=>d.avg),1);
-  const ySteps=[0,25,50,75,100,maxAvg>120?150:125];
-  document.getElementById('yLabels').innerHTML=ySteps.reverse().map(v=>`<span>${v}K</span>`).join('');
-  // City x-axis labels
+  const yMax=maxAvg>120?150:maxAvg>80?125:100;
+  const ySteps=[0,25,50,75,100]; if(yMax>100) ySteps.push(yMax);
+  document.getElementById('yLabels').innerHTML=[...ySteps].reverse().map(v=>`<span>${v}K</span>`).join('');
   document.getElementById('xLabels').innerHTML=cities.map(c=>`<span>${c}</span>`).join('');
-  // Remove old dots
   wrap.querySelectorAll('.dot').forEach(d=>d.remove());
-  const W=wrap.offsetWidth-50, H=wrap.offsetHeight-40;
+  const LEFT=50, TOP=10, W=wrap.offsetWidth-LEFT-10, H=wrap.offsetHeight-TOP-36;
+  const colW=W/cities.length;
   DATA.forEach((j,idx)=>{
     if(j.avg<=0) return;
     const ci=cities.indexOf(norm(j.city));
-    const x=50+(ci/Math.max(cities.length-1,1))*W*(0.7+Math.random()*0.25);
-    const y=10+(1-j.avg/Math.max(...ySteps,maxAvg))*(H-10);
-    const sz=Math.max(6,Math.min(14,j.avg/8));
-    const cls=j.cats.includes('视频/直播')?'video':j.cats.includes('电商')?'ecom':'media';
+    if(ci<0) return;
+    // X: 城市列中心 + 小随机偏移
+    const x=LEFT+ci*colW+colW*0.2+Math.random()*colW*0.6;
+    // Y: 线性映射
+    const y=TOP+(1-j.avg/yMax)*H;
+    const sz=Math.max(5,Math.min(12,j.avg/10));
+    const color=getCatColor(j.cats);
     const dot=document.createElement('div');
-    dot.className=`dot ${cls}`;
-    dot.style.cssText=`left:${x}px;top:${y}px;width:${sz}px;height:${sz}px`;
+    dot.className='dot';
+    dot.style.cssText=`left:${x}px;top:${y}px;width:${sz}px;height:${sz}px;background:${color}`;
     dot.dataset.i=idx;
-    dot.onmouseenter=e=>showTip(e,`${j.title}\n${j.company} · ${j.city}\n${j.salary} (≈${j.avg}K/月)`);
+    dot.onmouseenter=e=>showTip(e,`${j.title}\n${j.company} · ${j.city}\n${j.salary} (≈${j.avg}K/月)\n${(j.cats||[]).join(' · ')}`);
     dot.onmouseleave=hideTip;
     dot.onclick=()=>openModal(idx);
     wrap.appendChild(dot);
