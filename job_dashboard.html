@@ -496,6 +496,7 @@ function openModal(idx){
     <div class="m-info">${j.company}<span class="sep">·</span>${j.city}${j.exp?`<span class="sep">·</span>${j.exp}`:''}${j.edu?`<span class="sep">·</span>${j.edu}`:''}</div>
     <div class="m-row">${j.cats.map(c=>`<span class="tag tag-c">${c}</span>`).join('')}${j.kw.slice(0,5).map(k=>`<span class="tag tag-k">${k}</span>`).join('')}</div>
     ${j.desc?`<div class="m-desc">${j.desc}</div>`:''}
+    ${j.url?`<a href="${j.url}" target="_blank" rel="noopener" style="display:inline-block;margin-top:12px;font-size:13px;font-weight:600;color:var(--blue);text-decoration:none;transition:opacity .2s" onmouseenter="this.style.opacity='.7'" onmouseleave="this.style.opacity='1'">🔗 查看原始招聘页 →</a>`:''}
     ${related.length?`<div class="m-related"><h3>同城同方向推荐 →</h3>${related.map(r=>`<div class="m-rcard" data-i="${DATA.indexOf(r)}"><div class="rc-t">${r.title}</div><div class="rc-s">${r.company} · ${r.salary}</div></div>`).join('')}</div>`:''}
   `;
   document.querySelectorAll('.m-rcard').forEach(c=>c.onclick=()=>openModal(+c.dataset.i));

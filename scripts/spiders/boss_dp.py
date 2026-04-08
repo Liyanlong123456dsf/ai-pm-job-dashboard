@@ -113,6 +113,7 @@ def extract_jobs_from_api(json_data):
                 'welfare': ' '.join(item.get('welfareList', [])),
                 'security_id': item.get('securityId', ''),
                 'encrypt_job_id': item.get('encryptJobId', ''),
+                'url': f"https://www.zhipin.com/job_detail/{item.get('encryptJobId', '')}.html" if item.get('encryptJobId') else '',
             })
     except Exception as e:
         logger.warning(f'解析API数据出错: {e}')
@@ -410,6 +411,7 @@ class BossDPSpider:
                 'exp': job.get('experience', ''),
                 'edu': job.get('degree', ''),
                 'desc': desc,
+                'url': job.get('url', ''),
                 '_source': 'boss_dp',
             })
         return results

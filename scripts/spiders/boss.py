@@ -74,6 +74,7 @@ class BossSpider(BaseSpider):
                 'exp': item.get('jobExperience') or '',
                 'edu': item.get('jobDegree') or '',
                 'desc': ' '.join(skills) + (' ' + labels if labels else ''),
+                'url': f"https://www.zhipin.com/job_detail/{item.get('encryptJobId', '')}.html" if item.get('encryptJobId') else '',
                 '_security_id': item.get('securityId', ''),
                 '_source': 'boss',
             }

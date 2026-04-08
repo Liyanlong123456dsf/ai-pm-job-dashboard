@@ -107,7 +107,9 @@ def process_one(raw: dict) -> dict:
     avg = parse_salary(salary)
     tier = salary_tier(avg)
 
-    return {
+    url = str(raw.get('url') or '').strip()
+
+    result = {
         'title': title,
         'company': company,
         'city': city,
@@ -122,6 +124,9 @@ def process_one(raw: dict) -> dict:
         '_key': dedup_key({'title': title, 'company': company, 'city': city}),
         '_date': __import__('datetime').date.today().isoformat(),
     }
+    if url:
+        result['url'] = url
+    return result
 
 
 def process_batch(raw_list: list) -> list:
