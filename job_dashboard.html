@@ -117,7 +117,9 @@ section{padding:80px 20px;scroll-margin-top:52px}
 .m-close{position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:50%;background:rgba(0,0,0,.05);border:none;font-size:15px;cursor:pointer;color:var(--text80);display:flex;align-items:center;justify-content:center;transition:background .2s}
 .m-close:hover{background:rgba(0,0,0,.1)}
 .m-h{font-size:22px;font-weight:700;line-height:1.14;letter-spacing:-.3px;margin-bottom:6px;padding-right:40px}
-.m-sal{font-size:20px;font-weight:700;color:var(--blue);margin-bottom:14px}
+.m-sal{font-size:20px;font-weight:700;color:var(--blue);margin-bottom:12px}
+.m-info{font-size:14px;color:var(--text80);margin-bottom:12px;display:flex;gap:6px;align-items:center}
+.m-info .sep{color:var(--text48);font-size:12px}
 .m-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
 .m-desc{font-size:14px;line-height:1.65;color:var(--text80);margin-top:14px;padding:14px;background:var(--light-bg);border-radius:10px}
 .m-related{margin-top:20px}
@@ -234,7 +236,7 @@ let DATA = [];
 let DATA_META = {};
 async function boot() {
   try {
-    const resp = await fetch('./jobs_data.json');
+    const resp = await fetch('./jobs_data.json?t=' + Date.now());
     const json = await resp.json();
     DATA = json.jobs || json;
     DATA_META = json.meta || {};
@@ -391,8 +393,8 @@ function openModal(idx){
     <button class="m-close" onclick="closeModal()">✕</button>
     <div class="m-h">${j.title}</div>
     <div class="m-sal">${j.salary}${j.avg?` (≈${j.avg}K/月)`:''}</div>
-    <div class="m-row"><span class="tag tag-c">${j.company}</span><span class="tag tag-c">${j.city}</span>${j.exp?`<span class="tag tag-k">${j.exp}</span>`:''}${j.edu?`<span class="tag tag-k">${j.edu}</span>`:''}</div>
-    <div class="m-row">${j.cats.map(c=>`<span class="tag tag-c">${c}</span>`).join('')}${j.kw.map(k=>`<span class="tag tag-k">${k}</span>`).join('')}</div>
+    <div class="m-info">${j.company}<span class="sep">·</span>${j.city}${j.exp?`<span class="sep">·</span>${j.exp}`:''}${j.edu?`<span class="sep">·</span>${j.edu}`:''}</div>
+    <div class="m-row">${j.cats.map(c=>`<span class="tag tag-c">${c}</span>`).join('')}${j.kw.slice(0,5).map(k=>`<span class="tag tag-k">${k}</span>`).join('')}</div>
     ${j.desc?`<div class="m-desc">${j.desc}</div>`:''}
     ${related.length?`<div class="m-related"><h3>同城同方向推荐 →</h3>${related.map(r=>`<div class="m-rcard" data-i="${DATA.indexOf(r)}"><div class="rc-t">${r.title}</div><div class="rc-s">${r.company} · ${r.salary}</div></div>`).join('')}</div>`:''}
   `;
