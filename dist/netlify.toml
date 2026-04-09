@@ -16,6 +16,11 @@
   status = 200
   force = true
 
+# CORS Edge Function（允许 GitHub Pages 等外部域名调用 API 代理）
+[[edge_functions]]
+  path = "/api/*"
+  function = "cors-proxy"
+
 # SPA fallback
 [[redirects]]
   from = "/*"
