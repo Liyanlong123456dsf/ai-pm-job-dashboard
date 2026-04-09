@@ -51,6 +51,21 @@ RELEVANT_KEYWORDS = [
     '智能体', 'Agent',
 ]
 
+# 扩展 AI 词库（用于 is_relevant 模糊匹配）
+_AI_TERMS = [
+    'AI', 'AIGC', 'AGI', '人工智能', '大模型', 'LLM', 'GPT', 'NLP',
+    '智能', '算法', '机器学习', 'ML', '深度学习', 'DL', '智能体', 'AGENT',
+    'CV', '计算机视觉', '自动驾驶', '机器人', 'ROBOTICS', '语音', 'TTS', 'ASR',
+    '多模态', 'MULTIMODAL', '生成式', 'GENERATIVE', 'GENAI',
+    'COPILOT', 'CHATBOT', 'RAG', 'MLOPS', 'FOUNDATION MODEL',
+    '向量', 'EMBEDDING', 'TRANSFORMER', '预训练', '微调',
+    '推荐', '搜索', '策略', '数据', '对话', '知识图谱',
+]
+_PM_TERMS = [
+    '产品', 'PRODUCT', '产品经理', '产品负责', '产品总监', '产品专家',
+    'PM', '产品策划', '产品运营',
+]
+
 
 def load_cities():
     cfg_file = CONFIG_DIR / 'keywords.json'
@@ -63,15 +78,10 @@ def random_delay(lo=MIN_DELAY, hi=MAX_DELAY):
 
 
 def is_relevant(job_name: str, skills: str = '') -> bool:
-    """判断岗位是否与 AI 产品经理强相关"""
+    """判断岗位是否与 AI 产品经理强相关（扩展词库 + 不区分大小写）"""
     text = f'{job_name} {skills}'.upper()
-    has_ai = any(kw.upper() in text for kw in [
-        'AI', 'AIGC', '人工智能', '大模型', 'LLM', 'GPT', 'NLP',
-        '智能', '算法', '机器学习', 'ML', '深度学习', '智能体', 'AGENT',
-    ])
-    has_pm = any(kw in text for kw in [
-        '产品', 'PRODUCT', '产品经理', '产品负责', '产品总监', '产品专家',
-    ])
+    has_ai = any(kw.upper() in text for kw in _AI_TERMS)
+    has_pm = any(kw.upper() in text for kw in _PM_TERMS)
     return has_ai and has_pm
 
 
@@ -147,11 +157,8 @@ class BossDPSpider:
         self.all_jobs = {}    # key -> raw job
         self.skipped = 0      # 被过滤掉的非相关岗位
 
-    def start_browser(self, headless=False):
-        from DrissionPage import ChromiumPage, ChromiumOptions
-        from DrissionPage.common import Settings
-        Settings.set_singleton_tab_obj(False)
-
+    def _build_options(self, headless=False):
+        from DrissionPage import ChromiumOptions
         PROFILE_DIR.mkdir(exist_ok=True)
         co = ChromiumOptions()
         co.set_argument('--disable-blink-features=AutomationControlled')
@@ -161,20 +168,29 @@ class BossDPSpider:
         )
         co.set_pref('excludeSwitches', ['enable-automation'])
         co.set_pref('useAutomationExtension', False)
-        # 持久化 Profile：登录一次，Cookie 永久保存
         co.set_user_data_path(str(PROFILE_DIR))
         if headless:
             co.set_argument('--headless=new')
+        return co
+
+    def start_browser(self, headless=False):
+        from DrissionPage import ChromiumPage
+        from DrissionPage.common import Settings
+        Settings.set_singleton_tab_obj(False)
+
+        self._headless_requested = headless
+        # 始终先用有界面模式启动，确认登录后再切 headless
+        co = self._build_options(headless=False)
         self.page = ChromiumPage(addr_or_opts=co)
         print('✓ 浏览器已启动 (Profile:', PROFILE_DIR, ')')
 
     def ensure_login(self, city_code):
-        """检测登录状态，未登录则等待用户操作（仅首次需要）"""
+        """检测登录状态，未登录则弹出 Chrome + macOS 弹窗提示用户登录"""
         url = f'https://www.zhipin.com/web/geek/job?query=AI产品经理&city={city_code}'
         self.page.get(url)
         time.sleep(5)
 
-        # 检测是否已登录：多种方式判断
+        # 检测是否已登录
         for attempt in range(8):
             try:
                 has_jobs = self.page.run_js(
@@ -183,7 +199,6 @@ class BossDPSpider:
                 if has_jobs:
                     print('✓ 已登录，检测到岗位列表')
                     return True
-                # 也检查是否有验证页面，等待自动通过
                 is_verify = self.page.run_js(
                     'return document.title.includes("安全") || document.title.includes("验证")'
                 )
@@ -193,18 +208,30 @@ class BossDPSpider:
                 pass
             time.sleep(3)
 
-        # 未登录 — 如果是交互模式，等用户操作
-        if sys.stdin.isatty():
-            print('\n' + '=' * 50)
-            print('🔐 首次使用，请在 Chrome 中登录 BOSS直聘')
-            print('   登录后 Cookie 会自动保存，以后无需再登录')
-            print('=' * 50)
-            input('\n✅ 登录完成后按 回车键...\n')
-            return True
-        else:
-            # 非交互模式（launchd等），登录已过期
-            print('⚠ 登录已过期，请手动运行一次: python3 spiders/boss_dp.py --login')
+        # 未登录 — 弹出 Chrome 到前台 + macOS 弹窗通知
+        import subprocess
+        # 把 Chrome 窗口带到前台
+        subprocess.run(['osascript', '-e',
+            'tell application "Google Chrome" to activate'], timeout=5)
+        # 发 macOS 通知
+        subprocess.run(['osascript', '-e',
+            'display notification "请在 Chrome 中登录 BOSS 直聘" '
+            'with title "AI 岗位爬取" sound name "Basso"'], timeout=5)
+        # 弹窗等待用户确认（无论交互/非交互模式都能工作）
+        result = subprocess.run(['osascript', '-e',
+            'display dialog "需要登录 BOSS 直聘\n\n'
+            '请在已打开的 Chrome 窗口中完成登录，\n'
+            '登录成功后点击「已登录」继续爬取。\n\n'
+            'Cookie 会自动保存，下次无需再登录。" '
+            'with title "AI 岗位爬取 - 登录" '
+            'buttons {"取消", "已登录"} default button 2 with icon caution'],
+            capture_output=True, text=True, timeout=600)
+        if result.returncode != 0 or '取消' in result.stdout:
+            print('⚠ 用户取消登录')
             return False
+        print('✓ 用户确认已登录')
+        time.sleep(2)
+        return True
 
     def _add_jobs(self, api_jobs):
         """添加岗位（带强相关过滤和去重）"""
@@ -285,6 +312,14 @@ class BossDPSpider:
         if not self.ensure_login(first_city):
             self.page.quit()
             return []
+
+        # 登录确认后，如果原始请求 headless，重启为后台模式节省资源
+        if headless and self._headless_requested:
+            print('↻ 登录完成，切换为后台模式运行...')
+            self.page.quit()
+            from DrissionPage import ChromiumPage
+            co = self._build_options(headless=True)
+            self.page = ChromiumPage(addr_or_opts=co)
 
         total_combos = len(keywords) * len(cities)
         combo_idx = 0

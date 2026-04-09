@@ -170,6 +170,37 @@ section{padding:80px 20px;scroll-margin-top:52px}
   .hero p{font-size:15px}
   section{padding:60px 16px}
 }
+
+/* ===== RUN STATUS ===== */
+.status-empty{text-align:center;padding:48px;opacity:.35;font-size:15px}
+.rs-board{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:32px}
+@media(max-width:640px){.rs-board{grid-template-columns:1fr}}
+.rs-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:24px;position:relative;overflow:hidden}
+.rs-card .rs-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.35);margin-bottom:8px}
+.rs-card .rs-val{font-size:28px;font-weight:700;letter-spacing:-1px;background:linear-gradient(135deg,var(--bright-blue),#5ac8fa);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.rs-card .rs-sub{font-size:12px;color:rgba(255,255,255,.35);margin-top:4px}
+.rs-overall{display:inline-flex;align-items:center;gap:8px;padding:8px 20px;border-radius:980px;font-size:14px;font-weight:600;margin-bottom:24px}
+.rs-overall.success{background:rgba(48,209,88,.12);color:#30d158;border:1px solid rgba(48,209,88,.2)}
+.rs-overall.partial{background:rgba(255,159,10,.12);color:#ff9f0a;border:1px solid rgba(255,159,10,.2)}
+.rs-overall.failed{background:rgba(255,55,95,.12);color:#ff375f;border:1px solid rgba(255,55,95,.2)}
+.rs-overall.running{background:rgba(41,151,255,.12);color:var(--bright-blue);border:1px solid rgba(41,151,255,.2);animation:pulse 2s infinite}
+.rs-overall .rs-dot{width:8px;height:8px;border-radius:50%;background:currentColor}
+.rs-timeline{position:relative;padding-left:28px}
+.rs-step{position:relative;padding-bottom:20px}
+.rs-step:last-child{padding-bottom:0}
+.rs-step::before{content:'';position:absolute;left:-20px;top:8px;width:12px;height:12px;border-radius:50%;border:2px solid rgba(255,255,255,.15);background:var(--black)}
+.rs-step.ok::before{background:#30d158;border-color:#30d158}
+.rs-step.fail::before{background:#ff375f;border-color:#ff375f}
+.rs-step::after{content:'';position:absolute;left:-15px;top:22px;bottom:-2px;width:2px;background:rgba(255,255,255,.06)}
+.rs-step:last-child::after{display:none}
+.rs-step-head{display:flex;align-items:center;gap:10px}
+.rs-step-name{font-size:14px;font-weight:600;color:rgba(255,255,255,.85)}
+.rs-step-time{font-size:11px;color:rgba(255,255,255,.25);font-variant-numeric:tabular-nums}
+.rs-step-detail{font-size:12px;color:rgba(255,255,255,.4);margin-top:3px;padding-left:0}
+.rs-errors{margin-top:24px;padding:16px;background:rgba(255,55,95,.06);border:1px solid rgba(255,55,95,.15);border-radius:12px}
+.rs-errors h4{font-size:13px;font-weight:700;color:#ff375f;margin-bottom:8px}
+.rs-errors li{font-size:12px;color:rgba(255,255,255,.5);margin-bottom:4px;list-style:disc inside}
+.rs-meta{text-align:center;font-size:11px;color:rgba(255,255,255,.2);margin-top:20px}
 </style>
 </head>
 <body>
@@ -181,6 +212,7 @@ section{padding:80px 20px;scroll-margin-top:52px}
   <a href="#salary" data-sec="salary">薪资</a>
   <a href="#cities" data-sec="cities">城市</a>
   <a href="#explore" data-sec="explore">探索</a>
+  <a href="#run-status" data-sec="run-status">状态</a>
 </nav>
 
 <section class="dark" id="hero">
@@ -239,6 +271,14 @@ section{padding:80px 20px;scroll-margin-top:52px}
     <p id="exSummary" style="text-align:center;font-size:13px;color:rgba(255,255,255,.4);margin-bottom:20px"></p>
     <div class="grid" id="exCards"></div>
     <button class="more-btn" id="exMore" style="display:none">加载更多</button>
+  </div>
+</section>
+
+<section class="deep" id="run-status">
+  <div class="wrap">
+    <h2 class="sec-h">运行状态</h2>
+    <p class="sec-sub">每日自动更新流水线的执行情况</p>
+    <div id="statusContent" class="status-empty">加载中...</div>
   </div>
 </section>
 
@@ -525,6 +565,70 @@ function renderExplore(){
 function initAll(){ renderHero(); renderDir(); renderSalary(); renderCities(); renderExplore(); }
 boot();
 
+// === RUN STATUS ===
+async function loadRunStatus() {
+  const el = document.getElementById('statusContent');
+  try {
+    const resp = await fetch('./run_status.json?t=' + Date.now());
+    if (!resp.ok) throw new Error('未找到 run_status.json');
+    const s = await resp.json();
+    const LABELS = {success:'✅ 全部成功', partial:'⚠️ 部分完成', failed:'❌ 执行失败', running:'🔄 正在运行'};
+    const cls = s.overall || 'running';
+    const mins = s.duration_sec ? Math.floor(s.duration_sec / 60) : 0;
+    const secs = s.duration_sec ? s.duration_sec % 60 : 0;
+    const dur = s.duration_sec ? (mins > 0 ? mins + '分' + secs + '秒' : secs + '秒') : '-';
+
+    let html = `<div style="text-align:center;margin-bottom:20px">
+      <div class="rs-overall ${cls}"><span class="rs-dot"></span>${LABELS[cls] || cls}</div>
+    </div>`;
+
+    // KPI cards
+    html += '<div class="rs-board">';
+    html += `<div class="rs-card"><div class="rs-label">执行日期</div><div class="rs-val">${s.date || '-'}</div><div class="rs-sub">启动于 ${s.start_time || '-'}（${s.mode === 'quick' ? '快速模式' : '全量模式'}）</div></div>`;
+    html += `<div class="rs-card"><div class="rs-label">耗时</div><div class="rs-val">${dur}</div><div class="rs-sub">从爬取到部署完成</div></div>`;
+    html += `<div class="rs-card"><div class="rs-label">今日新增</div><div class="rs-val">${s.added || 0}</div><div class="rs-sub">原始 ${s.crawl_raw || 0} → 清洗 ${s.crawl_cleaned || 0} → 新增 ${s.added || 0}</div></div>`;
+    html += `<div class="rs-card"><div class="rs-label">数据总量</div><div class="rs-val">${s.total || 0}</div><div class="rs-sub">有链接 ${s.has_url || 0} · 有描述 ${s.has_desc || 0}</div></div>`;
+    html += '</div>';
+
+    // Upload status
+    html += '<div class="rs-board">';
+    html += `<div class="rs-card"><div class="rs-label">Git 推送</div><div class="rs-val" style="${s.git_pushed ? '' : '-webkit-text-fill-color:rgba(255,255,255,.3)'}">${s.git_pushed ? '✅ 已推送' : '❌ 未推送'}</div><div class="rs-sub">代码推送至 GitHub</div></div>`;
+    html += `<div class="rs-card"><div class="rs-label">Netlify 部署</div><div class="rs-val" style="${s.deployed ? '' : '-webkit-text-fill-color:rgba(255,255,255,.3)'}">${s.deployed ? '✅ 已部署' : '❌ 未部署'}</div><div class="rs-sub">网页数据同步</div></div>`;
+    html += '</div>';
+
+    // Timeline
+    if (s.steps && s.steps.length) {
+      html += '<h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:rgba(255,255,255,.7)">执行时间线</h3>';
+      html += '<div class="rs-timeline">';
+      s.steps.forEach(st => {
+        html += `<div class="rs-step ${st.ok ? 'ok' : 'fail'}">
+          <div class="rs-step-head">
+            <span class="rs-step-name">${st.name}</span>
+            <span class="rs-step-time">${st.time || ''}</span>
+          </div>
+          ${st.detail ? '<div class="rs-step-detail">' + st.detail + '</div>' : ''}
+        </div>`;
+      });
+      html += '</div>';
+    }
+
+    // Errors
+    if (s.errors && s.errors.length) {
+      html += '<div class="rs-errors"><h4>⚠️ 错误记录</h4><ul>';
+      s.errors.forEach(e => html += '<li>' + e + '</li>');
+      html += '</ul></div>';
+    }
+
+    html += `<div class="rs-meta">最后更新于 ${s.updated || '-'}</div>`;
+    el.innerHTML = html;
+    el.className = '';
+  } catch(e) {
+    el.innerHTML = '<div class="status-empty">暂无运行记录<br><span style="font-size:12px;opacity:.5">等待首次执行 daily_update.py 后生成状态数据</span></div>';
+    el.className = '';
+  }
+}
+loadRunStatus();
+
 // === MODAL ===
 function openModal(idx){
   SFX.modalOpen();
@@ -565,7 +669,7 @@ function showTip(e,text){
 function hideTip(){tipEl.classList.remove('show');}
 
 // === NAV SCROLL ===
-const secs=['hero','directions','salary','cities','explore'];
+const secs=['hero','directions','salary','cities','explore','run-status'];
 const navLinks=document.querySelectorAll('nav a[data-sec]');
 window.addEventListener('scroll',()=>{
   const y=window.scrollY+100;
