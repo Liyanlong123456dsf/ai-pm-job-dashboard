@@ -1,67 +1,67 @@
 {
   "date": "2026-04-09",
-  "start_time": "19:39:06",
+  "start_time": "22:39:07",
   "mode": "quick",
   "steps": [
     {
       "name": "爬取 BOSS 直聘",
       "ok": true,
-      "detail": "抓取 260 条原始数据",
-      "time": "20:05:04"
+      "detail": "抓取 165 条原始数据",
+      "time": "23:34:22"
     },
     {
       "name": "数据清洗",
       "ok": true,
-      "detail": "260 条有效岗位",
-      "time": "20:05:04"
+      "detail": "163 条有效岗位",
+      "time": "23:34:22"
     },
     {
       "name": "增量合并",
       "ok": true,
-      "detail": "新增 13 条，总计 1378 条",
-      "time": "20:05:04"
+      "detail": "新增 111 条，总计 1489 条",
+      "time": "23:34:22"
     },
     {
       "name": "回填链接",
       "ok": true,
       "detail": "",
-      "time": "20:05:04"
+      "time": "23:34:22"
     },
     {
       "name": "补全描述",
       "ok": true,
-      "detail": "补全 15 条",
-      "time": "20:35:42"
+      "detail": "补全 16 条",
+      "time": "23:36:35"
     },
     {
       "name": "导出总表",
       "ok": false,
       "detail": "Command '['/Library/Developer/CommandLineTools/usr/bin/python3', '/Users/harry/Desktop/工作集合表/scripts/export_total.py']' returned non-zero exit status 1.",
-      "time": "20:35:42"
+      "time": "23:36:36"
     },
     {
       "name": "生成知识库",
       "ok": true,
       "detail": "",
-      "time": "20:35:42"
+      "time": "23:36:36"
     },
     {
       "name": "Git 推送",
       "ok": true,
       "detail": "daily: 2026-04-09",
-      "time": "20:35:46"
+      "time": "23:36:41"
     }
   ],
   "overall": "running",
-  "crawl_raw": 260,
-  "crawl_cleaned": 260,
-  "added": 13,
-  "total": 1378,
+  "crawl_raw": 165,
+  "crawl_cleaned": 163,
+  "added": 111,
+  "total": 1489,
   "has_url": 0,
   "has_desc": 0,
   "git_pushed": true,
   "deployed": false,
   "errors": [],
   "duration_sec": 0,
-  "updated": "2026-04-09 20:35:46"
+  "updated": "2026-04-09 23:36:41"
 }

@@ -62,80 +62,11 @@ def _write_progress(pct, phase, detail, steps=None, done=False):
 
 
 def _start_progress_window():
-    """创建并打开实时进度 HTML 页面"""
+    """启动原生 macOS 进度弹窗（Tkinter）"""
     import subprocess
-    html = '''<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>AI 岗位爬取进度</title>
-<style>
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family:-apple-system,BlinkMacSystemFont,sans-serif; background:#1a1a2e; color:#e0e0e0;
-         min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:30px; }
-  .container { width:480px; }
-  h1 { font-size:20px; text-align:center; margin-bottom:6px; color:#fff; }
-  .time { text-align:center; font-size:12px; color:#666; margin-bottom:20px; }
-  .bar-bg { background:#2a2a4a; border-radius:12px; height:28px; overflow:hidden; position:relative; margin-bottom:8px;
-            box-shadow:inset 0 2px 4px rgba(0,0,0,.3); }
-  .bar-fill { height:100%; border-radius:12px; transition:width .6s ease; position:relative;
-              background:linear-gradient(90deg,#667eea,#764ba2); }
-  .bar-fill.done { background:linear-gradient(90deg,#30d158,#34c759); }
-  .bar-fill.fail { background:linear-gradient(90deg,#ff375f,#ff6b6b); }
-  .bar-text { position:absolute; right:12px; top:50%; transform:translateY(-50%); font-size:13px; font-weight:700; color:#fff; }
-  .phase { text-align:center; font-size:15px; font-weight:600; color:#a78bfa; margin:12px 0 4px; }
-  .detail { text-align:center; font-size:12px; color:#888; margin-bottom:16px; min-height:16px; }
-  .steps { background:#16163a; border-radius:10px; padding:12px 16px; max-height:240px; overflow-y:auto; }
-  .step { display:flex; align-items:center; gap:8px; padding:5px 0; border-bottom:1px solid #222244; font-size:12px; }
-  .step:last-child { border-bottom:none; }
-  .step .icon { font-size:14px; flex-shrink:0; }
-  .step .name { flex:1; color:#ccc; }
-  .step .info { color:#666; font-size:11px; }
-  .step .t { color:#555; font-size:10px; min-width:52px; text-align:right; }
-  .pulse { animation: pulse 2s ease-in-out infinite; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.6} }
-</style></head><body>
-<div class="container">
-  <h1>\U0001f916 AI \u5c97\u4f4d\u722c\u53d6\u4e2d...</h1>
-  <div class="time" id="ts"></div>
-  <div class="bar-bg"><div class="bar-fill" id="bar" style="width:0%"><span class="bar-text" id="pct">0%</span></div></div>
-  <div class="phase pulse" id="phase">\u521d\u59cb\u5316...</div>
-  <div class="detail" id="detail"></div>
-  <div class="steps" id="steps"></div>
-</div>
-<script>
-async function poll() {
-  try {
-    const r = await fetch('./progress.json?' + Date.now());
-    const d = await r.json();
-    const bar = document.getElementById('bar');
-    bar.style.width = d.pct + '%';
-    document.getElementById('pct').textContent = d.pct + '%';
-    document.getElementById('phase').textContent = d.phase;
-    document.getElementById('detail').textContent = d.detail;
-    document.getElementById('ts').textContent = '\u66f4\u65b0: ' + d.ts;
-    if (d.done) {
-      bar.classList.add(d.pct >= 90 ? 'done' : 'fail');
-      document.getElementById('phase').classList.remove('pulse');
-      document.querySelector('h1').textContent = d.pct >= 90 ? '\u2705 \u722c\u53d6\u5b8c\u6210' : '\u26a0\ufe0f \u90e8\u5206\u5b8c\u6210';
-    }
-    const box = document.getElementById('steps');
-    box.innerHTML = '';
-    (d.steps || []).forEach(s => {
-      const div = document.createElement('div');
-      div.className = 'step';
-      div.innerHTML = '<span class="icon">' + (s.ok===true?'\u2705':s.ok===false?'\u274c':'\u23f3') + '</span>'
-        + '<span class="name">' + s.name + '</span>'
-        + '<span class="info">' + (s.detail||'') + '</span>'
-        + '<span class="t">' + (s.time||'') + '</span>';
-      box.appendChild(div);
-    });
-    box.scrollTop = box.scrollHeight;
-  } catch(e) {}
-}
-poll();
-setInterval(poll, 1500);
-</script></body></html>'''
-    _PROGRESS_HTML.write_text(html, encoding='utf-8')
     _write_progress(0, '启动中...', '')
-    subprocess.Popen(['open', str(_PROGRESS_HTML)])
+    gui_script = SCRIPT_DIR / 'progress_gui.py'
+    subprocess.Popen([sys.executable, str(gui_script)])
 
 
 def _finish_progress(status):

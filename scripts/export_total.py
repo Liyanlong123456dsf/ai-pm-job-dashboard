@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 """导出统一格式总表：合并 CSV + XLSX + jobs_data.json 去重输出"""
-import csv, json, re, openpyxl
+import csv, json, re, os
 from collections import OrderedDict
+
+try:
+    import openpyxl
+except ImportError:
+    openpyxl = None
 
 BASE = '/Users/harry/Desktop/工作集合表'
 CSV_PATH = f'{BASE}/AIPM4月岗位需求收集_数据表.csv'
@@ -18,11 +23,41 @@ def norm_key(title, company):
 
 all_rows = OrderedDict()  # norm_key -> row dict
 
-# 1. 读 CSV
-with open(CSV_PATH, 'r', encoding='utf-8-sig') as f:
-    for r in csv.DictReader(f):
-        title = (r.get('岗位名称') or '').strip()
-        company = (r.get('公司名称（全称）') or '').strip()
+# 1. 读 CSV（可选）
+if os.path.exists(CSV_PATH):
+    with open(CSV_PATH, 'r', encoding='utf-8-sig') as f:
+        for r in csv.DictReader(f):
+            title = (r.get('岗位名称') or '').strip()
+            company = (r.get('公司名称（全称）') or '').strip()
+            if not title:
+                continue
+            k = norm_key(title, company)
+            if k not in all_rows:
+                all_rows[k] = {
+                    '公司名称（全称）': company,
+                    '岗位名称': title,
+                    '所在城市': (r.get('所在城市') or '').strip(),
+                    '薪资区间': (r.get('薪资区间') or '').strip(),
+                    'BOSS链接': (r.get('BOSS链接') or '').strip().split('?')[0],
+                    '年限要求': (r.get('年限要求') or '').strip(),
+                    '学历要求': (r.get('学历要求') or '').strip(),
+                    '方向分类': '',
+                    '关键词': '',
+                    '岗位描述': (r.get('岗位详情') or '').strip()[:500],
+                    '数据来源': 'CSV原表',
+                }
+    print(f'CSV: {len(all_rows)} 条')
+else:
+    print(f'⚠️  CSV 文件不存在，跳过: {CSV_PATH}')
+
+# 2. 读 XLSX（可选）
+if os.path.exists(XLSX_PATH) and openpyxl:
+    wb = openpyxl.load_workbook(XLSX_PATH, read_only=False)
+    ws = wb['数据表']
+    xlsx_add = 0
+    for row in ws.iter_rows(min_row=2, max_col=8, values_only=True):
+        company = str(row[0] or '').strip()
+        title = str(row[4] or '').strip()
         if not title:
             continue
         k = norm_key(title, company)
@@ -30,44 +65,20 @@ with open(CSV_PATH, 'r', encoding='utf-8-sig') as f:
             all_rows[k] = {
                 '公司名称（全称）': company,
                 '岗位名称': title,
-                '所在城市': (r.get('所在城市') or '').strip(),
-                '薪资区间': (r.get('薪资区间') or '').strip(),
-                'BOSS链接': (r.get('BOSS链接') or '').strip().split('?')[0],
-                '年限要求': (r.get('年限要求') or '').strip(),
-                '学历要求': (r.get('学历要求') or '').strip(),
+                '所在城市': str(row[2] or '').strip(),
+                '薪资区间': str(row[3] or '').strip(),
+                'BOSS链接': str(row[5] or '').strip().split('?')[0] if row[5] else '',
+                '年限要求': str(row[6] or '').strip() if len(row) > 6 and row[6] else '',
+                '学历要求': str(row[7] or '').strip() if len(row) > 7 and row[7] else '',
                 '方向分类': '',
                 '关键词': '',
-                '岗位描述': (r.get('岗位详情') or '').strip()[:500],
-                '数据来源': 'CSV原表',
+                '岗位描述': str(row[1] or '').strip()[:500],
+                '数据来源': 'XLSX原表',
             }
-print(f'CSV: {len(all_rows)} 条')
-
-# 2. 读 XLSX
-wb = openpyxl.load_workbook(XLSX_PATH, read_only=False)
-ws = wb['数据表']
-xlsx_add = 0
-for row in ws.iter_rows(min_row=2, max_col=8, values_only=True):
-    company = str(row[0] or '').strip()
-    title = str(row[4] or '').strip()
-    if not title:
-        continue
-    k = norm_key(title, company)
-    if k not in all_rows:
-        all_rows[k] = {
-            '公司名称（全称）': company,
-            '岗位名称': title,
-            '所在城市': str(row[2] or '').strip(),
-            '薪资区间': str(row[3] or '').strip(),
-            'BOSS链接': str(row[5] or '').strip().split('?')[0] if row[5] else '',
-            '年限要求': str(row[6] or '').strip() if len(row) > 6 and row[6] else '',
-            '学历要求': str(row[7] or '').strip() if len(row) > 7 and row[7] else '',
-            '方向分类': '',
-            '关键词': '',
-            '岗位描述': str(row[1] or '').strip()[:500],
-            '数据来源': 'XLSX原表',
-        }
-        xlsx_add += 1
-print(f'XLSX新增: {xlsx_add}, 累计: {len(all_rows)}')
+            xlsx_add += 1
+    print(f'XLSX新增: {xlsx_add}, 累计: {len(all_rows)}')
+else:
+    print(f'⚠️  XLSX 文件不存在或 openpyxl 未安装，跳过')
 
 # 3. 读 jobs_data.json (补入爬虫新增)
 with open(JSON_PATH, 'r', encoding='utf-8') as f:
