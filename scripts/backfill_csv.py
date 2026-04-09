@@ -1,11 +1,19 @@
 #!/usr/bin/env python3
-"""从 CSV + XLSX 两个表格回填 BOSS 链接到 jobs_data.json"""
-import csv, json, re, openpyxl
+"""从 CSV + XLSX 两个表格回填 BOSS 链接到 jobs_data.json
+注：原始 CSV/XLSX 已清理，此脚本仅在文件存在时执行，否则安全跳过。"""
+import csv, json, re, os
+from pathlib import Path
 
-BASE = '/Users/harry/Desktop/工作集合表'
+BASE = str(Path(__file__).parent.parent)
 CSV_PATH = f'{BASE}/AIPM4月岗位需求收集_数据表.csv'
 XLSX_PATH = f'{BASE}/五期1组AIPM四月岗位收集.xlsx'
 JSON_PATH = f'{BASE}/jobs_data.json'
+
+if not os.path.exists(CSV_PATH) and not os.path.exists(XLSX_PATH):
+    print('⏭️  CSV/XLSX 源文件不存在，跳过链接回填')
+    exit(0)
+
+import openpyxl
 
 def norm(s):
     return re.sub(r'[\s\-_（(）)·/|，,]', '', s.lower())

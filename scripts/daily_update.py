@@ -133,6 +133,14 @@ def main():
     except Exception as e:
         logger.warning(f'总表导出失败(非致命): {e}')
 
+    # === 7.5 生成知识库 + 复制到 RAG 资料目录 ===
+    try:
+        subprocess.run([sys.executable, str(SCRIPT_DIR / 'gen_knowledge.py')],
+                       cwd=str(BASE_DIR), check=True)
+        logger.info('✅ knowledge_base.md + coze_prompt.txt + RAG_GUIDE.md 已重新生成')
+    except Exception as e:
+        logger.warning(f'知识库生成失败(非致命): {e}')
+
     # === 8. Git 提交 + 推送 ===
     try:
         import subprocess
@@ -151,7 +159,7 @@ def main():
         dist_dir = BASE_DIR / 'dist'
         dist_dir.mkdir(exist_ok=True)
         import shutil
-        for fname in ['job_dashboard.html', 'jobs_data.json', 'index.html', 'netlify.toml']:
+        for fname in ['job_dashboard.html', 'jobs_data.json', 'index.html', 'netlify.toml', 'knowledge_base.md']:
             src = BASE_DIR / fname
             if src.exists():
                 shutil.copy2(src, dist_dir / fname)

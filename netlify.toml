@@ -16,9 +16,22 @@
   status = 200
   force = true
 
+# 岗位数据 API（供扣子 Bot API 插件调用）
+[[edge_functions]]
+  path = "/api/jobs"
+  function = "jobs-api"
+
+[[edge_functions]]
+  path = "/api/jobs/stats"
+  function = "jobs-api"
+
 # CORS Edge Function（允许 GitHub Pages 等外部域名调用 API 代理）
 [[edge_functions]]
-  path = "/api/*"
+  path = "/api/kimi/*"
+  function = "cors-proxy"
+
+[[edge_functions]]
+  path = "/api/coze/*"
   function = "cors-proxy"
 
 # SPA fallback

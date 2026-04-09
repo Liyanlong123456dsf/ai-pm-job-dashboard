@@ -186,7 +186,7 @@ section{padding:80px 20px;scroll-margin-top:52px}
 <section class="dark" id="hero">
   <div class="hero">
     <h1>AI 岗位<span>全景洞察</span></h1>
-    <p>覆盖大模型 · Agent · AIGC · 具身智能 · 电商 · 视频等十大方向<br>杭州 · 上海 · 北京 · 深圳 · 厦门 · 成都 · 西安 · 广州 · 郑州 · 南京</p>
+    <p id="heroSub">覆盖多个 AI 方向与热门城市，数据每日自动更新</p>
     <div class="kpi-row" id="kpis"></div>
   </div>
 </section>
@@ -398,6 +398,9 @@ function renderHero(){
   const cities=new Set(); DATA.forEach(d=>cities.add(norm(d.city)));
   const maxA=DATA.length?DATA[0].avg:0;
   const dirSet=new Set();DATA.forEach(d=>(d.cats||[]).forEach(c=>dirSet.add(c)));
+  const cityArr=[...cities].slice(0,10);
+  const dirShort=[...dirSet].slice(0,6).map(d=>d.replace(/^AI[+＋]/,'').replace(/\/.*$/,''));
+  document.getElementById('heroSub').innerHTML='覆盖'+dirShort.join(' · ')+'等'+dirSet.size+'大方向<br>'+cityArr.join(' · ');
   const kpis=[{n:DATA.length,l:'相关岗位',sec:'explore'},{n:dirSet.size||10,l:'细分方向',sec:'directions'},{n:cities.size,l:'覆盖城市',sec:'cities'},{n:maxA+'K',l:'最高月薪',sec:'salary'}];
   document.getElementById('kpis').innerHTML=kpis.map(k=>`<div class="kpi" onclick="SFX.click();document.getElementById('${k.sec}').scrollIntoView({behavior:'smooth'})"><div class="n">${k.n}</div><div class="l">${k.l}</div></div>`).join('');
   if(DATA_META.updated){

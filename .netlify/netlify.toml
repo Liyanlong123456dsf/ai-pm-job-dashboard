@@ -2,11 +2,8 @@ redirectsOrigin = "config"
 plugins = []
 headers = []
 
-[functions]
-
-[functions."*"]
-
 [build]
+edge_functions = "/Users/harry/Desktop/工作集合表/netlify/edge-functions"
 publish = "/Users/harry/Desktop/工作集合表/dist"
 publishOrigin = "config"
 
@@ -23,6 +20,26 @@ publishOrigin = "config"
 [build.processing.js]
 
 [build.services]
+
+[[edge_functions]]
+path = "/api/jobs"
+function = "jobs-api"
+
+[[edge_functions]]
+path = "/api/jobs/stats"
+function = "jobs-api"
+
+[[edge_functions]]
+path = "/api/kimi/*"
+function = "cors-proxy"
+
+[[edge_functions]]
+path = "/api/coze/*"
+function = "cors-proxy"
+
+[functions]
+
+[functions."*"]
 
 [[redirects]]
 from = "/api/kimi/*"
