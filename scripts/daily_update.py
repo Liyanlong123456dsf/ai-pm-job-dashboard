@@ -94,11 +94,82 @@ def main():
     save(merged)
     save_snapshot(cleaned)
 
-    # === 5. 汇报 ===
-    logger.info(f'✅ 更新完成: 新增 {added_count} 条, 总计 {len(merged)} 条')
+    logger.info(f'合并完成: 新增 {added_count} 条, 总计 {len(merged)} 条')
 
     if added_count == 0:
         logger.warning('⚠️ 今日新增为 0，可能被反爬或无新岗位')
+
+    # === 5. 回填链接 ===
+    try:
+        logger.info('开始回填链接...')
+        import subprocess
+        subprocess.run([sys.executable, str(SCRIPT_DIR / 'backfill_csv.py')],
+                       cwd=str(BASE_DIR), check=True)
+        logger.info('✅ 链接回填完成')
+    except Exception as e:
+        logger.warning(f'链接回填失败(非致命): {e}')
+
+    # === 6. 补全缺失描述 ===
+    try:
+        with open(BASE_DIR / 'jobs_data.json', 'r', encoding='utf-8') as f:
+            data_check = json.load(f)
+        missing = sum(1 for j in data_check.get('jobs', [])
+                      if j.get('url') and (not j.get('desc') or len(j['desc'].strip()) < 20))
+        if missing > 0:
+            logger.info(f'发现 {missing} 条描述缺失，开始追踪补全...')
+            subprocess.run([sys.executable, str(SCRIPT_DIR / 'backfill_desc.py')],
+                           cwd=str(BASE_DIR), check=True)
+            logger.info('✅ 描述补全完成')
+        else:
+            logger.info('所有岗位描述完整，跳过补全')
+    except Exception as e:
+        logger.warning(f'描述补全失败(非致命): {e}')
+
+    # === 7. 导出统一总表 ===
+    try:
+        subprocess.run([sys.executable, str(SCRIPT_DIR / 'export_total.py')],
+                       cwd=str(BASE_DIR), check=True)
+        logger.info('✅ 统一总表已导出')
+    except Exception as e:
+        logger.warning(f'总表导出失败(非致命): {e}')
+
+    # === 8. Git 提交 + 推送 ===
+    try:
+        import subprocess
+        today = datetime.now().strftime('%Y-%m-%d')
+        subprocess.run(['git', 'add', '-A'], cwd=str(BASE_DIR), check=True)
+        subprocess.run(['git', 'commit', '-m',
+                         f'daily: {today} 新增{added_count}条 总{len(merged)}条'],
+                       cwd=str(BASE_DIR), check=True)
+        subprocess.run(['git', 'push', 'origin', 'main'], cwd=str(BASE_DIR), check=True)
+        logger.info('✅ Git 提交推送完成')
+    except Exception as e:
+        logger.warning(f'Git 推送失败(非致命): {e}')
+
+    # === 9. Netlify 部署 ===
+    try:
+        result = subprocess.run(['netlify', 'deploy', '--prod', '--dir=.'],
+                                cwd=str(BASE_DIR), capture_output=True, text=True)
+        if result.returncode == 0:
+            logger.info('✅ Netlify 部署完成')
+        else:
+            logger.warning(f'Netlify 部署失败: {result.stderr}')
+    except Exception as e:
+        logger.warning(f'Netlify 部署失败(非致命): {e}')
+
+    # === 10. 最终汇报 ===
+    with open(BASE_DIR / 'jobs_data.json', 'r', encoding='utf-8') as f:
+        final = json.load(f)
+    final_jobs = final.get('jobs', [])
+    has_url = sum(1 for j in final_jobs if j.get('url'))
+    has_desc = sum(1 for j in final_jobs if j.get('desc') and len(j['desc'].strip()) >= 20)
+    logger.info('=' * 50)
+    logger.info(f'✅ 每日更新全流程完成')
+    logger.info(f'   总岗位: {len(final_jobs)}')
+    logger.info(f'   新增: {added_count}')
+    logger.info(f'   有链接: {has_url}/{len(final_jobs)}')
+    logger.info(f'   有描述: {has_desc}/{len(final_jobs)}')
+    logger.info('=' * 50)
 
 
 if __name__ == '__main__':
