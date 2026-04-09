@@ -562,7 +562,7 @@ function renderExplore(){
   if(exSummary) exSummary.textContent=`共 ${r.length} 个岗位${r.length?` · 均薪 ${avgS(r)}K/月`:''}`;
   renderGrid('exCards',r,'exMore');
 }
-function initAll(){ renderHero(); renderDir(); renderSalary(); renderCities(); renderExplore(); }
+function initAll(){ SYSTEM_PROMPT = buildSystemPrompt(); renderHero(); renderDir(); renderSalary(); renderCities(); renderExplore(); }
 boot();
 
 // === RUN STATUS ===
@@ -825,46 +825,59 @@ navLinks.forEach(a=>a.addEventListener('click',e=>{e.preventDefault();SFX.click(
 
 <script>
 // ========== CHAT SYSTEM ==========
-const SYSTEM_PROMPT = `你是一位资深的 AI 产品经理求职顾问，名叫"AI求职助手"。你掌握了一份包含 523 条 AI 相关岗位的真实数据集，覆盖电商、视频/直播、自媒体/新媒体三大方向。
+// 动态生成 SYSTEM_PROMPT（基于实际加载的数据，避免硬编码过时）
+function buildSystemPrompt() {
+  const total = DATA.length;
+  // 方向统计
+  const catMap = {};
+  DATA.forEach(j => (j.cats || []).forEach(c => { if (c !== 'AI通用') catMap[c] = (catMap[c] || 0) + 1; }));
+  const catSorted = Object.entries(catMap).sort((a, b) => b[1] - a[1]);
+  // 城市统计
+  const cityMap = {};
+  DATA.forEach(j => { const c = norm(j.city); cityMap[c] = cityMap[c] || []; cityMap[c].push(j); });
+  const citySorted = Object.entries(cityMap).sort((a, b) => b[1].length - a[1].length);
+  // 薪资梯队
+  const tierMap = {};
+  DATA.forEach(j => { if (j.tier) tierMap[j.tier] = (tierMap[j.tier] || 0) + 1; });
+  // 经验分布
+  const expMap = {};
+  DATA.forEach(j => { const e = j.exp || ''; if (e && !e.includes('/周')) expMap[e] = (expMap[e] || 0) + 1; });
+  const expSorted = Object.entries(expMap).sort((a, b) => b[1] - a[1]);
+
+  // 各方向 Top 3 高薪
+  let catDetail = '';
+  catSorted.slice(0, 6).forEach(([cat, cnt]) => {
+    const jobs = DATA.filter(j => j.cats.includes(cat)).sort((a, b) => b.avg - a.avg);
+    const avg = avgS(jobs);
+    catDetail += `\n## ${cat}（${cnt}条，均薪${avg}K/月）\nTop高薪：\n`;
+    jobs.slice(0, 3).forEach(j => {
+      catDetail += `- ${j.title} | ${j.company} | ${j.city} | ${j.salary}(≈${j.avg}K/月)\n`;
+    });
+  });
+
+  // 城市概览
+  const cityLines = citySorted.map(([c, jobs]) => `${c}${jobs.length}条(均薪${avgS(jobs)}K)`).join('、');
+
+  // 薪资梯队
+  const tierLines = ['50K+', '30-50K', '15-30K', '8-15K', '<8K'].map(t => `${t}: ${tierMap[t] || 0}条`).join('、');
+
+  // 经验
+  const expLines = expSorted.slice(0, 5).map(([e, n]) => `${e}: ${n}条`).join('、');
+
+  return `你是一位资深的 AI 产品经理求职顾问，名叫"AI求职助手"。你掌握了一份包含 ${total} 条 AI 相关岗位的真实数据集，覆盖 ${catSorted.length} 大方向和 ${citySorted.length} 个城市。
 
 以下是你掌握的数据：
 
-岗位数据概要（共523条，电商/视频/自媒体相关AI PM岗位）：
-
-## 视频/直播方向（258条，均薪25.6K/月）
-Top高薪岗位：
-- AI产品经理（AI漫剧） | 猎头 | 上海 | 80-110K·14薪(≈110.8K/月)
-- AI 产品经理 | 京东科技 | 北京 | 50-80K·20薪(≈108.3K/月)
-- AI产品负责人 | 猎头 | 上海 | 60-90K·15薪(≈93.8K/月)
-- AI软件产品经理（影像/创作工具） | 某知名智能硬件公司 | 厦门 | 40-70K·20薪(≈91.7K/月)
-- AI产品技术负责人 | 交子立方 | 成都 | 70-100K(≈85.0K/月)
-- 产品经理（AI 视频剪辑方向） | 好饰多 | 北京 | 50-70K·15薪(≈75.0K/月)
-
-## 电商方向（250条，均薪30.1K/月）
-Top高薪岗位：
-- 数据&AI产品高级专家 | 猎头 | 上海 | 120-190K·15薪(≈193.8K/月)
-- AI产品团队经理 | 亚马逊中国 | 上海 | 100-120K(≈110.0K/月)
-- AI产品总监 | 猎头 | 上海 | 80-100K·14薪(≈105.0K/月)
-- 淘宝主站-ai产品经理 | 阿里集团 | 杭州/上海 | 50-80K·16薪(≈86.7K/月)
-- AI策略产品专家 | 北京微富科技 | 杭州 | 40-70K·16薪(≈73.3K/月)
-
-## 自媒体/新媒体方向（141条，均薪24.4K/月）
-Top高薪岗位：
-- AI应用产品经理 | 东方美好MCN | 北京 | 30-60K·24薪(≈90.0K/月)
-- AI搜索产品专家 | 上海 | 40-60K·16薪(≈66.7K/月)
-- AI产品经理 - 数据产品方向 | 小红书 | 杭州 | 25-50K·16薪(≈50.0K/月)
-
+岗位数据概要（共${total}条）：
+${catDetail}
 ## 城市分布
-杭州171条(均薪27.0K)、上海131条(均薪33.7K)、北京79条(均薪32.4K)、厦门50条(均薪19.4K)、西安32条(均薪14.8K)、深圳25条(均薪25.9K)、成都19条(均薪22.4K)、郑州16条(均薪12.1K)
+${cityLines}
 
 ## 薪资梯队
-50K+: 61条、30-50K: 126条、15-30K: 195条、8-15K: 91条、<8K: 50条
+${tierLines}
 
 ## 经验要求
-3-5年: 175条、1-3年: 139条、5-10年: 88条、经验不限: 54条
-
-## 学历要求
-本科: 442条、大专: 36条、学历不限: 21条、硕士: 17条
+${expLines}
 
 你的职责：
 1. 回答用户关于 AI PM 求职市场的问题，必须引用具体数据
@@ -878,6 +891,8 @@ Top高薪岗位：
 - 给出具体数字和岗位名称
 - 语气专业但亲切，像一位有经验的前辈在给建议
 - 每次回复控制在 300 字以内，除非用户要求详细分析`;
+}
+let SYSTEM_PROMPT = '';
 
 let chatHistory = [];
 let isStreaming = false;
@@ -971,7 +986,10 @@ function saveKey() {
 function renderWelcome() {
   const body = document.getElementById('chatBody');
   body.innerHTML = '';
-  addAiMsg('你好！我是你的 **AI 求职顾问** 🎯\n\n我掌握了 **887 条** AI 产品经理相关岗位数据，覆盖大模型、Agent、AIGC、具身智能等十大方向和 10 个城市。\n\n你可以问我任何关于 AI PM 求职的问题，或者试试下面的快捷问题：');
+  const dirSet = new Set(); DATA.forEach(d => (d.cats||[]).forEach(c => { if(c!=='AI通用') dirSet.add(c); }));
+  const citySet = new Set(); DATA.forEach(d => citySet.add(norm(d.city)));
+  const dirNames = [...dirSet].slice(0,5).map(d=>d.replace(/^AI[+＋]/,'').replace(/\/.*$/,'')).join('、');
+  addAiMsg(`你好！我是你的 **AI 求职顾问** 🎯\n\n我掌握了 **${DATA.length} 条** AI 产品经理相关岗位数据，覆盖${dirNames}等 **${dirSet.size} 大方向**和 **${citySet.size} 个城市**。\n\n你可以问我任何关于 AI PM 求职的问题，或者试试下面的快捷问题：`);
   const qDiv = document.createElement('div');
   qDiv.className = 'quick-q';
   const questions = [
