@@ -7,7 +7,7 @@ headers = []
 [functions."*"]
 
 [build]
-publish = "/Users/harry/Desktop/工作集合表"
+publish = "/Users/harry/Desktop/工作集合表/dist"
 publishOrigin = "config"
 
 [build.environment]

@@ -146,9 +146,17 @@ def main():
     except Exception as e:
         logger.warning(f'Git 推送失败(非致命): {e}')
 
-    # === 9. Netlify 部署 ===
+    # === 9. 同步 dist 目录 + Netlify 部署 ===
     try:
-        result = subprocess.run(['netlify', 'deploy', '--prod', '--dir=.'],
+        dist_dir = BASE_DIR / 'dist'
+        dist_dir.mkdir(exist_ok=True)
+        import shutil
+        for fname in ['job_dashboard.html', 'jobs_data.json', 'index.html', 'netlify.toml']:
+            src = BASE_DIR / fname
+            if src.exists():
+                shutil.copy2(src, dist_dir / fname)
+        logger.info(f'dist 目录已同步')
+        result = subprocess.run(['netlify', 'deploy', '--prod', '--dir=dist'],
                                 cwd=str(BASE_DIR), capture_output=True, text=True)
         if result.returncode == 0:
             logger.info('✅ Netlify 部署完成')

@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 岗位全景分析</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+:root {
+  --black:#000;--near-black:#1d1d1f;--light-bg:#f5f5f7;--white:#fff;
+  --blue:#0071e3;--link-blue:#0066cc;--bright-blue:#2997ff;
+  --text80:rgba(0,0,0,.8);--text48:rgba(0,0,0,.48);
+  --ds:#272729;--shadow:rgba(0,0,0,.18) 0 8px 32px;
+  --nav-bg:rgba(0,0,0,.82);--glass:saturate(180%) blur(20px);
+  --ease:cubic-bezier(.22,1,.36,1);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth}
+body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;background:var(--black);color:var(--white);-webkit-font-smoothing:antialiased;line-height:1.47;letter-spacing:-.374px}
+
+/* ===== NAV ===== */
+nav{position:fixed;top:0;left:0;right:0;z-index:1000;height:52px;background:var(--nav-bg);backdrop-filter:var(--glass);-webkit-backdrop-filter:var(--glass);display:flex;align-items:center;justify-content:center;gap:28px;border-bottom:1px solid rgba(255,255,255,.08)}
+nav a{color:rgba(255,255,255,.7);text-decoration:none;font-size:13px;font-weight:400;letter-spacing:-.08px;transition:color .2s;cursor:pointer;padding:4px 0;position:relative}
+nav a:hover{color:#fff}
+nav a.active{color:#fff}
+nav a.active::after{content:'';position:absolute;bottom:-2px;left:0;right:0;height:2px;background:var(--bright-blue);border-radius:1px}
+.nav-logo{font-size:15px;font-weight:600;letter-spacing:-.5px;color:#fff;margin-right:8px;background:linear-gradient(135deg,var(--bright-blue),#64d2ff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+
+/* ===== HERO ===== */
+.hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--black);padding:100px 24px 60px;text-align:center}
+.hero h1{font-size:clamp(32px,6vw,72px);font-weight:700;line-height:1.05;letter-spacing:-1.5px;margin-bottom:12px}
+.hero h1 span{background:linear-gradient(135deg,var(--bright-blue),#64d2ff,#5ac8fa);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.hero p{font-size:19px;font-weight:300;line-height:1.4;color:rgba(255,255,255,.55);max-width:520px;margin-bottom:48px}
+.kpi-row{display:flex;gap:40px;flex-wrap:wrap;justify-content:center}
+.kpi{text-align:center;cursor:pointer;transition:transform .3s var(--ease)}
+.kpi:hover{transform:scale(1.08)}
+.kpi .n{font-size:clamp(36px,5vw,56px);font-weight:700;line-height:1;letter-spacing:-1px;background:linear-gradient(135deg,var(--bright-blue),#5ac8fa);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.kpi .l{font-size:13px;color:rgba(255,255,255,.4);margin-top:6px}
+
+/* ===== SECTIONS ===== */
+section{padding:80px 20px;scroll-margin-top:52px}
+.dark{background:var(--black)}.gray{background:#0d0d0d}.light{background:var(--light-bg);color:var(--near-black)}.deep{background:#111112}
+.wrap{max-width:1100px;margin:0 auto}
+.sec-h{font-size:clamp(24px,3.5vw,44px);font-weight:700;line-height:1.08;letter-spacing:-.8px;text-align:center;margin-bottom:8px}
+.sec-sub{font-size:15px;font-weight:300;text-align:center;margin-bottom:44px;opacity:.5}
+
+/* ===== PILLS / TABS ===== */
+.pills{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:32px}
+.pill{padding:7px 18px;border-radius:980px;font-size:13px;font-weight:500;cursor:pointer;border:1px solid rgba(255,255,255,.12);background:transparent;color:rgba(255,255,255,.6);transition:all .25s var(--ease);user-select:none}
+.light .pill{border-color:rgba(0,0,0,.1);color:var(--text80)}
+.pill:hover{border-color:var(--bright-blue);color:#fff}
+.light .pill:hover{color:var(--blue);border-color:var(--blue)}
+.pill.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+.pill .cnt{font-size:11px;font-weight:600;opacity:.7;margin-left:4px}
+
+/* ===== DIRECTION CARDS (hero style) ===== */
+.dir-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:40px}
+.dir-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:32px 20px;text-align:center;cursor:pointer;transition:all .35s var(--ease);position:relative;overflow:hidden}
+.dir-card::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 50% 0%,rgba(41,151,255,.08),transparent 70%);opacity:0;transition:opacity .35s}
+.dir-card:hover::before,.dir-card.on::before{opacity:1}
+.dir-card:hover,.dir-card.on{border-color:rgba(41,151,255,.3);transform:translateY(-4px)}
+.dir-card .dc-n{font-size:32px;font-weight:700;letter-spacing:-1px;line-height:1;background:linear-gradient(135deg,var(--bright-blue),#5ac8fa);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.dir-card .dc-l{font-size:13px;font-weight:600;margin-top:6px;color:rgba(255,255,255,.85)}
+.dir-card .dc-s{font-size:12px;color:rgba(255,255,255,.4);margin-top:4px}
+
+/* ===== JOB CARDS ===== */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.card{background:var(--ds);border-radius:14px;padding:20px 22px;transition:all .3s var(--ease);cursor:pointer;border:1px solid rgba(255,255,255,.05);position:relative}
+.card:hover{transform:translateY(-3px);box-shadow:var(--shadow);border-color:rgba(255,255,255,.1)}
+.light .card{background:#fff;border-color:rgba(0,0,0,.05)}
+.light .card:hover{border-color:rgba(0,0,0,.1);box-shadow:0 8px 30px rgba(0,0,0,.08)}
+.c-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px}
+.c-title{font-size:16px;font-weight:600;line-height:1.25;letter-spacing:-.2px}
+.new-badge{font-size:12px;margin-right:4px;vertical-align:middle}
+.c-sal{font-size:14px;font-weight:700;color:var(--bright-blue);white-space:nowrap}
+.light .c-sal{color:var(--blue)}
+.c-co{font-size:13px;opacity:.5;margin-bottom:10px}
+.c-tags{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px}
+.tag{padding:3px 9px;border-radius:980px;font-size:11px;font-weight:500}
+.tag-k{background:rgba(41,151,255,.12);color:var(--bright-blue)}
+.tag-c{background:rgba(255,255,255,.06);color:rgba(255,255,255,.5)}
+.light .tag-k{background:rgba(0,113,227,.08);color:var(--blue)}
+.light .tag-c{background:rgba(0,0,0,.04);color:var(--text48)}
+.c-desc{font-size:12px;line-height:1.5;opacity:.4;display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.c-foot{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.badge{font-size:11px;padding:2px 8px;border-radius:4px;background:rgba(255,255,255,.05);color:rgba(255,255,255,.4)}
+.light .badge{background:rgba(0,0,0,.03);color:var(--text48)}
+
+/* ===== BAR CHART ===== */
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:6px;cursor:pointer;padding:4px 0;border-radius:8px;transition:background .2s}
+.bar-row:hover{background:rgba(0,0,0,.03)}
+.bar-label{font-size:13px;font-weight:600;width:60px;text-align:right;flex-shrink:0;color:var(--near-black)}
+.bar-track{flex:1;height:32px;background:rgba(0,0,0,.04);border-radius:8px;overflow:hidden;position:relative}
+.bar-fill{height:100%;border-radius:8px;background:linear-gradient(90deg,var(--blue),var(--bright-blue));transition:width .8s var(--ease);display:flex;align-items:center;padding-left:12px;font-size:12px;font-weight:700;color:#fff;min-width:40px}
+.bar-info{font-size:12px;color:var(--text48);width:90px;text-align:right;flex-shrink:0;white-space:nowrap}
+
+/* ===== SALARY SCATTER ===== */
+.scatter-wrap{position:relative;height:340px;background:rgba(255,255,255,.03);border-radius:16px;border:1px solid rgba(255,255,255,.06);margin-bottom:32px;overflow:hidden}
+.dot{position:absolute;border-radius:50%;transition:all .2s var(--ease);cursor:pointer;opacity:.7}
+.dot:hover{opacity:1;transform:scale(2.2);z-index:10}
+.scatter-legend{display:flex;gap:14px 20px;justify-content:center;flex-wrap:wrap;margin-bottom:12px}
+.scatter-legend span{font-size:12px;color:rgba(255,255,255,.5);display:flex;align-items:center;gap:6px}
+.scatter-legend i{width:8px;height:8px;border-radius:50%;display:inline-block}
+.axis-label{position:absolute;font-size:10px;color:rgba(255,255,255,.3)}
+.y-labels{position:absolute;left:6px;top:10px;bottom:36px;display:flex;flex-direction:column;justify-content:space-between}
+.y-labels span{font-size:10px;color:rgba(255,255,255,.3);text-align:right;width:38px}
+.x-labels{position:absolute;bottom:6px;left:50px;right:10px;display:flex;justify-content:space-between}
+.x-labels span{font-size:10px;color:rgba(255,255,255,.35);text-align:center;flex:1}
+.x-label{position:absolute;bottom:6px;left:50%;transform:translateX(-50%);font-size:10px;color:rgba(255,255,255,.3)}
+
+/* ===== MODAL ===== */
+.overlay{position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.55);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);display:none;align-items:center;justify-content:center;padding:20px;opacity:0;transition:opacity .3s}
+.overlay.show{display:flex;opacity:1}
+.modal{background:#fff;border-radius:20px;max-width:580px;width:100%;max-height:82vh;overflow-y:auto;padding:36px;box-shadow:0 24px 80px rgba(0,0,0,.35);color:var(--near-black);position:relative;transform:translateY(20px);transition:transform .35s var(--ease)}
+.overlay.show .modal{transform:translateY(0)}
+.m-close{position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:50%;background:rgba(0,0,0,.05);border:none;font-size:15px;cursor:pointer;color:var(--text80);display:flex;align-items:center;justify-content:center;transition:background .2s}
+.m-close:hover{background:rgba(0,0,0,.1)}
+.m-h{font-size:22px;font-weight:700;line-height:1.14;letter-spacing:-.3px;margin-bottom:6px;padding-right:40px}
+.m-sal{font-size:20px;font-weight:700;color:var(--blue);margin-bottom:12px}
+.m-info{font-size:14px;color:var(--text80);margin-bottom:12px;display:flex;gap:6px;align-items:center}
+.m-info .sep{color:var(--text48);font-size:12px}
+.m-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.m-desc{font-size:14px;line-height:1.65;color:var(--text80);margin-top:14px;padding:14px;background:var(--light-bg);border-radius:10px;max-height:240px;overflow-y:auto;white-space:pre-wrap;word-break:break-word}
+.m-link{display:inline-flex;align-items:center;gap:6px;margin-top:14px;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;color:var(--blue);text-decoration:none;background:rgba(0,113,227,.06);border:1px solid rgba(0,113,227,.12);transition:all .2s}
+.m-link:hover{background:rgba(0,113,227,.12);border-color:rgba(0,113,227,.25)}
+.m-related{margin-top:20px}
+.m-related h3{font-size:12px;font-weight:700;color:var(--text48);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px}
+.m-rcard{padding:12px;border-bottom:1px solid rgba(0,0,0,.06);cursor:pointer;border-radius:8px;transition:background .15s}
+.m-rcard:hover{background:var(--light-bg)}
+.m-rcard:last-child{border-bottom:none}
+.m-rcard .rc-t{font-weight:600;font-size:14px}
+.m-rcard .rc-s{font-size:12px;color:var(--text48);margin-top:2px}
+
+/* ===== LOAD MORE ===== */
+.more-btn{display:block;margin:24px auto 0;padding:10px 32px;border-radius:980px;border:1px solid rgba(255,255,255,.12);background:transparent;color:rgba(255,255,255,.6);font-size:14px;font-weight:500;cursor:pointer;transition:all .25s}
+.more-btn:hover{border-color:var(--bright-blue);color:#fff}
+.light .more-btn{border-color:rgba(0,0,0,.1);color:var(--text80)}
+.light .more-btn:hover{border-color:var(--blue);color:var(--blue)}
+.empty{text-align:center;padding:48px;opacity:.35;font-size:15px}
+
+/* ===== TOOLTIP ===== */
+.tip{position:fixed;z-index:3000;background:rgba(30,30,30,.95);color:#fff;padding:10px 14px;border-radius:10px;font-size:12px;line-height:1.5;pointer-events:none;max-width:280px;box-shadow:0 8px 24px rgba(0,0,0,.3);opacity:0;transition:opacity .15s;backdrop-filter:blur(8px);white-space:pre-line}
+.tip.show{opacity:1}
+
+/* ===== FILTER GROUP ===== */
+.filter-group{margin-bottom:20px}
+.filter-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1.2px;color:rgba(255,255,255,.3);margin-bottom:8px;padding-left:4px}
+.light .filter-label{color:var(--text48)}
+
+/* ===== FOOTER ===== */
+.footer{padding:40px 20px;text-align:center;font-size:12px;color:rgba(255,255,255,.2);border-top:1px solid rgba(255,255,255,.06)}
+.footer a{color:var(--bright-blue);text-decoration:none}
+
+/* ===== RESPONSIVE ===== */
+@media(max-width:1024px){
+  .dir-grid{grid-template-columns:repeat(3,1fr)}
+}
+@media(max-width:768px){
+  nav{gap:14px;padding:0 12px}nav a{font-size:11px}
+  .dir-grid{grid-template-columns:repeat(2,1fr)}
+  .grid{grid-template-columns:1fr}
+  .kpi-row{gap:20px}.kpi .n{font-size:32px}
+  .scatter-wrap{height:240px}
+  .bar-label{width:44px;font-size:12px}
+  .bar-info{width:70px;font-size:11px}
+}
+@media(max-width:480px){
+  .dir-grid{grid-template-columns:repeat(2,1fr)}
+  .hero h1{font-size:28px}
+  .hero p{font-size:15px}
+  section{padding:60px 16px}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <span class="nav-logo">AI Jobs</span>
+  <a href="#hero" class="active" data-sec="hero">总览</a>
+  <a href="#directions" data-sec="directions">方向</a>
+  <a href="#salary" data-sec="salary">薪资</a>
+  <a href="#cities" data-sec="cities">城市</a>
+  <a href="#explore" data-sec="explore">探索</a>
+</nav>
+
+<section class="dark" id="hero">
+  <div class="hero">
+    <h1>AI 岗位<span>全景洞察</span></h1>
+    <p>覆盖大模型 · Agent · AIGC · 具身智能 · 电商 · 视频等十大方向<br>杭州 · 上海 · 北京 · 深圳 · 厦门 · 成都 · 西安 · 广州 · 郑州 · 南京</p>
+    <div class="kpi-row" id="kpis"></div>
+  </div>
+</section>
+
+<section class="gray" id="directions">
+  <div class="wrap">
+    <h2 class="sec-h">十大方向</h2>
+    <p class="sec-sub">点击方向卡片切换视角，再用关键词深入筛选</p>
+    <div class="dir-grid" id="dirGrid"></div>
+    <div class="pills" id="dirPills"></div>
+    <div class="grid" id="dirCards"></div>
+    <button class="more-btn" id="dirMore" style="display:none">加载更多</button>
+  </div>
+</section>
+
+<section class="deep" id="salary">
+  <div class="wrap">
+    <h2 class="sec-h">薪资图谱</h2>
+    <p class="sec-sub">气泡散点图：横轴为城市，纵轴为等效月薪，颜色为方向</p>
+    <div class="scatter-legend" id="scLegend"></div>
+    <div class="scatter-wrap" id="scatter">
+      <div class="y-labels" id="yLabels"></div>
+      <div class="x-labels" id="xLabels"></div>
+    </div>
+    <div class="pills" id="salPills"></div>
+    <div class="grid" id="salCards"></div>
+    <button class="more-btn" id="salMore" style="display:none">加载更多</button>
+  </div>
+</section>
+
+<section class="light" id="cities">
+  <div class="wrap">
+    <h2 class="sec-h" style="color:var(--near-black)">城市对比</h2>
+    <p class="sec-sub" style="color:var(--text80)">点击柱条或城市标签，查看该城市岗位</p>
+    <div id="barChart"></div>
+    <div class="pills" id="cityPills" style="margin-top:24px"></div>
+    <div class="grid" id="cityCards"></div>
+    <button class="more-btn" id="cityMore" style="display:none">加载更多</button>
+  </div>
+</section>
+
+<section class="dark" id="explore">
+  <div class="wrap">
+    <h2 class="sec-h">自由探索</h2>
+    <p class="sec-sub">多维筛选：方向 × 城市 × 薪资 × 经验</p>
+    <div class="filter-group"><div class="filter-label">方向</div><div class="pills" id="fDir"></div></div>
+    <div class="filter-group"><div class="filter-label">城市</div><div class="pills" id="fCity"></div></div>
+    <div class="filter-group"><div class="filter-label">薪资</div><div class="pills" id="fTier"></div></div>
+    <div class="filter-group"><div class="filter-label">经验</div><div class="pills" id="fExp"></div></div>
+    <p id="exSummary" style="text-align:center;font-size:13px;color:rgba(255,255,255,.4);margin-bottom:20px"></p>
+    <div class="grid" id="exCards"></div>
+    <button class="more-btn" id="exMore" style="display:none">加载更多</button>
+  </div>
+</section>
+
+<footer class="footer">
+  AI PM 岗位全景分析 · 数据每日自动更新 · <a href="https://github.com/Liyanlong123456dsf/ai-pm-job-dashboard" target="_blank">GitHub</a>
+</footer>
+
+<div class="overlay" id="overlay"><div class="modal" id="modal"></div></div>
+<div class="tip" id="tip"></div>
+
+<script>
+// === SOUND ENGINE (Web Audio API, no external files) ===
+const SFX = (() => {
+  let ctx;
+  const getCtx = () => { if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)(); return ctx; };
+
+  function play(fn) {
+    try { const c = getCtx(); if (c.state === 'suspended') c.resume(); fn(c); } catch(e) {}
+  }
+
+  return {
+    // 轻柔点击 - 卡片、按钮
+    click() {
+      play(c => {
+        const o = c.createOscillator(), g = c.createGain();
+        o.type = 'sine'; o.frequency.setValueAtTime(1200, c.currentTime);
+        o.frequency.exponentialRampToValueAtTime(800, c.currentTime + 0.06);
+        g.gain.setValueAtTime(0.08, c.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.08);
+        o.connect(g); g.connect(c.destination);
+        o.start(); o.stop(c.currentTime + 0.08);
+      });
+    },
+    // 弹窗打开 - 上升音
+    modalOpen() {
+      play(c => {
+        const o = c.createOscillator(), g = c.createGain();
+        o.type = 'sine'; o.frequency.setValueAtTime(400, c.currentTime);
+        o.frequency.exponentialRampToValueAtTime(900, c.currentTime + 0.12);
+        g.gain.setValueAtTime(0.06, c.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.15);
+        o.connect(g); g.connect(c.destination);
+        o.start(); o.stop(c.currentTime + 0.15);
+      });
+    },
+    // 弹窗关闭 - 下降音
+    modalClose() {
+      play(c => {
+        const o = c.createOscillator(), g = c.createGain();
+        o.type = 'sine'; o.frequency.setValueAtTime(800, c.currentTime);
+        o.frequency.exponentialRampToValueAtTime(350, c.currentTime + 0.1);
+        g.gain.setValueAtTime(0.05, c.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.12);
+        o.connect(g); g.connect(c.destination);
+        o.start(); o.stop(c.currentTime + 0.12);
+      });
+    },
+    // 发送消息 - 清脆短促
+    send() {
+      play(c => {
+        const o = c.createOscillator(), g = c.createGain();
+        o.type = 'triangle'; o.frequency.setValueAtTime(880, c.currentTime);
+        o.frequency.exponentialRampToValueAtTime(1320, c.currentTime + 0.06);
+        g.gain.setValueAtTime(0.07, c.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.1);
+        o.connect(g); g.connect(c.destination);
+        o.start(); o.stop(c.currentTime + 0.1);
+      });
+    },
+    // 收到回复 - 双音通知
+    receive() {
+      play(c => {
+        [660, 880].forEach((freq, i) => {
+          const o = c.createOscillator(), g = c.createGain();
+          o.type = 'sine';
+          o.frequency.setValueAtTime(freq, c.currentTime + i * 0.08);
+          g.gain.setValueAtTime(0, c.currentTime);
+          g.gain.linearRampToValueAtTime(0.06, c.currentTime + i * 0.08);
+          g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + i * 0.08 + 0.12);
+          o.connect(g); g.connect(c.destination);
+          o.start(c.currentTime + i * 0.08); o.stop(c.currentTime + i * 0.08 + 0.12);
+        });
+      });
+    },
+    // 切换/筛选 - 轻微滴答
+    toggle() {
+      play(c => {
+        const o = c.createOscillator(), g = c.createGain();
+        o.type = 'sine'; o.frequency.setValueAtTime(1000, c.currentTime);
+        g.gain.setValueAtTime(0.05, c.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.04);
+        o.connect(g); g.connect(c.destination);
+        o.start(); o.stop(c.currentTime + 0.04);
+      });
+    },
+    // 聊天面板开关 - 柔滑滑动
+    slide() {
+      play(c => {
+        const o = c.createOscillator(), g = c.createGain();
+        o.type = 'sine'; o.frequency.setValueAtTime(500, c.currentTime);
+        o.frequency.exponentialRampToValueAtTime(700, c.currentTime + 0.1);
+        g.gain.setValueAtTime(0.04, c.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.15);
+        o.connect(g); g.connect(c.destination);
+        o.start(); o.stop(c.currentTime + 0.15);
+      });
+    }
+  };
+})();
+
+// === LOAD DATA (external JSON) ===
+let DATA = [];
+let DATA_META = {};
+async function boot() {
+  try {
+    const resp = await fetch('./jobs_data.json?t=' + Date.now());
+    const json = await resp.json();
+    DATA = json.jobs || json;
+    DATA_META = json.meta || {};
+    initAll();
+  } catch(e) {
+    document.getElementById('kpis').innerHTML = '<div class="empty">数据加载失败，请确认 jobs_data.json 存在</div>';
+    console.error('Data load error:', e);
+  }
+}
+const norm = c => c.replace(/·.*/,'');
+const avgS = a => { const v=a.filter(d=>d.avg>0); return v.length? Math.round(v.reduce((s,d)=>s+d.avg,0)/v.length*10)/10 : 0; };
+const countBy = (a,fn) => { const m={}; a.forEach(d=>{const k=fn(d);m[k]=(m[k]||0)+1}); return Object.entries(m).sort((a,b)=>b[1]-a[1]); };
+
+// === CARD HTML ===
+function cardH(j){
+  const i=DATA.indexOf(j);
+  return `<div class="card" data-i="${i}">
+    <div class="c-top"><div class="c-title">${j.is_new?'<span class="new-badge">🆕</span>':''}${j.title}</div><div class="c-sal">${j.salary}</div></div>
+    <div class="c-co">${j.company} · ${j.city}</div>
+    <div class="c-tags">${j.cats.map(c=>`<span class="tag tag-c">${c}</span>`).join('')}${j.kw.slice(0,3).map(k=>`<span class="tag tag-k">${k}</span>`).join('')}</div>
+    <div class="c-desc">${j.desc||'暂无描述'}</div>
+    <div class="c-foot">${j.exp?`<span class="badge">${j.exp}</span>`:''}${j.edu?`<span class="badge">${j.edu}</span>`:''}${j.avg?`<span class="badge">≈${j.avg}K/月</span>`:''}</div>
+  </div>`;
+}
+
+// === RENDER HELPERS ===
+function renderGrid(containerId, items, moreId, limit=12){
+  const el=document.getElementById(containerId);
+  const btn=document.getElementById(moreId);
+  el._allItems=items; el._shown=limit;
+  el.innerHTML=items.slice(0,limit).map(cardH).join('')||'<div class="empty">暂无匹配岗位</div>';
+  if(btn){btn.style.display=items.length>limit?'block':'none';btn.onclick=()=>{SFX.click();el._shown+=12;el.innerHTML=items.slice(0,el._shown).map(cardH).join('');btn.style.display=items.length>el._shown?'block':'none';}}
+}
+function renderPills(containerId, items, activeFn, clickFn){
+  document.getElementById(containerId).innerHTML=items.map(([label,cnt])=>`<div class="pill${activeFn(label)?' on':''}" data-v="${label}">${label}<span class="cnt">${cnt}</span></div>`).join('');
+  document.getElementById(containerId).querySelectorAll('.pill').forEach(p=>p.onclick=()=>clickFn(p.dataset.v));
+}
+
+// === 1. HERO KPIs ===
+function renderHero(){
+  const cities=new Set(); DATA.forEach(d=>cities.add(norm(d.city)));
+  const maxA=DATA.length?DATA[0].avg:0;
+  const dirSet=new Set();DATA.forEach(d=>(d.cats||[]).forEach(c=>dirSet.add(c)));
+  const kpis=[{n:DATA.length,l:'相关岗位',sec:'explore'},{n:dirSet.size||10,l:'细分方向',sec:'directions'},{n:cities.size,l:'覆盖城市',sec:'cities'},{n:maxA+'K',l:'最高月薪',sec:'salary'}];
+  document.getElementById('kpis').innerHTML=kpis.map(k=>`<div class="kpi" onclick="SFX.click();document.getElementById('${k.sec}').scrollIntoView({behavior:'smooth'})"><div class="n">${k.n}</div><div class="l">${k.l}</div></div>`).join('');
+  if(DATA_META.updated){
+    const ts=document.createElement('p');
+    ts.style.cssText='font-size:12px;color:rgba(255,255,255,.25);margin-top:20px';
+    ts.textContent='数据更新于 '+DATA_META.updated;
+    document.getElementById('kpis').after(ts);
+  }
+}
+
+// === 2. DIRECTIONS ===
+let curDir='全部',curKw='';
+function renderDir(){
+  // 动态统计所有方向（排除AI通用，按数量降序）
+  const dirCount={};
+  DATA.forEach(j=>(j.cats||[]).forEach(c=>{if(c!=='AI通用')dirCount[c]=(dirCount[c]||0)+1}));
+  const dirs=Object.entries(dirCount).sort((a,b)=>b[1]-a[1]).map(e=>e[0]);
+  document.getElementById('dirGrid').innerHTML=dirs.map(d=>{
+    const items=DATA.filter(j=>j.cats.includes(d));
+    return `<div class="dir-card${curDir===d?' on':''}" data-d="${d}"><div class="dc-n">${items.length}</div><div class="dc-l">${d}</div><div class="dc-s">均薪 ${avgS(items)}K/月</div></div>`;
+  }).join('');
+  document.querySelectorAll('.dir-card').forEach(c=>c.onclick=()=>{SFX.toggle();curDir=curDir===c.dataset.d?'全部':c.dataset.d;curKw='';renderDir();});
+  let filtered=curDir==='全部'?DATA:DATA.filter(j=>j.cats.includes(curDir));
+  const kws={}; filtered.forEach(j=>j.kw.forEach(k=>kws[k]=(kws[k]||0)+1));
+  const sorted=[['全部',filtered.length],...Object.entries(kws).sort((a,b)=>b[1]-a[1]).slice(0,10)];
+  renderPills('dirPills',sorted,l=>(!curKw&&l==='全部')||l===curKw,v=>{SFX.toggle();curKw=v==='全部'?'':v;renderDir();});
+  if(curKw) filtered=filtered.filter(j=>j.kw.includes(curKw));
+  renderGrid('dirCards',filtered,'dirMore');
+}
+// === 3. SALARY SCATTER + LIST ===
+let curTier='全部';
+// 方向 → 颜色映射
+const CAT_COLORS={'大模型/LLM':'#2997ff','AI Agent/智能体':'#5e5ce6','AIGC/内容创作':'#ff9f0a','多模态/具身智能':'#ff375f','AI+电商/营销':'#30d158','AI+视频/直播':'#64d2ff','智能客服/对话':'#ffd60a','AI+企业服务/SaaS':'#bf5af2','AI+行业应用':'#ac8e68','AI+新媒体':'#ff6482','AI通用':'#98989d'};
+function getCatColor(cats){
+  for(const c of cats||[]){ if(CAT_COLORS[c]) return CAT_COLORS[c]; }
+  return CAT_COLORS['AI通用'];
+}
+function renderSalary(){
+  // 动态图例
+  const usedCats={};
+  DATA.forEach(j=>(j.cats||[]).forEach(c=>{if(CAT_COLORS[c])usedCats[c]=(usedCats[c]||0)+1}));
+  const topCats=Object.entries(usedCats).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  document.getElementById('scLegend').innerHTML=topCats.map(([c])=>`<span><i style="background:${CAT_COLORS[c]}"></i>${c}</span>`).join('');
+
+  // Scatter plot
+  const wrap=document.getElementById('scatter');
+  const cities=countBy(DATA,d=>norm(d.city)).map(e=>e[0]);
+  const maxAvg=Math.max(...DATA.map(d=>d.avg),1);
+  const yMax=maxAvg>120?150:maxAvg>80?125:100;
+  const ySteps=[0,25,50,75,100]; if(yMax>100) ySteps.push(yMax);
+  document.getElementById('yLabels').innerHTML=[...ySteps].reverse().map(v=>`<span>${v}K</span>`).join('');
+  document.getElementById('xLabels').innerHTML=cities.map(c=>`<span>${c}</span>`).join('');
+  wrap.querySelectorAll('.dot').forEach(d=>d.remove());
+  const LEFT=50, TOP=10, W=wrap.offsetWidth-LEFT-10, H=wrap.offsetHeight-TOP-36;
+  const colW=W/cities.length;
+  DATA.forEach((j,idx)=>{
+    if(j.avg<=0) return;
+    const ci=cities.indexOf(norm(j.city));
+    if(ci<0) return;
+    // X: 城市列中心 + 小随机偏移
+    const x=LEFT+ci*colW+colW*0.2+Math.random()*colW*0.6;
+    // Y: 线性映射
+    const y=TOP+(1-j.avg/yMax)*H;
+    const sz=Math.max(5,Math.min(12,j.avg/10));
+    const color=getCatColor(j.cats);
+    const dot=document.createElement('div');
+    dot.className='dot';
+    dot.style.cssText=`left:${x}px;top:${y}px;width:${sz}px;height:${sz}px;background:${color}`;
+    dot.dataset.i=idx;
+    dot.onmouseenter=e=>showTip(e,`${j.title}\n${j.company} · ${j.city}\n${j.salary} (≈${j.avg}K/月)\n${(j.cats||[]).join(' · ')}`);
+    dot.onmouseleave=hideTip;
+    dot.onclick=()=>openModal(idx);
+    wrap.appendChild(dot);
+  });
+  // Pills
+  const tiers=['全部','50K+','30-50K','15-30K','8-15K','<8K'];
+  const tierCounts=tiers.map(t=>[t,t==='全部'?DATA.length:DATA.filter(j=>j.tier===t).length]);
+  renderPills('salPills',tierCounts,l=>l===curTier,v=>{SFX.toggle();curTier=v;renderSalary();});
+  const filtered=curTier==='全部'?DATA:DATA.filter(j=>j.tier===curTier);
+  renderGrid('salCards',filtered,'salMore');
+}
+// === 4. CITIES ===
+let curCity='全部';
+function renderCities(){
+  const cityMap={};
+  DATA.forEach(d=>{const c=norm(d.city);cityMap[c]=cityMap[c]||[];cityMap[c].push(d);});
+  const sorted=Object.entries(cityMap).sort((a,b)=>b[1].length-a[1].length).slice(0,10);
+  const maxN=sorted[0]?sorted[0][1].length:1;
+  document.getElementById('barChart').innerHTML=sorted.map(([city,jobs])=>{
+    const pct=Math.round(jobs.length/maxN*100);
+    const avg=avgS(jobs);
+    return `<div class="bar-row" data-c="${city}"><div class="bar-label">${city}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%">${jobs.length}</div></div><div class="bar-info">均${avg}K</div></div>`;
+  }).join('');
+  document.querySelectorAll('.bar-row').forEach(r=>r.onclick=()=>{SFX.toggle();curCity=curCity===r.dataset.c?'全部':r.dataset.c;renderCities();});
+  const pills=[['全部',DATA.length],...sorted.map(([c,j])=>[c,j.length])];
+  renderPills('cityPills',pills,l=>l===curCity,v=>{SFX.toggle();curCity=v;renderCities();});
+  const filtered=curCity==='全部'?DATA:DATA.filter(j=>norm(j.city)===curCity);
+  renderGrid('cityCards',filtered,'cityMore');
+}
+// === 5. EXPLORE ===
+const F={dir:'全部',city:'全部',tier:'全部',exp:'全部'};
+function renderExplore(){
+  const dirs=['全部',...countBy(DATA,d=>{const c=d.cats&&d.cats[0];return c||'AI通用';}).map(e=>e[0])];
+  const cities=['全部',...countBy(DATA,d=>norm(d.city)).map(e=>e[0])];
+  const tiers=['全部','50K+','30-50K','15-30K','8-15K','<8K'];
+  const exps=['全部',...countBy(DATA,d=>d.exp||'未知').slice(0,6).map(e=>e[0])];
+  const mk=(arr,key,cid)=>{
+    document.getElementById(cid).innerHTML=arr.map(v=>`<div class="pill${F[key]===v?' on':''}" data-v="${v}">${v}</div>`).join('');
+    document.getElementById(cid).querySelectorAll('.pill').forEach(p=>p.onclick=()=>{SFX.toggle();F[key]=p.dataset.v;renderExplore();});
+  };
+  mk(dirs,'dir','fDir');mk(cities,'city','fCity');mk(tiers,'tier','fTier');mk(exps,'exp','fExp');
+  let r=DATA;
+  if(F.dir!=='全部') r=r.filter(j=>j.cats.includes(F.dir));
+  if(F.city!=='全部') r=r.filter(j=>norm(j.city)===F.city);
+  if(F.tier!=='全部') r=r.filter(j=>j.tier===F.tier);
+  if(F.exp!=='全部') r=r.filter(j=>j.exp===F.exp);
+  // 结果汇总
+  const exSummary=document.getElementById('exSummary');
+  if(exSummary) exSummary.textContent=`共 ${r.length} 个岗位${r.length?` · 均薪 ${avgS(r)}K/月`:''}`;
+  renderGrid('exCards',r,'exMore');
+}
+function initAll(){ renderHero(); renderDir(); renderSalary(); renderCities(); renderExplore(); }
+boot();
+
+// === MODAL ===
+function openModal(idx){
+  SFX.modalOpen();
+  const j=DATA[idx];
+  const related=DATA.filter(d=>d!==j&&d.cats.some(c=>j.cats.includes(c))&&norm(d.city)===norm(j.city)).sort((a,b)=>b.avg-a.avg).slice(0,4);
+  document.getElementById('modal').innerHTML=`
+    <button class="m-close" onclick="closeModal()">✕</button>
+    <div class="m-h">${j.title}</div>
+    <div class="m-sal">${j.salary}${j.avg?` (≈${j.avg}K/月)`:''}</div>
+    <div class="m-info">${j.company}<span class="sep">·</span>${j.city}${j.exp?`<span class="sep">·</span>${j.exp}`:''}${j.edu?`<span class="sep">·</span>${j.edu}`:''}</div>
+    <div class="m-row">${j.cats.map(c=>`<span class="tag tag-c">${c}</span>`).join('')}${j.kw.slice(0,5).map(k=>`<span class="tag tag-k">${k}</span>`).join('')}</div>
+    ${j.desc?`<div class="m-desc">${j.desc}</div>`:''}
+    <a class="m-link" href="${j.url||('https://www.zhipin.com/web/geek/job?query='+encodeURIComponent(j.title))}" target="_blank" rel="noopener">🔗 ${j.url?'查看原始招聘页':'在 BOSS 直聘搜索该岗位'} →</a>
+    ${related.length?`<div class="m-related"><h3>同城同方向推荐 →</h3>${related.map(r=>`<div class="m-rcard" data-i="${DATA.indexOf(r)}"><div class="rc-t">${r.title}</div><div class="rc-s">${r.company} · ${r.salary}</div></div>`).join('')}</div>`:''}
+  `;
+  document.querySelectorAll('.m-rcard').forEach(c=>c.onclick=()=>openModal(+c.dataset.i));
+  const o=document.getElementById('overlay');
+  o.classList.add('show');
+}
+function closeModal(){SFX.modalClose();document.getElementById('overlay').classList.remove('show');}
+document.getElementById('overlay').addEventListener('click',e=>{if(e.target.id==='overlay')closeModal();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+
+// === CARD CLICK DELEGATION ===
+document.addEventListener('click',e=>{
+  const card=e.target.closest('.card[data-i]');
+  if(card){ SFX.click(); openModal(+card.dataset.i); }
+});
+
+// === TOOLTIP ===
+const tipEl=document.getElementById('tip');
+function showTip(e,text){
+  tipEl.textContent=text;
+  tipEl.style.left=e.clientX+12+'px';
+  tipEl.style.top=e.clientY-10+'px';
+  tipEl.classList.add('show');
+}
+function hideTip(){tipEl.classList.remove('show');}
+
+// === NAV SCROLL ===
+const secs=['hero','directions','salary','cities','explore'];
+const navLinks=document.querySelectorAll('nav a[data-sec]');
+window.addEventListener('scroll',()=>{
+  const y=window.scrollY+100;
+  let active=secs[0];
+  secs.forEach(id=>{const el=document.getElementById(id);if(el&&el.offsetTop<=y)active=id;});
+  navLinks.forEach(a=>{a.classList.toggle('active',a.dataset.sec===active);});
+},{passive:true});
+navLinks.forEach(a=>a.addEventListener('click',e=>{e.preventDefault();SFX.click();document.getElementById(a.dataset.sec)?.scrollIntoView({behavior:'smooth'});}));
+</script>
+
+<!-- ========== AI CHAT PANEL ========== -->
+<style>
+/* FAB */
+.chat-fab{position:fixed;bottom:24px;right:24px;z-index:1500;width:56px;height:56px;border-radius:50%;background:var(--blue);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(0,113,227,.4);transition:all .3s var(--ease)}
+.chat-fab:hover{transform:scale(1.08);box-shadow:0 6px 28px rgba(0,113,227,.55)}
+.chat-fab svg{width:26px;height:26px;fill:#fff;transition:transform .3s}
+.chat-fab.open svg{transform:rotate(90deg)}
+
+/* Panel */
+.chat-panel{position:fixed;top:0;right:-440px;bottom:0;width:420px;z-index:1600;background:#1a1a1c;border-left:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;transition:right .35s var(--ease);box-shadow:-8px 0 40px rgba(0,0,0,.4)}
+.chat-panel.open{right:0}
+@media(max-width:520px){.chat-panel{width:100%;right:-100%}}
+
+/* Header */
+.chat-head{padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;backdrop-filter:blur(10px)}
+.chat-head h3{font-size:16px;font-weight:600;letter-spacing:-.3px;display:flex;align-items:center;gap:8px}
+.chat-head h3 .dot-live{width:8px;height:8px;border-radius:50%;background:#30d158;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.chat-head-btns{display:flex;gap:6px}
+.chat-head-btn{width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,.06);border:none;color:rgba(255,255,255,.5);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.chat-head-btn:hover{background:rgba(255,255,255,.12);color:#fff}
+
+/* Messages */
+.chat-body{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:12px;scroll-behavior:smooth}
+.chat-body::-webkit-scrollbar{width:4px}
+.chat-body::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px}
+
+/* Bubble */
+.msg{max-width:88%;animation:msgIn .25s var(--ease)}
+@keyframes msgIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.msg-user{align-self:flex-end}
+.msg-ai{align-self:flex-start}
+.msg-bubble{padding:10px 14px;border-radius:14px;font-size:14px;line-height:1.55;letter-spacing:-.1px}
+.msg-user .msg-bubble{background:var(--blue);color:#fff;border-bottom-right-radius:4px}
+.msg-ai .msg-bubble{background:#2a2a2d;color:rgba(255,255,255,.88);border-bottom-left-radius:4px}
+.msg-ai .msg-bubble p{margin:4px 0}
+.msg-ai .msg-bubble table{border-collapse:collapse;margin:8px 0;font-size:12px;width:100%}
+.msg-ai .msg-bubble th,.msg-ai .msg-bubble td{border:1px solid rgba(255,255,255,.1);padding:4px 8px;text-align:left}
+.msg-ai .msg-bubble th{background:rgba(255,255,255,.05);font-weight:600}
+.msg-ai .msg-bubble ul,.msg-ai .msg-bubble ol{padding-left:18px;margin:4px 0}
+.msg-ai .msg-bubble li{margin:2px 0}
+.msg-ai .msg-bubble strong{color:#fff}
+.msg-ai .msg-bubble code{background:rgba(255,255,255,.08);padding:1px 5px;border-radius:4px;font-size:12px}
+.msg-ai .msg-bubble pre{background:rgba(0,0,0,.3);padding:10px;border-radius:8px;overflow-x:auto;margin:6px 0}
+.msg-ai .msg-bubble pre code{background:none;padding:0}
+.msg-ai .msg-bubble h1,.msg-ai .msg-bubble h2,.msg-ai .msg-bubble h3{margin:8px 0 4px;font-size:14px;font-weight:700}
+
+/* Typing indicator */
+.typing{display:flex;gap:4px;padding:12px 14px}
+.typing span{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.3);animation:blink 1.4s infinite}
+.typing span:nth-child(2){animation-delay:.2s}
+.typing span:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,80%,100%{opacity:.3}40%{opacity:1}}
+
+/* API badge in header */
+.chat-api-badge{padding:3px 10px;border-radius:980px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid rgba(41,151,255,.3);background:rgba(41,151,255,.1);color:var(--bright-blue);transition:all .2s;white-space:nowrap}
+.chat-api-badge:hover{background:rgba(41,151,255,.2);border-color:rgba(41,151,255,.5)}
+
+/* API Tab */
+.api-tab{flex:1;padding:8px 0;border:1px solid rgba(255,255,255,.12);background:transparent;color:rgba(255,255,255,.5);font-size:13px;font-weight:500;cursor:pointer;transition:all .2s}
+.api-tab:first-child{border-radius:8px 0 0 8px}.api-tab:last-child{border-radius:0 8px 8px 0}
+.api-tab.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+
+/* Quick questions */
+.quick-q{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.qq-btn{background:rgba(41,151,255,.08);border:1px solid rgba(41,151,255,.15);color:var(--bright-blue);padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.4;text-align:left;cursor:pointer;transition:all .2s}
+.qq-btn:hover{background:rgba(41,151,255,.15);border-color:rgba(41,151,255,.3)}
+
+/* Input */
+.chat-input{padding:12px 16px 24px;border-top:1px solid rgba(255,255,255,.06);flex-shrink:0;display:flex;gap:8px;align-items:flex-end;background:#1a1a1c;position:relative;z-index:10}
+.chat-input textarea{flex:1;background:#2a2a2d;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px 14px;color:#fff;font-size:14px;line-height:1.4;resize:none;max-height:120px;outline:none;font-family:inherit;transition:border-color .2s}
+.chat-input textarea:focus{border-color:rgba(41,151,255,.4)}
+.chat-input textarea::placeholder{color:rgba(255,255,255,.25)}
+.chat-send{width:36px;height:36px;border-radius:50%;background:var(--blue);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0}
+.chat-send:hover{background:#0077ed}
+.chat-send:disabled{background:rgba(255,255,255,.08);cursor:not-allowed}
+.chat-send svg{width:16px;height:16px;fill:#fff}
+
+/* Settings overlay */
+.chat-settings{position:absolute;inset:0;background:rgba(26,26,28,.97);z-index:10;display:none;flex-direction:column;align-items:center;justify-content:center;padding:40px;gap:16px}
+.chat-settings.show{display:flex}
+.chat-settings h3{font-size:18px;font-weight:600;margin-bottom:4px}
+.chat-settings p{font-size:13px;color:rgba(255,255,255,.4);text-align:center;max-width:300px;margin-bottom:8px}
+.chat-settings input{width:100%;max-width:320px;background:#2a2a2d;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:12px 16px;color:#fff;font-size:14px;outline:none}
+.chat-settings input:focus{border-color:var(--bright-blue)}
+.chat-settings button{padding:10px 28px;border-radius:980px;background:var(--blue);color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer;transition:background .2s}
+.chat-settings button:hover{background:#0077ed}
+.chat-settings .settings-link{font-size:12px;color:var(--bright-blue);text-decoration:none;margin-top:4px}
+</style>
+
+<!-- FAB -->
+<button class="chat-fab" id="chatFab" title="AI 求职顾问">
+  <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/><path d="M7 9h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/></svg>
+</button>
+
+<!-- Panel -->
+<div class="chat-panel" id="chatPanel">
+  <!-- Settings -->
+  <div class="chat-settings" id="chatSettings">
+    <h3>🔑 设置 AI 接口</h3>
+    <div style="display:flex;gap:0;margin-bottom:14px">
+      <button class="api-tab on" data-api="coze" onclick="switchApiTab('coze')">扣子 Coze</button>
+      <button class="api-tab" data-api="kimi" onclick="switchApiTab('kimi')">Kimi</button>
+    </div>
+    <div id="cozeForm">
+      <p style="font-size:12px;opacity:.6;margin-bottom:10px">填写扣子平台的 Token 和 Bot ID</p>
+      <input type="password" id="cozeKeyInput" placeholder="pat_xxxxxxxxxxxxxxxx">
+      <input type="text" id="cozeBotInput" placeholder="Bot ID（如 74xxx）" style="margin-top:8px;width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#fff;font-size:14px">
+      <button onclick="saveKey()" style="margin-top:10px">保存并开始</button>
+      <a class="settings-link" href="https://www.coze.cn/open/api" target="_blank">→ 前往扣子开放平台获取</a>
+    </div>
+    <div id="kimiForm" style="display:none">
+      <p style="font-size:12px;opacity:.6;margin-bottom:10px">支持两种 Key：<b>sk-kimi-</b>（Kimi Code）或 <b>sk-</b>（Moonshot平台）</p>
+      <input type="password" id="kimiKeyInput" placeholder="sk-kimi-xxx 或 sk-xxx">
+      <div id="kimiKeyNote" style="display:none;font-size:12px;margin-top:6px"></div>
+      <button onclick="saveKey()" style="margin-top:10px">保存并开始</button>
+      <a class="settings-link" href="https://platform.kimi.ai/console/api-keys" target="_blank">→ 获取 Kimi API Key</a>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <div class="chat-head">
+    <h3><span class="dot-live"></span>AI 求职顾问</h3>
+    <div class="chat-head-btns">
+      <button class="chat-api-badge" id="apiBadge" onclick="quickSwitchApi()" title="点击切换接口">扣子</button>
+      <button class="chat-head-btn" onclick="clearChat()" title="清空对话">🗑</button>
+      <button class="chat-head-btn" onclick="showSettings()" title="设置">⚙</button>
+      <button class="chat-head-btn" onclick="toggleChat()" title="关闭">✕</button>
+    </div>
+  </div>
+
+  <!-- Body -->
+  <div class="chat-body" id="chatBody"></div>
+
+  <!-- Input -->
+  <div class="chat-input">
+    <textarea id="chatTextarea" placeholder="问任何关于 AI PM 求职的问题..." rows="1"></textarea>
+    <button class="chat-send" id="chatSendBtn" onclick="sendMsg()">
+      <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+    </button>
+  </div>
+</div>
+
+<script>
+// ========== CHAT SYSTEM ==========
+const SYSTEM_PROMPT = `你是一位资深的 AI 产品经理求职顾问，名叫"AI求职助手"。你掌握了一份包含 523 条 AI 相关岗位的真实数据集，覆盖电商、视频/直播、自媒体/新媒体三大方向。
+
+以下是你掌握的数据：
+
+岗位数据概要（共523条，电商/视频/自媒体相关AI PM岗位）：
+
+## 视频/直播方向（258条，均薪25.6K/月）
+Top高薪岗位：
+- AI产品经理（AI漫剧） | 猎头 | 上海 | 80-110K·14薪(≈110.8K/月)
+- AI 产品经理 | 京东科技 | 北京 | 50-80K·20薪(≈108.3K/月)
+- AI产品负责人 | 猎头 | 上海 | 60-90K·15薪(≈93.8K/月)
+- AI软件产品经理（影像/创作工具） | 某知名智能硬件公司 | 厦门 | 40-70K·20薪(≈91.7K/月)
+- AI产品技术负责人 | 交子立方 | 成都 | 70-100K(≈85.0K/月)
+- 产品经理（AI 视频剪辑方向） | 好饰多 | 北京 | 50-70K·15薪(≈75.0K/月)
+
+## 电商方向（250条，均薪30.1K/月）
+Top高薪岗位：
+- 数据&AI产品高级专家 | 猎头 | 上海 | 120-190K·15薪(≈193.8K/月)
+- AI产品团队经理 | 亚马逊中国 | 上海 | 100-120K(≈110.0K/月)
+- AI产品总监 | 猎头 | 上海 | 80-100K·14薪(≈105.0K/月)
+- 淘宝主站-ai产品经理 | 阿里集团 | 杭州/上海 | 50-80K·16薪(≈86.7K/月)
+- AI策略产品专家 | 北京微富科技 | 杭州 | 40-70K·16薪(≈73.3K/月)
+
+## 自媒体/新媒体方向（141条，均薪24.4K/月）
+Top高薪岗位：
+- AI应用产品经理 | 东方美好MCN | 北京 | 30-60K·24薪(≈90.0K/月)
+- AI搜索产品专家 | 上海 | 40-60K·16薪(≈66.7K/月)
+- AI产品经理 - 数据产品方向 | 小红书 | 杭州 | 25-50K·16薪(≈50.0K/月)
+
+## 城市分布
+杭州171条(均薪27.0K)、上海131条(均薪33.7K)、北京79条(均薪32.4K)、厦门50条(均薪19.4K)、西安32条(均薪14.8K)、深圳25条(均薪25.9K)、成都19条(均薪22.4K)、郑州16条(均薪12.1K)
+
+## 薪资梯队
+50K+: 61条、30-50K: 126条、15-30K: 195条、8-15K: 91条、<8K: 50条
+
+## 经验要求
+3-5年: 175条、1-3年: 139条、5-10年: 88条、经验不限: 54条
+
+## 学历要求
+本科: 442条、大专: 36条、学历不限: 21条、硕士: 17条
+
+你的职责：
+1. 回答用户关于 AI PM 求职市场的问题，必须引用具体数据
+2. 根据用户背景推荐合适的岗位方向、城市和薪资预期
+3. 分析不同方向和城市的差异
+4. 给出具体的求职建议和技能提升路径
+5. 如果问题超出数据范围，诚实说明
+
+回答要求：
+- 使用 Markdown 格式，善用表格、列表、加粗
+- 给出具体数字和岗位名称
+- 语气专业但亲切，像一位有经验的前辈在给建议
+- 每次回复控制在 300 字以内，除非用户要求详细分析`;
+
+let chatHistory = [];
+let isStreaming = false;
+
+// API provider: 'coze' or 'kimi'
+function getApiType() { return localStorage.getItem('chat_api_type') || 'coze'; }
+function hasApiConfig() {
+  const t = getApiType();
+  if (t === 'coze') return !!(localStorage.getItem('coze_token') && localStorage.getItem('coze_bot_id'));
+  return !!localStorage.getItem('kimi_api_key');
+}
+function switchApiTab(type) {
+  localStorage.setItem('chat_api_type', type);
+  document.querySelectorAll('.api-tab').forEach(b => b.classList.toggle('on', b.dataset.api === type));
+  document.getElementById('cozeForm').style.display = type === 'coze' ? '' : 'none';
+  document.getElementById('kimiForm').style.display = type === 'kimi' ? '' : 'none';
+  updateApiBadge();
+}
+function updateApiBadge() {
+  const badge = document.getElementById('apiBadge');
+  if (!badge) return;
+  const t = getApiType();
+  badge.textContent = t === 'coze' ? '扣子' : 'Kimi';
+}
+function quickSwitchApi() {
+  const cur = getApiType();
+  const next = cur === 'coze' ? 'kimi' : 'coze';
+  if (!hasApiConfig() || confirm(`切换到 ${next === 'coze' ? '扣子 Coze' : 'Kimi'}？`)) {
+    switchApiTab(next);
+    if (!hasApiConfig()) showSettings();
+  }
+}
+// 初始化 badge
+setTimeout(updateApiBadge, 0);
+
+// Toggle chat
+function toggleChat() {
+  SFX.slide();
+  const panel = document.getElementById('chatPanel');
+  const fab = document.getElementById('chatFab');
+  const isOpen = panel.classList.toggle('open');
+  fab.classList.toggle('open', isOpen);
+  if (isOpen) {
+    if (!hasApiConfig()) { showSettings(); } else { hideSettings(); }
+    if (!document.getElementById('chatBody').children.length) renderWelcome();
+    document.getElementById('chatTextarea').focus();
+  }
+}
+document.getElementById('chatFab').onclick = toggleChat;
+
+// Settings
+function showSettings() {
+  const s = document.getElementById('chatSettings');
+  s.classList.add('show');
+  const type = getApiType();
+  switchApiTab(type);
+  const ct = localStorage.getItem('coze_token');
+  const cb = localStorage.getItem('coze_bot_id');
+  const kk = localStorage.getItem('kimi_api_key');
+  if (ct) document.getElementById('cozeKeyInput').value = ct;
+  if (cb) document.getElementById('cozeBotInput').value = cb;
+  if (kk) document.getElementById('kimiKeyInput').value = kk;
+}
+function hideSettings() { document.getElementById('chatSettings').classList.remove('show'); }
+function saveKey() {
+  const type = getApiType();
+  if (type === 'coze') {
+    const token = document.getElementById('cozeKeyInput').value.trim();
+    const botId = document.getElementById('cozeBotInput').value.trim();
+    if (!token || !botId) { alert('请填写 Token 和 Bot ID'); return; }
+    localStorage.setItem('coze_token', token);
+    localStorage.setItem('coze_bot_id', botId);
+  } else {
+    const key = document.getElementById('kimiKeyInput').value.trim();
+    if (!key) { alert('请填写 API Key'); return; }
+    localStorage.setItem('kimi_api_key', key);
+    const note = document.getElementById('kimiKeyNote');
+    if (key.startsWith('sk-kimi-')) {
+      note.innerHTML = '✅ Kimi Code Key，直连 api.kimi.com';
+    } else {
+      note.innerHTML = '✅ Moonshot Key，直连 api.moonshot.ai';
+    }
+    note.style.color = '#30d158';
+    note.style.display = 'block';
+  }
+  hideSettings();
+  if (!document.getElementById('chatBody').children.length) renderWelcome();
+}
+
+// Welcome
+function renderWelcome() {
+  const body = document.getElementById('chatBody');
+  body.innerHTML = '';
+  addAiMsg('你好！我是你的 **AI 求职顾问** 🎯\n\n我掌握了 **887 条** AI 产品经理相关岗位数据，覆盖大模型、Agent、AIGC、具身智能等十大方向和 10 个城市。\n\n你可以问我任何关于 AI PM 求职的问题，或者试试下面的快捷问题：');
+  const qDiv = document.createElement('div');
+  qDiv.className = 'quick-q';
+  const questions = [
+    '我是3年经验的产品经理，想转AI方向，推荐什么城市和方向？',
+    '视频AI和电商AI哪个薪资更高？具体差多少？',
+    '杭州和上海的AI PM岗位有什么区别？',
+    '想拿30K+月薪需要什么条件？'
+  ];
+  questions.forEach(q => {
+    const btn = document.createElement('button');
+    btn.className = 'qq-btn';
+    btn.textContent = q;
+    btn.onclick = () => { document.getElementById('chatTextarea').value = q; sendMsg(); qDiv.remove(); };
+    qDiv.appendChild(btn);
+  });
+  body.appendChild(qDiv);
+}
+
+// Add message
+function addUserMsg(text) {
+  const body = document.getElementById('chatBody');
+  const div = document.createElement('div');
+  div.className = 'msg msg-user';
+  div.innerHTML = `<div class="msg-bubble">${escHtml(text)}</div>`;
+  body.appendChild(div);
+  body.scrollTop = body.scrollHeight;
+}
+function addAiMsg(md) {
+  const body = document.getElementById('chatBody');
+  const div = document.createElement('div');
+  div.className = 'msg msg-ai';
+  div.innerHTML = `<div class="msg-bubble">${renderMd(md)}</div>`;
+  body.appendChild(div);
+  body.scrollTop = body.scrollHeight;
+  return div;
+}
+function addTyping() {
+  const body = document.getElementById('chatBody');
+  const div = document.createElement('div');
+  div.className = 'msg msg-ai';
+  div.id = 'typingIndicator';
+  div.innerHTML = '<div class="msg-bubble"><div class="typing"><span></span><span></span><span></span></div></div>';
+  body.appendChild(div);
+  body.scrollTop = body.scrollHeight;
+}
+function removeTyping() {
+  document.getElementById('typingIndicator')?.remove();
+}
+
+// Send message
+async function sendMsg(overrideText) {
+  if (isStreaming) return;
+  const textarea = document.getElementById('chatTextarea');
+  const text = overrideText || textarea.value.trim();
+  if (!text) return;
+  textarea.value = '';
+  textarea.style.height = 'auto';
+
+  if (!hasApiConfig()) { showSettings(); return; }
+
+  // Remove quick questions
+  document.querySelector('.quick-q')?.remove();
+
+  SFX.send();
+  addUserMsg(text);
+  chatHistory.push({ role: 'user', content: text });
+
+  // Keep last 20 turns
+  if (chatHistory.length > 40) chatHistory = chatHistory.slice(-40);
+
+  addTyping();
+  isStreaming = true;
+  document.getElementById('chatSendBtn').disabled = true;
+
+  const apiType = getApiType();
+  const userMsgs = chatHistory.map(m => ({ role: m.role, content: m.content }));
+
+  // 构建请求参数
+  let apiUrl, headers, body;
+  if (apiType === 'coze') {
+    const token = localStorage.getItem('coze_token');
+    const botId = localStorage.getItem('coze_bot_id');
+    apiUrl = 'https://api.coze.cn/v3/chat';
+    headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token };
+    body = { bot_id: botId, user_id: 'dashboard_user', stream: true, auto_save_history: false,
+             additional_messages: [{ role: 'user', content: text, content_type: 'text' }] };
+  } else {
+    const apiKey = localStorage.getItem('kimi_api_key');
+    const isKimiCode = apiKey.startsWith('sk-kimi-');
+    const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    if (isKimiCode) {
+      // Kimi Code: 本地直连，线上走 Netlify 代理（/api/kimi/messages）
+      apiUrl = isLocal ? 'https://api.kimi.com/coding/v1/messages' : '/api/kimi/messages';
+      headers = { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' };
+      body = { model: 'kimi-for-coding', system: SYSTEM_PROMPT, messages: userMsgs, max_tokens: 4096, stream: true };
+    } else {
+      // Moonshot Key → 直连（无 CORS 问题）
+      apiUrl = 'https://api.moonshot.ai/v1/chat/completions';
+      headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey };
+      body = { model: 'kimi-k2.5', messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...userMsgs],
+               max_tokens: 4096, stream: true };
+    }
+  }
+
+  try {
+    const res = await fetch(apiUrl, { method: 'POST', headers, body: JSON.stringify(body) });
+
+    if (!res.ok) {
+      removeTyping();
+      let errBody = '';
+      try { errBody = await res.text(); } catch(e) {}
+      if (res.status === 401) {
+        const hint = apiType === 'coze'
+          ? '请确认扣子 Token 以 `pat_` 开头，Bot ID 正确'
+          : '请确认 Kimi Key 以 `sk-` 开头且未过期';
+        addAiMsg(`⚠️ **认证失败**\n\n${hint}\n\n点击右上角 ⚙ 重新设置。\n\n> ${errBody.slice(0,200)}`);
+      } else if (res.status === 429) {
+        addAiMsg('⚠️ **请求频率超限**，请等待几秒后重试。');
+      } else {
+        addAiMsg(`⚠️ 请求失败 (HTTP ${res.status})\n\n> ${errBody.slice(0,200)}`);
+      }
+      isStreaming = false;
+      document.getElementById('chatSendBtn').disabled = false;
+      return;
+    }
+
+    removeTyping();
+    SFX.receive();
+    const aiDiv = addAiMsg('');
+    const bubble = aiDiv.querySelector('.msg-bubble');
+    let fullText = '';
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let sseEvent = ''; // 追踪 event: 行
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      for (const line of lines) {
+        const trimmed = line.trim();
+        // 记录 SSE event 类型
+        if (trimmed.startsWith('event:')) {
+          sseEvent = trimmed.slice(6).trim();
+          continue;
+        }
+        if (!trimmed.startsWith('data:')) continue;
+        const payload = trimmed.startsWith('data: ') ? trimmed.slice(6) : trimmed.slice(5);
+        if (!payload || payload === '[DONE]') continue;
+        try {
+          const evt = JSON.parse(payload);
+          let chunk = '';
+          // 扣子 v3: event行=conversation.message.delta, data里type=answer
+          if (sseEvent === 'conversation.message.delta' && evt.type === 'answer' && evt.content) {
+            chunk = evt.content;
+          }
+          // 扣子也可能把event放data里
+          if (!chunk && evt.event === 'conversation.message.delta' && evt.message?.type === 'answer') {
+            chunk = evt.message.content || '';
+          }
+          // OpenAI / Moonshot 格式
+          if (!chunk && evt.choices?.[0]?.delta?.content) {
+            chunk = evt.choices[0].delta.content;
+          }
+          // Anthropic / Kimi Code 格式
+          if (!chunk && evt.type === 'content_block_delta' && evt.delta?.text) {
+            chunk = evt.delta.text;
+          }
+          if (chunk) {
+            fullText += chunk;
+            bubble.innerHTML = renderMd(fullText);
+            document.getElementById('chatBody').scrollTop = document.getElementById('chatBody').scrollHeight;
+          }
+        } catch(e) { console.log('SSE parse err:', e, payload.slice(0,100)); }
+        sseEvent = ''; // 重置
+      }
+    }
+
+    chatHistory.push({ role: 'assistant', content: fullText });
+  } catch (err) {
+    console.error('Chat fetch error:', err);
+    removeTyping();
+    const errName = err.name || '';
+    if (errName === 'TypeError' && err.message?.includes('Failed to fetch')) {
+      addAiMsg('⚠️ **CORS 跨域被拦截**\n\n浏览器阻止了对 `' + apiUrl + '` 的请求。\n\n错误详情：`' + err.message + '`\n\n> 该 API 不允许浏览器直接调用，请切换到 **扣子 Coze** 接口。');
+    } else {
+      addAiMsg('⚠️ 网络错误：`' + (err.message || err) + '`');
+    }
+  }
+
+  isStreaming = false;
+  document.getElementById('chatSendBtn').disabled = false;
+}
+
+// Clear chat
+function clearChat() {
+  chatHistory = [];
+  renderWelcome();
+}
+
+// Textarea auto-resize + Enter to send
+const ta = document.getElementById('chatTextarea');
+ta.addEventListener('input', () => { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 120) + 'px'; });
+ta.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); }
+});
+
+// Escape to close panel
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.getElementById('chatPanel').classList.contains('open')) {
+    // Only close chat if modal is not open
+    if (!document.getElementById('overlay').classList.contains('show')) toggleChat();
+  }
+});
+
+// Simple Markdown renderer
+function renderMd(md) {
+  if (!md) return '';
+  let h = escHtml(md);
+  // Code blocks
+  h = h.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
+  // Inline code
+  h = h.replace(/`([^`]+)`/g, '<code>$1</code>');
+  // Bold
+  h = h.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  // Italic
+  h = h.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  // Headers
+  h = h.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  h = h.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+  h = h.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+  // Tables
+  h = h.replace(/^\|(.+)\|$/gm, (match) => {
+    const cells = match.split('|').filter(c => c.trim());
+    if (cells.every(c => /^[\s-:]+$/.test(c))) return '<!--sep-->';
+    return '<tr>' + cells.map(c => '<td>' + c.trim() + '</td>').join('') + '</tr>';
+  });
+  h = h.replace(/((?:<tr>.*<\/tr>\n?)+)/g, (match) => {
+    let table = match.replace('<!--sep-->\n', '').replace('<!--sep-->', '');
+    // First row as header
+    table = table.replace(/<tr>(.*?)<\/tr>/, (m, inner) => '<thead><tr>' + inner.replace(/<td>/g, '<th>').replace(/<\/td>/g, '</th>') + '</tr></thead>');
+    return '<table>' + table + '</table>';
+  });
+  // Unordered list
+  h = h.replace(/^- (.+)$/gm, '<li>$1</li>');
+  h = h.replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul>$1</ul>');
+  // Ordered list
+  h = h.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+  // Line breaks
+  h = h.replace(/\n\n/g, '</p><p>');
+  h = h.replace(/\n/g, '<br>');
+  h = '<p>' + h + '</p>';
+  h = h.replace(/<p><\/p>/g, '');
+  // Clean up
+  h = h.replace(/<p>(<h[123]>)/g, '$1');
+  h = h.replace(/(<\/h[123]>)<\/p>/g, '$1');
+  h = h.replace(/<p>(<ul>)/g, '$1');
+  h = h.replace(/(<\/ul>)<\/p>/g, '$1');
+  h = h.replace(/<p>(<table>)/g, '$1');
+  h = h.replace(/(<\/table>)<\/p>/g, '$1');
+  h = h.replace(/<p>(<pre>)/g, '$1');
+  h = h.replace(/(<\/pre>)<\/p>/g, '$1');
+  return h;
+}
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ========== "Ask AI" from modal ==========
+const origOpenModal = openModal;
+openModal = function(idx) {
+  origOpenModal(idx);
+  // Add "Ask AI" button
+  const modal = document.getElementById('modal');
+  const j = DATA[idx];
+  const askBtn = document.createElement('button');
+  askBtn.textContent = '🤖 问 AI 分析这个岗位';
+  askBtn.style.cssText = 'margin-top:16px;width:100%;padding:12px;border-radius:12px;background:linear-gradient(135deg,#0071e3,#2997ff);color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .2s';
+  askBtn.onmouseenter = () => askBtn.style.opacity = '.85';
+  askBtn.onmouseleave = () => askBtn.style.opacity = '1';
+  askBtn.onclick = () => {
+    closeModal();
+    if (!document.getElementById('chatPanel').classList.contains('open')) toggleChat();
+    setTimeout(() => {
+      const q = `帮我分析这个岗位：${j.title} - ${j.company} - ${j.city} - ${j.salary}，这个岗位怎么样？适合什么背景的人？需要重点准备什么？`;
+      sendMsg(q);
+    }, 400);
+  };
+  modal.appendChild(askBtn);
+};
+</script>
+</body>
+</html>
