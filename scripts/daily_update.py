@@ -62,7 +62,8 @@ def _write_progress(pct, phase, detail, steps=None, done=False):
 
 
 def _start_progress_window():
-    """启动原生 macOS 进度弹窗（Tkinter）"""
+    """启动原生 macOS 桌面进度弹窗（Tkinter）
+    必须用 /usr/bin/python3（macOS 系统自带，含 tkinter）运行"""
     import subprocess
     _write_progress(0, '启动中...', '')
     gui_script = SCRIPT_DIR / 'progress_gui.py'
@@ -204,7 +205,6 @@ def _popup_report(status):
 def main():
     parser = argparse.ArgumentParser(description='AI PM 岗位每日更新')
     parser.add_argument('--dry-run', action='store_true', help='仅测试抓取，不写入文件')
-    parser.add_argument('--quick', action='store_true', help='快速模式：只用核心关键词和TOP5城市')
     args = parser.parse_args()
 
     # ---- 运行状态追踪 ----
@@ -212,7 +212,7 @@ def main():
     status = {
         'date': datetime.now().strftime('%Y-%m-%d'),
         'start_time': datetime.now().strftime('%H:%M:%S'),
-        'mode': 'quick' if args.quick else 'full',
+        'mode': 'full',
         'steps': [],
         'overall': 'running',
         'crawl_raw': 0,
@@ -244,11 +244,7 @@ def main():
 
     keywords = config['keywords']
     cities = config['cities']
-
-    if args.quick:
-        keywords = ['AI产品经理', 'AIGC产品经理']
-        cities = {k: v for i, (k, v) in enumerate(cities.items()) if i < 5}
-        logger.info(f'[QUICK] 关键词: {keywords}, 城市: {list(cities.keys())}')
+    logger.info(f'[全量] 关键词: {keywords}, 城市: {list(cities.keys())}')
 
     # === 1. 抓取 ===
     all_raw = []
@@ -258,13 +254,58 @@ def main():
     try:
         from spiders.boss_dp import BossDPSpider
         spider = BossDPSpider()
-        # 注入进度回调，让爬虫实时报告进度
+        _crawl_t0 = _time.time()
+        _crawl_done_steps = []  # 累积所有已完成的爬取步骤
+
+        # 后续流程步骤（未执行）
+        _pending_phases = [
+            '数据清洗', '增量合并', '补全描述',
+            '导出总表', '生成知识库', 'Git 推送', 'Netlify 部署',
+        ]
+
         def _on_spider_progress(combo_idx, total_combos, kw, city, job_count):
             pct = 5 + int(45 * combo_idx / max(total_combos, 1))
-            _write_progress(pct, f'🔍 爬取: {kw} @ {city}',
-                f'[{combo_idx}/{total_combos}] 累计 {job_count} 条', status.get('steps', []))
+            remaining = total_combos - combo_idx
+            elapsed = _time.time() - _crawl_t0
+            eta_min = (elapsed / max(combo_idx, 1)) * remaining / 60
+            skipped = getattr(spider, 'skipped_existing', 0)
+
+            # 记录已完成步骤
+            _crawl_done_steps.append({
+                'name': f'{kw} @ {city}',
+                'ok': True,
+                'detail': f'累计 {job_count} 条' + (f' (跳过已有{skipped})' if skipped else ''),
+                'time': datetime.now().strftime('%H:%M:%S'),
+            })
+
+            # 构建完整步骤列表: 前置步骤 + 已完成爬取 + 当前 + 未执行后续
+            all_steps = list(status.get('steps', []))
+            # 只显示最近 8 条已完成爬取（避免列表太长）
+            recent = _crawl_done_steps[-8:] if len(_crawl_done_steps) > 8 else _crawl_done_steps
+            if len(_crawl_done_steps) > 8:
+                all_steps.append({
+                    'name': f'... 已完成 {len(_crawl_done_steps)-8} 组 ...',
+                    'ok': True, 'detail': '', 'time': '',
+                })
+            all_steps.extend(recent)
+            # 未执行的后续流程
+            for phase in _pending_phases:
+                all_steps.append({'name': phase, 'ok': None, 'detail': '待执行', 'time': ''})
+
+            _write_progress(
+                pct, f'爬取: {kw} @ {city}',
+                f'[{combo_idx}/{total_combos}] 新增 {job_count} 条 · 跳过已有 {skipped} · 剩余 {remaining} 组 ≈{eta_min:.0f}分钟',
+                all_steps)
         spider._progress_cb = _on_spider_progress
-        jobs = spider.run(keywords, cities, headless=True)
+        # 有持久化 Profile → headless 静默运行；无 Profile → 可见模式让用户登录
+        profile_dir = Path(__file__).parent.parent / '.chrome_profile'
+        has_profile = profile_dir.exists() and any(profile_dir.iterdir()) if profile_dir.exists() else False
+        use_headless = has_profile
+        if has_profile:
+            logger.info('检测到持久化 Profile，使用 headless 模式')
+        else:
+            logger.info('首次运行，使用可见模式以便登录')
+        jobs = spider.run(keywords, cities, headless=use_headless)
         all_raw.extend(jobs)
         logger.info(f'BOSS直聘: 抓取 {len(jobs)} 条原始数据')
         status['crawl_raw'] = len(all_raw)
@@ -302,16 +343,17 @@ def main():
     _write_progress(55, '🔀 增量合并中...', f'{len(cleaned)} 条清洗数据', status.get('steps', []))
     from merger import load_existing, merge, save, save_snapshot
     existing_keys, existing_jobs = load_existing()
+    old_total = len(existing_jobs)
     merged, added_count = merge(existing_jobs, existing_keys, cleaned)
 
     # === 4. 保存 ===
     save(merged)
     save_snapshot(cleaned)
 
-    logger.info(f'合并完成: 新增 {added_count} 条, 总计 {len(merged)} 条')
+    logger.info(f'合并对比: 原有 {old_total} 条 + 抓取 {len(all_raw)} 条 → 清洗 {len(cleaned)} 条 → 新增 {added_count} 条 → 总计 {len(merged)} 条')
     status['added'] = added_count
     status['total'] = len(merged)
-    _step('增量合并', True, f'新增 {added_count} 条，总计 {len(merged)} 条')
+    _step('增量合并', True, f'原{old_total}+抓{len(all_raw)}→清{len(cleaned)}→新+{added_count}=总{len(merged)}')
 
     if added_count == 0:
         logger.warning('⚠️ 今日新增为 0，可能被反爬或无新岗位')
@@ -395,7 +437,8 @@ def main():
         dist_dir = BASE_DIR / 'dist'
         dist_dir.mkdir(exist_ok=True)
         import shutil
-        for fname in ['job_dashboard.html', 'jobs_data.json', 'index.html', 'netlify.toml', 'knowledge_base.md', 'run_status.json']:
+        for fname in ['job_dashboard.html', 'jobs_data.json', 'index.html', 'netlify.toml',
+                      'knowledge_base.md', 'run_status.json', 'AIPM总表_统一格式.csv']:
             src = BASE_DIR / fname
             if src.exists():
                 shutil.copy2(src, dist_dir / fname)

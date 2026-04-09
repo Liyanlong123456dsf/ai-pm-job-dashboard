@@ -27,7 +27,7 @@ for city in sorted(city_jobs, key=lambda c: -len(city_jobs[c])):
         kw = '、'.join(j.get('kw', []))
         desc = (j.get('desc', '') or '').replace('\n', ' ').strip()[:800]
         url = j.get('url', '')
-        lines.append(f"---\n")
+        lines.append(f"=====\n")
         lines.append(f"### 【{city}】{j['title']} — {j.get('company','')}\n")
         lines.append(f"**城市:** {city} | **公司:** {j.get('company','')} | **薪资:** {j.get('salary','')}（≈{j.get('avg',0)}K/月）| **档位:** {j.get('tier','')}\n")
         lines.append(f"**经验:** {j.get('exp','')} | **学历:** {j.get('edu','')} | **方向:** {cats}\n")
@@ -175,9 +175,9 @@ rag_doc = f'''# AI求职助手 — RAG工程搭建指南
 2. 点击「新建知识库」→ 命名为 `AI岗位数据库`
 3. 上传 `knowledge_base.md`
 4. 分段设置：
-   - 分段方式：**自动分段**（扣子会按Markdown标题自动分块）
-   - 如有手动选项：按 `###`（三级标题）分段，每段=1个岗位
-   - 最大分段长度：**800 tokens**（确保单个岗位信息完整）
+   - 分段方式：**自定义**
+   - 分段标识符：`=====`（5个等号）
+   - 最大分段长度：**1500**（确保单个岗位信息完整）
 5. 等待索引构建完成
 
 ### Step 2: 创建Bot
@@ -273,4 +273,17 @@ python3 scripts/gen_knowledge.py
 rag_path = BASE / 'RAG_GUIDE.md'
 rag_path.write_text(rag_doc, encoding='utf-8')
 print(f"✅ RAG_GUIDE.md 已生成")
+
+# ========== 4. 同步到 RAG 资料目录 ==========
+import shutil
+RAG_DIR = Path.home() / 'Desktop' / 'AI求职助手_RAG资料'
+if RAG_DIR.exists():
+    for src_name in ['knowledge_base.md', 'coze_prompt.txt', 'RAG_GUIDE.md']:
+        src = BASE / src_name
+        if src.exists():
+            shutil.copy2(src, RAG_DIR / src_name)
+    print(f"✅ 已同步到 {RAG_DIR}")
+else:
+    print(f"⚠️ RAG 资料目录不存在，跳过同步: {RAG_DIR}")
+
 print("全部完成!")

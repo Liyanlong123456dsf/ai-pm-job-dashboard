@@ -1,103 +1,224 @@
 #!/usr/bin/env python3
-"""macOS 原生风格进度弹窗 — 读取 progress.json 实时显示"""
+# -*- coding: utf-8 -*-
+"""
+macOS 原生桌面进度弹窗 — Apple Design System 风格
+Tk 9.0 + Homebrew Python 3.14
+每 800ms 读取 logs/progress.json 实时刷新
+
+设计参考：Apple HIG
+- SF Pro Display / Text 字体体系
+- Apple Blue (#0071e3) 唯一强调色
+- #1d1d1f / #f5f5f7 明暗交替
+- 紧凑行高标题 + 宽松正文
+- 极简、克制、产品即主角
+"""
 import json
 import tkinter as tk
 from tkinter import ttk
 from pathlib import Path
 
 PROGRESS_FILE = Path(__file__).parent.parent / 'logs' / 'progress.json'
-POLL_MS = 1200  # 刷新间隔
+POLL_MS = 800
+
+# === Apple Design System 色板 ===
+BG_DARK    = '#000000'
+BG_SURFACE = '#1d1d1f'
+BG_CARD    = '#2c2c2e'
+APPLE_BLUE = '#0071e3'
+BRIGHT_BLUE = '#2997ff'
+WHITE      = '#ffffff'
+GRAY_80    = '#cccccc'  # 80% white
+GRAY_48    = '#7a7a7a'  # 48%
+GREEN      = '#30d158'
+ORANGE     = '#ff9f0a'
+RED        = '#ff453a'
+
+# Apple 风格字体（SF Pro 在 macOS 上可通过系统字体名调用）
+FONT_DISPLAY = 'SF Pro Display'
+FONT_TEXT    = 'SF Pro Text'
+# Fallback
+FONT_FALLBACK = ('Helvetica Neue', 'Helvetica', 'Arial')
+
+W = 480
+H = 500
+
+
+def _font(family, size, weight='normal'):
+    """构建字体元组，确保 fallback"""
+    return (family, size, weight)
 
 
 class ProgressWindow:
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title('AI 岗位爬取进度')
-        self.root.geometry('420x320')
+        self.root.title('AI 岗位爬取')
+        self.root.geometry('{}x{}'.format(W, H))
         self.root.resizable(False, False)
-        # macOS 置顶
+        self.root.configure(bg=BG_DARK)
         self.root.attributes('-topmost', True)
-        self.root.after(3000, lambda: self.root.attributes('-topmost', False))
+        self.root.after(5000, lambda: self.root.attributes('-topmost', False))
 
-        # 样式
-        style = ttk.Style()
-        style.theme_use('aqua')
+        # === 顶部留白 + 主标题区 (Dark Hero) ===
+        hero = tk.Frame(self.root, bg=BG_DARK)
+        hero.pack(fill='x', padx=32, pady=(28, 0))
 
-        frame = ttk.Frame(self.root, padding=20)
-        frame.pack(fill='both', expand=True)
+        self.title_lbl = tk.Label(
+            hero, text='岗位爬取中',
+            font=_font(FONT_DISPLAY, 24, 'bold'),
+            fg=WHITE, bg=BG_DARK, anchor='center')
+        self.title_lbl.pack()
 
-        # 标题
-        self.title_label = ttk.Label(frame, text='🤖 AI 岗位爬取中...', font=('SF Pro', 16, 'bold'))
-        self.title_label.pack(pady=(0, 8))
+        self.subtitle_lbl = tk.Label(
+            hero, text='正在启动...',
+            font=_font(FONT_TEXT, 13),
+            fg=GRAY_48, bg=BG_DARK, anchor='center')
+        self.subtitle_lbl.pack(pady=(2, 0))
 
-        # 进度条
-        self.progress = ttk.Progressbar(frame, length=360, mode='determinate', maximum=100)
-        self.progress.pack(pady=(0, 4))
+        # === 进度区域 ===
+        progress_area = tk.Frame(self.root, bg=BG_DARK)
+        progress_area.pack(fill='x', padx=32, pady=(20, 0))
 
-        # 百分比
-        self.pct_label = ttk.Label(frame, text='0%', font=('SF Pro', 12))
-        self.pct_label.pack(pady=(0, 6))
+        # 进度条：Frame 模拟圆角条
+        bar_track = tk.Frame(progress_area, bg=BG_CARD, height=6)
+        bar_track.pack(fill='x')
+        bar_track.pack_propagate(False)
+        self.bar_fill = tk.Frame(bar_track, bg=APPLE_BLUE, width=0)
+        self.bar_fill.place(x=0, y=0, relheight=1.0, width=0)
+        self._bar_track = bar_track
 
-        # 阶段
-        self.phase_label = ttk.Label(frame, text='初始化...', font=('SF Pro', 13, 'bold'), foreground='#6B4FBB')
-        self.phase_label.pack(pady=(0, 2))
+        # 百分比 + 阶段 并排
+        info_row = tk.Frame(self.root, bg=BG_DARK)
+        info_row.pack(fill='x', padx=32, pady=(12, 0))
 
-        # 详细信息
-        self.detail_label = ttk.Label(frame, text='', font=('SF Pro', 11), foreground='#888')
-        self.detail_label.pack(pady=(0, 10))
+        self.pct_lbl = tk.Label(
+            info_row, text='0%',
+            font=_font(FONT_DISPLAY, 40, 'bold'),
+            fg=APPLE_BLUE, bg=BG_DARK, anchor='w')
+        self.pct_lbl.pack(side='left')
 
-        # 步骤列表（滚动）
-        list_frame = ttk.Frame(frame)
-        list_frame.pack(fill='both', expand=True)
+        phase_col = tk.Frame(info_row, bg=BG_DARK)
+        phase_col.pack(side='left', padx=(16, 0), anchor='s', pady=(0, 6))
 
-        self.steps_text = tk.Text(list_frame, height=8, font=('SF Pro', 10), wrap='word',
-                                  bg='#f5f5f7', relief='flat', highlightthickness=0)
-        scrollbar = ttk.Scrollbar(list_frame, orient='vertical', command=self.steps_text.yview)
-        self.steps_text.configure(yscrollcommand=scrollbar.set)
-        self.steps_text.pack(side='left', fill='both', expand=True)
-        scrollbar.pack(side='right', fill='y')
+        self.phase_lbl = tk.Label(
+            phase_col, text='初始化',
+            font=_font(FONT_TEXT, 14, 'bold'),
+            fg=WHITE, bg=BG_DARK, anchor='w')
+        self.phase_lbl.pack(anchor='w')
+
+        self.detail_lbl = tk.Label(
+            phase_col, text='',
+            font=_font(FONT_TEXT, 11),
+            fg=GRAY_48, bg=BG_DARK, anchor='w')
+        self.detail_lbl.pack(anchor='w')
+
+        # === 分隔线 ===
+        sep = tk.Frame(self.root, bg=BG_CARD, height=1)
+        sep.pack(fill='x', padx=32, pady=(16, 0))
+
+        # === 步骤列表区 (Surface Card — 可滚动) ===
+        steps_container = tk.Frame(self.root, bg=BG_DARK)
+        steps_container.pack(fill='both', expand=True, padx=32, pady=(12, 0))
+
+        steps_header = tk.Label(
+            steps_container, text='执行步骤',
+            font=_font(FONT_TEXT, 11, 'bold'),
+            fg=GRAY_48, bg=BG_DARK, anchor='w')
+        steps_header.pack(fill='x', pady=(0, 4))
+
+        self.steps_text = tk.Text(
+            steps_container, font=_font(FONT_TEXT, 11),
+            bg=BG_CARD, fg=GRAY_80, relief='flat',
+            highlightthickness=0, borderwidth=0,
+            padx=10, pady=8, wrap='word',
+            insertbackground=BG_CARD, cursor='arrow')
+        self.steps_text.pack(fill='both', expand=True)
         self.steps_text.configure(state='disabled')
+        # 配置标签颜色
+        self.steps_text.tag_configure('ok', foreground=GREEN)
+        self.steps_text.tag_configure('fail', foreground=RED)
+        self.steps_text.tag_configure('run', foreground=BRIGHT_BLUE)
+        self.steps_text.tag_configure('pending', foreground=GRAY_48)
+        self.steps_text.tag_configure('dim', foreground=GRAY_48)
 
-        # 开始轮询
+        # === 底部时间戳 ===
+        self.ts_lbl = tk.Label(
+            self.root, text='',
+            font=_font(FONT_TEXT, 10),
+            fg=GRAY_48, bg=BG_DARK, anchor='center')
+        self.ts_lbl.pack(fill='x', padx=32, pady=(4, 16))
+
+        self.root.update_idletasks()
         self.poll()
         self.root.mainloop()
 
     def poll(self):
         try:
             if PROGRESS_FILE.exists():
-                data = json.loads(PROGRESS_FILE.read_text(encoding='utf-8'))
+                data = json.loads(
+                    PROGRESS_FILE.read_text(encoding='utf-8'))
                 pct = data.get('pct', 0)
                 phase = data.get('phase', '')
                 detail = data.get('detail', '')
                 steps = data.get('steps', [])
                 done = data.get('done', False)
+                ts = data.get('ts', '')
 
-                self.progress['value'] = pct
-                self.pct_label.configure(text=f'{pct}%')
-                self.phase_label.configure(text=phase)
-                self.detail_label.configure(text=detail)
+                # 进度条
+                self.root.update_idletasks()
+                tw = self._bar_track.winfo_width()
+                fw = max(0, int(tw * pct / 100))
+                self.bar_fill.place_configure(width=fw)
 
-                # 更新步骤列表
+                # 文本
+                self.pct_lbl.configure(text='{}%'.format(pct))
+                self.phase_lbl.configure(text=phase.replace(
+                    '\U0001f50d ', '').replace('\U0001f9f9 ', ''))
+                self.detail_lbl.configure(text=detail)
+                self.subtitle_lbl.configure(
+                    text=phase if not done else '')
+                if ts:
+                    self.ts_lbl.configure(text=ts)
+
+                # 步骤列表（可滚动 Text）
                 self.steps_text.configure(state='normal')
                 self.steps_text.delete('1.0', 'end')
                 for s in steps:
-                    icon = '✅' if s.get('ok') is True else ('❌' if s.get('ok') is False else '⏳')
-                    t = s.get('time', '')
-                    name = s.get('name', '')
-                    info = s.get('detail', '')
-                    line = f'{icon} {name}  {info}  [{t}]\n'
-                    self.steps_text.insert('end', line)
+                    if s.get('ok') is True:
+                        icon, tag = '\u2713 ', 'ok'
+                    elif s.get('ok') is False:
+                        icon, tag = '\u2717 ', 'fail'
+                    elif s.get('detail') == '\u5f85\u6267\u884c':
+                        icon, tag = '\u25cb ', 'pending'
+                    else:
+                        icon, tag = '\u2022 ', 'run'
+                    self.steps_text.insert('end', icon, tag)
+                    name_tag = 'pending' if tag == 'pending' else None
+                    self.steps_text.insert('end', s.get('name', ''), name_tag)
+                    dt = s.get('detail', '')
+                    tm = s.get('time', '')
+                    if dt or tm:
+                        self.steps_text.insert(
+                            'end', '  {}  {}'.format(dt, tm), 'dim')
+                    self.steps_text.insert('end', '\n')
                 self.steps_text.see('end')
                 self.steps_text.configure(state='disabled')
 
                 if done:
                     if pct >= 90:
-                        self.title_label.configure(text='✅ 爬取完成!')
-                        self.phase_label.configure(foreground='#30d158')
+                        self.title_lbl.configure(text='爬取完成')
+                        self.bar_fill.configure(bg=GREEN)
+                        self.pct_lbl.configure(fg=GREEN)
+                    elif pct >= 50:
+                        self.title_lbl.configure(text='部分完成')
+                        self.bar_fill.configure(bg=ORANGE)
+                        self.pct_lbl.configure(fg=ORANGE)
                     else:
-                        self.title_label.configure(text='⚠️ 部分完成')
-                        self.phase_label.configure(foreground='#ff6b6b')
-                    return  # 停止轮询
+                        self.title_lbl.configure(text='执行失败')
+                        self.bar_fill.configure(bg=RED)
+                        self.pct_lbl.configure(fg=RED)
+                    self.subtitle_lbl.configure(text='')
+                    self.root.after(10000, self.root.destroy)
+                    return
         except Exception:
             pass
         self.root.after(POLL_MS, self.poll)

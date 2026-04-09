@@ -15,9 +15,9 @@ def main():
         data = json.load(f)
     jobs = data.get('jobs', [])
 
-    # 找出描述缺失或偏短（可能被截断）且有链接的岗位
+    # 找出描述缺失或极短且有链接的岗位
     need_fix = [(i, j) for i, j in enumerate(jobs)
-                if j.get('url') and (not j.get('desc') or len(j['desc'].strip()) < 200)]
+                if j.get('url') and (not j.get('desc') or len(j['desc'].strip()) < 30)]
 
     print(f'总岗位: {len(jobs)}, 描述缺失且有链接: {len(need_fix)}')
     if not need_fix:
