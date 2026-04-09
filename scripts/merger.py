@@ -53,10 +53,11 @@ def save(jobs: list):
         'updated': datetime.datetime.now().strftime('%Y-%m-%d %H:%M'),
         'total': len(jobs),
     }
-    # Clean internal fields for frontend
+    # Clean internal fields for frontend, but keep _key and _date for dedup
+    KEEP = {'_key', '_date'}
     frontend_jobs = []
     for j in jobs:
-        fj = {k: v for k, v in j.items() if not k.startswith('_')}
+        fj = {k: v for k, v in j.items() if not k.startswith('_') or k in KEEP}
         if j.get('_new'):
             fj['is_new'] = True
         frontend_jobs.append(fj)
