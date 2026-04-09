@@ -12,6 +12,7 @@ import sys
 import json
 import time
 import random
+import math
 import logging
 import argparse
 from pathlib import Path
@@ -36,12 +37,16 @@ CONFIG_DIR = Path(__file__).parent.parent.parent / 'config'
 PROFILE_DIR = Path(__file__).parent.parent.parent / '.chrome_profile'  # 持久化登录
 
 # 翻页与滚动
-MAX_PAGES = 5           # 每个关键词最多翻5页
-MAX_SCROLLS_PER_PAGE = 5
+MAX_PAGES = 4           # 每个关键词最多翻4页
+MAX_SCROLLS_PER_PAGE = 4
 
-# 防封参数
-MIN_DELAY, MAX_DELAY = 0.8, 2.0
-KEYWORD_REST_MIN, KEYWORD_REST_MAX = 3, 6
+# 防封参数 — 高斯分布延迟，更像真人
+MIN_DELAY, MAX_DELAY = 1.2, 3.5
+KEYWORD_REST_MIN, KEYWORD_REST_MAX = 5, 12
+CITY_REST_MIN, CITY_REST_MAX = 8, 18
+DETAIL_DELAY_MIN, DETAIL_DELAY_MAX = 1.5, 3.0
+DETAIL_BATCH_PAUSE = (6, 15)   # 每批详情后的长休息
+DETAIL_BATCH_SIZE = 15         # 每批几个
 
 # 强相关过滤：岗位名必须命中以下任一关键词才算"AI PM 强相关"
 RELEVANT_KEYWORDS = [
@@ -74,7 +79,14 @@ def load_cities():
 
 
 def random_delay(lo=MIN_DELAY, hi=MAX_DELAY):
-    time.sleep(random.uniform(lo, hi))
+    """高斯分布延迟，偶尔出现较长停顿（模拟走神/看手机）"""
+    mean = (lo + hi) / 2
+    std = (hi - lo) / 4
+    delay = max(lo * 0.8, random.gauss(mean, std))
+    # 5% 概率出现一次「走神」长停顿
+    if random.random() < 0.05:
+        delay += random.uniform(2, 6)
+    time.sleep(delay)
 
 
 def is_relevant(job_name: str, skills: str = '') -> bool:
@@ -86,17 +98,39 @@ def is_relevant(job_name: str, skills: str = '') -> bool:
 
 
 def simulate_human(page):
-    """模拟真人浏览：随机滚动、停顿"""
-    for _ in range(random.randint(1, 3)):
-        act = random.choice(['down', 'up', 'pause'])
+    """模拟真人浏览：滚动、停顿、鼠标移动、偶尔点空白"""
+    actions = random.randint(2, 5)
+    for _ in range(actions):
+        act = random.choices(
+            ['down', 'up', 'pause', 'mouse', 'read'],
+            weights=[30, 15, 20, 20, 15], k=1
+        )[0]
         if act == 'down':
-            page.scroll.down(random.randint(150, 500))
-            time.sleep(random.uniform(0.2, 0.8))
+            # 非匀速滚动：先快后慢，模拟手指滑动
+            total = random.randint(200, 600)
+            steps = random.randint(2, 4)
+            for i in range(steps):
+                chunk = int(total * random.uniform(0.15, 0.45))
+                page.scroll.down(chunk)
+                time.sleep(random.uniform(0.05, 0.2))
+            time.sleep(random.uniform(0.3, 0.8))
         elif act == 'up':
-            page.scroll.up(random.randint(50, 200))
-            time.sleep(random.uniform(0.2, 0.6))
+            page.scroll.up(random.randint(80, 250))
+            time.sleep(random.uniform(0.3, 0.7))
+        elif act == 'mouse':
+            # 随机移动鼠标到页面某处
+            try:
+                x = random.randint(100, 900)
+                y = random.randint(200, 600)
+                page.run_js(f'document.elementFromPoint({x},{y})')
+            except:
+                pass
+            time.sleep(random.uniform(0.2, 0.5))
+        elif act == 'read':
+            # 模拟阅读停顿
+            time.sleep(random.uniform(1.0, 3.0))
         else:
-            time.sleep(random.uniform(0.3, 1.0))
+            time.sleep(random.uniform(0.4, 1.2))
 
 
 # 详情页 API（通过 securityId 获取完整职位描述）
@@ -156,18 +190,28 @@ class BossDPSpider:
         self.page = None
         self.all_jobs = {}    # key -> raw job
         self.skipped = 0      # 被过滤掉的非相关岗位
+        self._progress_cb = None  # 进度回调: (combo_idx, total, kw, city, job_count)
 
     def _build_options(self, headless=False):
         from DrissionPage import ChromiumOptions
         PROFILE_DIR.mkdir(exist_ok=True)
         co = ChromiumOptions()
+        # --- 反指纹检测 ---
         co.set_argument('--disable-blink-features=AutomationControlled')
+        # 现代 Chrome UA，随机小版本
+        minor = random.randint(0, 99)
         co.set_user_agent(
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
-            'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+            f'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
+            f'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.{minor} Safari/537.36'
         )
         co.set_pref('excludeSwitches', ['enable-automation'])
         co.set_pref('useAutomationExtension', False)
+        # 随机 viewport 尺寸（常见分辨率附近浮动）
+        w = random.choice([1440, 1512, 1680, 1920]) + random.randint(-20, 20)
+        h = random.choice([900, 1080, 1050]) + random.randint(-20, 20)
+        co.set_argument(f'--window-size={w},{h}')
+        # 语言与地区
+        co.set_argument('--lang=zh-CN')
         co.set_user_data_path(str(PROFILE_DIR))
         if headless:
             co.set_argument('--headless=new')
@@ -179,9 +223,18 @@ class BossDPSpider:
         Settings.set_singleton_tab_obj(False)
 
         self._headless_requested = headless
-        # 始终先用有界面模式启动，确认登录后再切 headless
         co = self._build_options(headless=False)
         self.page = ChromiumPage(addr_or_opts=co)
+        # 注入反检测 JS（隐藏 webdriver 特征）
+        try:
+            self.page.run_js('''
+                Object.defineProperty(navigator, "webdriver", {get: () => undefined});
+                Object.defineProperty(navigator, "plugins", {get: () => [1,2,3,4,5]});
+                Object.defineProperty(navigator, "languages", {get: () => ["zh-CN","zh","en"]});
+                window.chrome = {runtime: {}, loadTimes: () => ({}), csi: () => ({})};
+            ''')
+        except:
+            pass
         print('✓ 浏览器已启动 (Profile:', PROFILE_DIR, ')')
 
     def ensure_login(self, city_code):
@@ -258,9 +311,26 @@ class BossDPSpider:
         for page_num in range(1, MAX_PAGES + 1):
             self.page.listen.start('wapi/zpgeek/search/joblist.json')
 
-            url = f'https://www.zhipin.com/web/geek/job?query={keyword}&city={city_code}&page={page_num}'
-            self.page.get(url)
-            random_delay(1, 2)
+            if page_num == 1:
+                # 首页：正常导航
+                url = f'https://www.zhipin.com/web/geek/job?query={keyword}&city={city_code}'
+                self.page.get(url)
+            else:
+                # 后续页：尝试点击「下一页」按钮，更像真人
+                try:
+                    next_btn = self.page.ele('css:.ui-icon-arrow-right', timeout=3)
+                    if next_btn:
+                        next_btn.click()
+                    else:
+                        url = f'https://www.zhipin.com/web/geek/job?query={keyword}&city={city_code}&page={page_num}'
+                        self.page.get(url)
+                except:
+                    url = f'https://www.zhipin.com/web/geek/job?query={keyword}&city={city_code}&page={page_num}'
+                    self.page.get(url)
+
+            # 页面加载后先「阅读」一下
+            random_delay(2, 4)
+            simulate_human(self.page)
 
             # 收集翻页触发的 API
             page_jobs = collect_api_responses(self.page, timeout=8)
@@ -273,12 +343,17 @@ class BossDPSpider:
 
             # 滚动触发更多加载
             scroll_no_new = 0
-            for _ in range(MAX_SCROLLS_PER_PAGE):
-                self.page.scroll.down(random.randint(500, 900))
-                random_delay(0.5, 1.2)
+            for scroll_i in range(MAX_SCROLLS_PER_PAGE):
+                # 变速滚动：模拟手指
+                dist = random.randint(300, 700)
+                steps = random.randint(2, 3)
+                for _ in range(steps):
+                    self.page.scroll.down(dist // steps + random.randint(-30, 30))
+                    time.sleep(random.uniform(0.08, 0.25))
+                random_delay(0.8, 2.0)
 
-                # 偶尔模拟人类
-                if random.random() < 0.2:
+                # 30% 概率模拟人类行为
+                if random.random() < 0.3:
                     simulate_human(self.page)
 
                 scroll_jobs = collect_api_responses(self.page, timeout=2)
@@ -301,7 +376,8 @@ class BossDPSpider:
             else:
                 no_new_pages = 0
 
-            random_delay(0.5, 1.5)
+            # 翻页间延迟
+            random_delay(1.5, 3.5)
 
         return keyword_new
 
@@ -328,8 +404,16 @@ class BossDPSpider:
         print(f'\n📊 {len(keywords)} 关键词 × {len(cities)} 城市 = {total_combos} 组')
         print(f'⏱  预计 {max(1, total_combos * 15 // 60)}-{total_combos * 25 // 60} 分钟\n')
 
-        for city_name, city_code in cities.items():
-            for kw in keywords:
+        # 随机打乱城市顺序，避免固定遍历模式
+        city_items = list(cities.items())
+        random.shuffle(city_items)
+
+        for city_i, (city_name, city_code) in enumerate(city_items):
+            # 每个城市内随机打乱关键词顺序
+            kw_list = list(keywords)
+            random.shuffle(kw_list)
+
+            for kw in kw_list:
                 combo_idx += 1
                 elapsed = time.time() - t_start
                 eta = (elapsed / max(combo_idx - 1, 1)) * (total_combos - combo_idx) if combo_idx > 1 else 0
@@ -338,11 +422,19 @@ class BossDPSpider:
 
                 n = self.scrape_keyword(kw, city_code)
                 print(f'  → +{n} 强相关 | 累计 {len(self.all_jobs)} (过滤 {self.skipped})')
-                random_delay(1, 3)
+                # 进度回调
+                if self._progress_cb:
+                    try:
+                        self._progress_cb(combo_idx, total_combos, kw, city_name, len(self.all_jobs))
+                    except:
+                        pass
+                # 关键词间休息
+                random_delay(KEYWORD_REST_MIN, KEYWORD_REST_MAX)
 
-            # 城市间休息 + 模拟行为
+            # 城市间较长休息 + 模拟行为
             if combo_idx < total_combos:
-                rest = random.uniform(KEYWORD_REST_MIN, KEYWORD_REST_MAX)
+                rest = random.uniform(CITY_REST_MIN, CITY_REST_MAX)
+                print(f'  ☕ 城市切换休息 {rest:.0f}s...')
                 simulate_human(self.page)
                 time.sleep(rest)
 
@@ -369,37 +461,42 @@ class BossDPSpider:
         print(f'\n📝 开始获取 {total} 个岗位的完整描述...')
         success = 0
         fail = 0
+        consecutive_fail = 0
+
+        # 随机打乱详情获取顺序
+        random.shuffle(jobs_needing_detail)
 
         for idx, (key, job) in enumerate(jobs_needing_detail, 1):
             sid = job['security_id']
             try:
-                # 通过 DrissionPage 发起详情 API 请求
-                detail_url = f'{DETAIL_API}?securityId={sid}'
-                self.page.listen.start('wapi/zpgeek/job/detail.json')
-                self.page.get(detail_url)
+                # 通过详情页获取（更像真人浏览行为）
+                eid = job.get('encrypt_job_id', '')
+                got_desc = False
 
-                # 尝试从 API 响应获取
-                try:
-                    r = self.page.listen.wait(timeout=5)
-                    if r and r.response and r.response.body:
-                        body = r.response.body
-                        if isinstance(body, str):
-                            body = json.loads(body)
-                        desc = body.get('zpData', {}).get('jobInfo', {}).get('postDescription', '')
-                        if desc:
-                            job['full_desc'] = desc
-                            success += 1
-                except:
-                    pass
-                self.page.listen.stop()
+                if eid:
+                    detail_page_url = f'https://www.zhipin.com/job_detail/{eid}.html'
+                    self.page.listen.start('wapi/zpgeek/job/detail.json')
+                    self.page.get(detail_page_url)
+                    random_delay(1.5, 3.0)
 
-                # 如果 API 拦截失败，尝试从岗位详情页抓取
-                if not job.get('full_desc'):
-                    eid = job.get('encrypt_job_id', '')
-                    if eid:
-                        detail_page_url = f'https://www.zhipin.com/job_detail/{eid}.html'
-                        self.page.get(detail_page_url)
-                        random_delay(1, 2)
+                    # 先尝试 API 拦截
+                    try:
+                        r = self.page.listen.wait(timeout=5)
+                        if r and r.response and r.response.body:
+                            body = r.response.body
+                            if isinstance(body, str):
+                                body = json.loads(body)
+                            desc = body.get('zpData', {}).get('jobInfo', {}).get('postDescription', '')
+                            if desc:
+                                job['full_desc'] = desc
+                                success += 1
+                                got_desc = True
+                    except:
+                        pass
+                    self.page.listen.stop()
+
+                    # API 失败则从页面 DOM 抓取
+                    if not got_desc:
                         try:
                             desc_text = self.page.run_js(
                                 'return document.querySelector(".job-sec-text")?.innerText || '
@@ -408,21 +505,58 @@ class BossDPSpider:
                             if desc_text and len(desc_text) > 20:
                                 job['full_desc'] = desc_text
                                 success += 1
+                                got_desc = True
                         except:
                             pass
 
+                    # 模拟在详情页「阅读」
+                    if got_desc and random.random() < 0.4:
+                        simulate_human(self.page)
+
+                if not got_desc and not job.get('full_desc'):
+                    # 回退：直接用 API
+                    try:
+                        detail_url = f'{DETAIL_API}?securityId={sid}'
+                        self.page.listen.start('wapi/zpgeek/job/detail.json')
+                        self.page.get(detail_url)
+                        r = self.page.listen.wait(timeout=5)
+                        if r and r.response and r.response.body:
+                            body = r.response.body
+                            if isinstance(body, str):
+                                body = json.loads(body)
+                            desc = body.get('zpData', {}).get('jobInfo', {}).get('postDescription', '')
+                            if desc:
+                                job['full_desc'] = desc
+                                success += 1
+                                got_desc = True
+                        self.page.listen.stop()
+                    except:
+                        self.page.listen.stop()
+
                 if not job.get('full_desc'):
                     fail += 1
+                    consecutive_fail += 1
+                else:
+                    consecutive_fail = 0
+
+                # 连续失败过多，可能被封了，长休息
+                if consecutive_fail >= 5:
+                    print(f'  ⚠ 连续 {consecutive_fail} 次失败，休息 30s...')
+                    time.sleep(random.uniform(25, 35))
+                    consecutive_fail = 0
 
                 if idx % 20 == 0:
                     print(f'  详情进度: {idx}/{total} (成功 {success}, 失败 {fail})')
 
-                random_delay(0.5, 1.2)
+                # 每条之间的延迟
+                random_delay(DETAIL_DELAY_MIN, DETAIL_DELAY_MAX)
 
-                # 每 30 个岗位休息一下防封
-                if idx % 30 == 0:
+                # 每批详情后较长休息
+                if idx % DETAIL_BATCH_SIZE == 0:
+                    pause = random.uniform(*DETAIL_BATCH_PAUSE)
+                    print(f'  ☕ 批次休息 {pause:.0f}s...')
                     simulate_human(self.page)
-                    time.sleep(random.uniform(2, 4))
+                    time.sleep(pause)
 
             except Exception as e:
                 logger.warning(f'获取详情失败 [{key}]: {e}')
