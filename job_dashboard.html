@@ -139,19 +139,36 @@ section{padding:80px 20px;scroll-margin-top:52px}
 .empty{text-align:center;padding:48px;opacity:.35;font-size:15px}
 
 /* ===== TOOLTIP ===== */
-.tip{position:fixed;z-index:3000;background:rgba(30,30,30,.95);color:#fff;padding:10px 14px;border-radius:10px;font-size:12px;line-height:1.4;pointer-events:none;max-width:260px;box-shadow:0 8px 24px rgba(0,0,0,.3);opacity:0;transition:opacity .15s;backdrop-filter:blur(8px)}
+.tip{position:fixed;z-index:3000;background:rgba(30,30,30,.95);color:#fff;padding:10px 14px;border-radius:10px;font-size:12px;line-height:1.5;pointer-events:none;max-width:280px;box-shadow:0 8px 24px rgba(0,0,0,.3);opacity:0;transition:opacity .15s;backdrop-filter:blur(8px);white-space:pre-line}
 .tip.show{opacity:1}
 
+/* ===== FILTER GROUP ===== */
+.filter-group{margin-bottom:20px}
+.filter-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1.2px;color:rgba(255,255,255,.3);margin-bottom:8px;padding-left:4px}
+.light .filter-label{color:var(--text48)}
+
+/* ===== FOOTER ===== */
+.footer{padding:40px 20px;text-align:center;font-size:12px;color:rgba(255,255,255,.2);border-top:1px solid rgba(255,255,255,.06)}
+.footer a{color:var(--bright-blue);text-decoration:none}
+
 /* ===== RESPONSIVE ===== */
+@media(max-width:1024px){
+  .dir-grid{grid-template-columns:repeat(3,1fr)}
+}
 @media(max-width:768px){
   nav{gap:14px;padding:0 12px}nav a{font-size:11px}
   .dir-grid{grid-template-columns:repeat(2,1fr)}
   .grid{grid-template-columns:1fr}
   .kpi-row{gap:20px}.kpi .n{font-size:32px}
   .scatter-wrap{height:240px}
+  .bar-label{width:44px;font-size:12px}
+  .bar-info{width:70px;font-size:11px}
 }
 @media(max-width:480px){
   .dir-grid{grid-template-columns:repeat(2,1fr)}
+  .hero h1{font-size:28px}
+  .hero p{font-size:15px}
+  section{padding:60px 16px}
 }
 </style>
 </head>
@@ -215,14 +232,19 @@ section{padding:80px 20px;scroll-margin-top:52px}
   <div class="wrap">
     <h2 class="sec-h">自由探索</h2>
     <p class="sec-sub">多维筛选：方向 × 城市 × 薪资 × 经验</p>
-    <div class="pills" id="fDir"></div>
-    <div class="pills" id="fCity"></div>
-    <div class="pills" id="fTier"></div>
-    <div class="pills" id="fExp"></div>
+    <div class="filter-group"><div class="filter-label">方向</div><div class="pills" id="fDir"></div></div>
+    <div class="filter-group"><div class="filter-label">城市</div><div class="pills" id="fCity"></div></div>
+    <div class="filter-group"><div class="filter-label">薪资</div><div class="pills" id="fTier"></div></div>
+    <div class="filter-group"><div class="filter-label">经验</div><div class="pills" id="fExp"></div></div>
+    <p id="exSummary" style="text-align:center;font-size:13px;color:rgba(255,255,255,.4);margin-bottom:20px"></p>
     <div class="grid" id="exCards"></div>
     <button class="more-btn" id="exMore" style="display:none">加载更多</button>
   </div>
 </section>
+
+<footer class="footer">
+  AI PM 岗位全景分析 · 数据每日自动更新 · <a href="https://github.com/Liyanlong123456dsf/ai-pm-job-dashboard" target="_blank">GitHub</a>
+</footer>
 
 <div class="overlay" id="overlay"><div class="modal" id="modal"></div></div>
 <div class="tip" id="tip"></div>
@@ -492,6 +514,9 @@ function renderExplore(){
   if(F.city!=='全部') r=r.filter(j=>norm(j.city)===F.city);
   if(F.tier!=='全部') r=r.filter(j=>j.tier===F.tier);
   if(F.exp!=='全部') r=r.filter(j=>j.exp===F.exp);
+  // 结果汇总
+  const exSummary=document.getElementById('exSummary');
+  if(exSummary) exSummary.textContent=`共 ${r.length} 个岗位${r.length?` · 均薪 ${avgS(r)}K/月`:''}`;
   renderGrid('exCards',r,'exMore');
 }
 function initAll(){ renderHero(); renderDir(); renderSalary(); renderCities(); renderExplore(); }
