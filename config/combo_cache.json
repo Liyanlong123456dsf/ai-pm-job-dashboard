@@ -1,0 +1,452 @@
+{
+  "智能产品经理@广州": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "对话产品经理@广州": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "Agent产品经理@广州": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "算法产品经理@广州": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "多模态产品经理@广州": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "大模型产品经理@广州": {
+    "zero_days": 1,
+    "last_zero": "2026-04-10",
+    "skip_until": ""
+  },
+  "NLP产品经理@广州": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "AIGC产品经理@广州": {
+    "zero_days": 1,
+    "last_zero": "2026-04-10",
+    "skip_until": ""
+  },
+  "AI产品经理@广州": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "对话产品经理@杭州": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "算法产品经理@杭州": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "智能产品经理@杭州": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "Agent产品经理@杭州": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "多模态产品经理@杭州": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "大模型产品经理@杭州": {
+    "zero_days": 1,
+    "last_zero": "2026-04-10",
+    "skip_until": ""
+  },
+  "NLP产品经理@杭州": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "AI产品经理@杭州": {
+    "zero_days": 1,
+    "last_zero": "2026-04-10",
+    "skip_until": ""
+  },
+  "AIGC产品经理@杭州": {
+    "zero_days": 1,
+    "last_zero": "2026-04-10",
+    "skip_until": ""
+  },
+  "大模型产品经理@上海": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "算法产品经理@上海": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "智能产品经理@上海": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "NLP产品经理@上海": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "对话产品经理@上海": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "Agent产品经理@上海": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "多模态产品经理@上海": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "AIGC产品经理@上海": {
+    "zero_days": 1,
+    "last_zero": "2026-04-10",
+    "skip_until": ""
+  },
+  "AI产品经理@上海": {
+    "zero_days": 1,
+    "last_zero": "2026-04-10",
+    "skip_until": ""
+  },
+  "对话产品经理@西安": {
+    "zero_days": 1,
+    "last_zero": "2026-04-10",
+    "skip_until": ""
+  },
+  "Agent产品经理@西安": {
+    "zero_days": 1,
+    "last_zero": "2026-04-10",
+    "skip_until": ""
+  },
+  "算法产品经理@西安": {
+    "zero_days": 1,
+    "last_zero": "2026-04-10",
+    "skip_until": ""
+  },
+  "多模态产品经理@西安": {
+    "zero_days": 1,
+    "last_zero": "2026-04-10",
+    "skip_until": ""
+  },
+  "NLP产品经理@西安": {
+    "zero_days": 1,
+    "last_zero": "2026-04-10",
+    "skip_until": ""
+  },
+  "智能产品经理@西安": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "大模型产品经理@西安": {
+    "zero_days": 1,
+    "last_zero": "2026-04-10",
+    "skip_until": ""
+  },
+  "AIGC产品经理@西安": {
+    "zero_days": 1,
+    "last_zero": "2026-04-10",
+    "skip_until": ""
+  },
+  "AI产品经理@西安": {
+    "zero_days": 1,
+    "last_zero": "2026-04-10",
+    "skip_until": ""
+  },
+  "NLP产品经理@南京": {
+    "zero_days": 1,
+    "last_zero": "2026-04-10",
+    "skip_until": ""
+  },
+  "算法产品经理@南京": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "对话产品经理@南京": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "大模型产品经理@南京": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "Agent产品经理@南京": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "智能产品经理@南京": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "多模态产品经理@南京": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "AI产品经理@南京": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "AIGC产品经理@南京": {
+    "zero_days": 1,
+    "last_zero": "2026-04-10",
+    "skip_until": ""
+  },
+  "多模态产品经理@北京": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "大模型产品经理@北京": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "算法产品经理@北京": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "对话产品经理@北京": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "Agent产品经理@北京": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "智能产品经理@北京": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "NLP产品经理@北京": {
+    "zero_days": 1,
+    "last_zero": "2026-04-10",
+    "skip_until": ""
+  },
+  "AIGC产品经理@北京": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "AI产品经理@北京": {
+    "zero_days": 1,
+    "last_zero": "2026-04-10",
+    "skip_until": ""
+  },
+  "智能产品经理@厦门": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "对话产品经理@厦门": {
+    "zero_days": 1,
+    "last_zero": "2026-04-10",
+    "skip_until": ""
+  },
+  "大模型产品经理@厦门": {
+    "zero_days": 1,
+    "last_zero": "2026-04-10",
+    "skip_until": ""
+  },
+  "多模态产品经理@厦门": {
+    "zero_days": 1,
+    "last_zero": "2026-04-10",
+    "skip_until": ""
+  },
+  "Agent产品经理@厦门": {
+    "zero_days": 1,
+    "last_zero": "2026-04-10",
+    "skip_until": ""
+  },
+  "NLP产品经理@厦门": {
+    "zero_days": 1,
+    "last_zero": "2026-04-10",
+    "skip_until": ""
+  },
+  "算法产品经理@厦门": {
+    "zero_days": 1,
+    "last_zero": "2026-04-10",
+    "skip_until": ""
+  },
+  "AIGC产品经理@厦门": {
+    "zero_days": 1,
+    "last_zero": "2026-04-10",
+    "skip_until": ""
+  },
+  "AI产品经理@厦门": {
+    "zero_days": 1,
+    "last_zero": "2026-04-10",
+    "skip_until": ""
+  },
+  "大模型产品经理@深圳": {
+    "zero_days": 1,
+    "last_zero": "2026-04-10",
+    "skip_until": ""
+  },
+  "Agent产品经理@深圳": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "多模态产品经理@深圳": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "算法产品经理@深圳": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "对话产品经理@深圳": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "智能产品经理@深圳": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "NLP产品经理@深圳": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "AIGC产品经理@深圳": {
+    "zero_days": 1,
+    "last_zero": "2026-04-10",
+    "skip_until": ""
+  },
+  "AI产品经理@深圳": {
+    "zero_days": 1,
+    "last_zero": "2026-04-10",
+    "skip_until": ""
+  },
+  "算法产品经理@成都": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "智能产品经理@成都": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "Agent产品经理@成都": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "大模型产品经理@成都": {
+    "zero_days": 1,
+    "last_zero": "2026-04-10",
+    "skip_until": ""
+  },
+  "NLP产品经理@成都": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "多模态产品经理@成都": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "对话产品经理@成都": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "AIGC产品经理@成都": {
+    "zero_days": 1,
+    "last_zero": "2026-04-10",
+    "skip_until": ""
+  },
+  "AI产品经理@成都": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "NLP产品经理@郑州": {
+    "zero_days": 1,
+    "last_zero": "2026-04-10",
+    "skip_until": ""
+  },
+  "大模型产品经理@郑州": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "智能产品经理@郑州": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "对话产品经理@郑州": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "多模态产品经理@郑州": {
+    "zero_days": 1,
+    "last_zero": "2026-04-10",
+    "skip_until": ""
+  },
+  "算法产品经理@郑州": {
+    "zero_days": 1,
+    "last_zero": "2026-04-10",
+    "skip_until": ""
+  },
+  "Agent产品经理@郑州": {
+    "zero_days": 1,
+    "last_zero": "2026-04-10",
+    "skip_until": ""
+  },
+  "AIGC产品经理@郑州": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  },
+  "AI产品经理@郑州": {
+    "zero_days": 0,
+    "last_zero": "",
+    "skip_until": ""
+  }
+}

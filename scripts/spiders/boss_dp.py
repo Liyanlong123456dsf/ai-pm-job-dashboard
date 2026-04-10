@@ -334,7 +334,7 @@ class BossDPSpider:
         # 启动时加载已有数据 key 集合，用于实时去重
         self._existing_keys = _load_existing_keys()
         if self._existing_keys:
-            print(f'📦 已加载 {len(self._existing_keys)} 条已有数据用于去重')
+            logger.info(f'📦 已加载 {len(self._existing_keys)} 条已有数据用于去重')
 
     def _build_options(self, headless=False, fresh_profile=False):
         from DrissionPage import ChromiumOptions
@@ -378,7 +378,7 @@ class BossDPSpider:
         self.page = ChromiumPage(addr_or_opts=co)
         # 注入反检测 JS（隐藏 webdriver 特征）
         self._inject_stealth()
-        print('✓ 浏览器已启动 (持久化 Profile, 登录状态已保存)')
+        logger.info('✓ 浏览器已启动 (持久化 Profile, 登录状态已保存)')
 
     def _inject_stealth(self):
         """注入反检测 JS，隐藏自动化特征"""
@@ -421,16 +421,13 @@ class BossDPSpider:
                 'return document.querySelectorAll("li[class*=job-card]").length > 0'
             )
             if has_jobs:
-                print('✓ 已检测到登录态（持久化 Profile），直接开始爬取')
+                logger.info('✓ 已检测到登录态（持久化 Profile），直接开始爬取')
                 return True
         except:
             pass
 
         # 未登录 → 提示用户登录
-        print('\n' + '='*50)
-        print('⏳ 请在已打开的 Chrome 窗口中登录 BOSS 直聘')
-        print('   首次登录后，登录状态将被保存，后续自动跳过')
-        print('='*50)
+        logger.warning('⏳ 请在已打开的 Chrome 窗口中登录 BOSS 直聘（首次登录后自动保存）')
 
         # 发送通知提醒
         import subprocess
@@ -450,7 +447,7 @@ class BossDPSpider:
                     'return document.querySelectorAll("li[class*=job-card]").length > 0'
                 )
                 if has_jobs:
-                    print('✓ 已登录，检测到岗位列表')
+                    logger.info('✓ 已登录，检测到岗位列表')
                     return True
             except:
                 pass
@@ -461,13 +458,13 @@ class BossDPSpider:
                     'return document.title.includes("安全") || document.title.includes("验证")'
                 )
                 if is_verify:
-                    print(f'  等待安全验证通过... (已等 {waited}s)')
+                    logger.info(f'  等待安全验证通过... (已等 {waited}s)')
             except:
                 pass
 
             waited += check_interval
             if waited % 30 == 0:
-                print(f'  ⏳ 等待登录中... ({waited}s/{max_wait}s)')
+                logger.info(f'  ⏳ 等待登录中... ({waited}s/{max_wait}s)')
                 # 刷新页面重新检测
                 try:
                     self.page.get(url)
@@ -476,7 +473,7 @@ class BossDPSpider:
                     pass
             time.sleep(check_interval)
 
-        print('⚠ 等待超时，但继续尝试...')
+        logger.warning('⚠ 等待登录超时(180s)，但继续尝试...')
         return True
 
     def _add_jobs(self, api_jobs):
@@ -616,7 +613,7 @@ class BossDPSpider:
                 # 策略B增强: 整页全是跨关键词ID重复 → 抽查一页，90%+终止
                 if id_dup_rate >= 1.0 and page_relevant >= 3:
                     self.page.listen.stop()
-                    print(f'    ↳ 整页 {page_relevant} 条全是ID重复，抽查下一页...')
+                    logger.info(f'    ↳ 整页 {page_relevant} 条全是ID重复，抽查下一页...')
                     if page_num < max_pages:
                         self.page.listen.start('wapi/zpgeek/search/joblist.json')
                         try:
@@ -633,7 +630,7 @@ class BossDPSpider:
                         keyword_new += probe_new
                         self.page.listen.stop()
                         if probe_relevant > 0 and probe_id_dup / probe_relevant >= 0.9:
-                            print(f'    ↳ 抽查页ID重复 {probe_id_dup}/{probe_relevant}，跨关键词终止')
+                            logger.info(f'    ↳ 抽查页ID重复 {probe_id_dup}/{probe_relevant}，跨关键词终止')
                             break
                     else:
                         break
@@ -642,7 +639,7 @@ class BossDPSpider:
                 if page_num == 1 and repeat_rate >= 0.9:
                     # 首页 90%+ 是旧数据 → 抽查下一页，不做滚动
                     self.page.listen.stop()
-                    print(f'    ↳ 首页 {repeat_rate:.0%} 重复，抽查下一页...')
+                    logger.info(f'    ↳ 首页 {repeat_rate:.0%} 重复，抽查下一页...')
                     self.page.listen.start('wapi/zpgeek/search/joblist.json')
                     try:
                         nb = self.page.ele('css:.ui-icon-arrow-right', timeout=3)
@@ -658,13 +655,13 @@ class BossDPSpider:
                     keyword_new += probe_new
                     self.page.listen.stop()
                     if probe_relevant > 0 and probe_existing / probe_relevant >= 0.8:
-                        print(f'    ↳ 抽查页 {probe_existing}/{probe_relevant} 重复，提前终止')
+                        logger.info(f'    ↳ 抽查页 {probe_existing}/{probe_relevant} 重复，提前终止')
                         break
                     continue
                 elif page_num > 1 and repeat_rate >= 0.8:
                     # 后续页 80%+ 重复 → 直接终止
                     self.page.listen.stop()
-                    print(f'    ↳ 第{page_num}页 {repeat_rate:.0%} 重复，终止翻页')
+                    logger.info(f'    ↳ 第{page_num}页 {repeat_rate:.0%} 重复，终止翻页')
                     break
 
                 # 策略R: 增量时间窗 — 如果本页大部分岗位修改时间 > 7天，提前终止
@@ -672,7 +669,7 @@ class BossDPSpider:
                     old_rate = page_old_time / page_relevant
                     if old_rate >= 0.7 and page_num > 1:
                         self.page.listen.stop()
-                        print(f'    ↳ 策略R: 第{page_num}页 {page_old_time}/{page_relevant} 岗位超7天未更新，终止翻页')
+                        logger.info(f'    ↳ 策略R: 第{page_num}页 {page_old_time}/{page_relevant} 岗位超7天未更新，终止翻页')
                         break
 
             # 有新数据时才滚动加载更多
@@ -741,14 +738,14 @@ class BossDPSpider:
         # 策略J: 加载组合缓存
         combo_cache = _load_combo_cache()
 
-        print(f'\n📊 {len(keywords)} 关键词 × {len(cities)} 城市 = {total_combos} 组')
+        logger.info(f'📊 {len(keywords)} 关键词 × {len(cities)} 城市 = {total_combos} 组')
 
         # 策略J: 预先统计跳过数
         skip_count = sum(1 for cn, _ in cities.items() for k in keywords if _should_skip_combo(combo_cache, k, cn))
         active_combos = total_combos - skip_count
         if skip_count > 0:
-            print(f'💤 策略J: {skip_count} 组连续无新增已跳过，实际执行 {active_combos} 组')
-        print(f'⏱  预计 {max(1, active_combos * 15 // 60)}-{active_combos * 25 // 60} 分钟\n')
+            logger.info(f'💤 策略J: {skip_count} 组连续无新增已跳过，实际执行 {active_combos} 组')
+        logger.info(f'⏱  预计 {max(1, active_combos * 15 // 60)}-{active_combos * 25 // 60} 分钟')
 
         # 随机打乱城市顺序，避免固定遍历模式
         city_items = list(cities.items())
@@ -774,7 +771,7 @@ class BossDPSpider:
                 # 策略J: 检查是否跳过
                 if _should_skip_combo(combo_cache, kw, city_name):
                     entry = combo_cache.get(f'{kw}@{city_name}', {})
-                    print(f'[{combo_idx}/{total_combos}] {kw} @ {city_name}  '
+                    logger.info(f'[{combo_idx}/{total_combos}] {kw} @ {city_name}  '
                           f'💤 跳过(连续{entry.get("zero_days",0)}天无新增，{entry.get("skip_until","")}恢复)')
                     skipped_combos += 1
                     if self._progress_cb:
@@ -787,11 +784,11 @@ class BossDPSpider:
                 elapsed = time.time() - t_start
                 done_real = combo_idx - skipped_combos
                 eta = (elapsed / max(done_real, 1)) * (active_combos - done_real) / 60 if done_real > 0 else 0
-                print(f'[{combo_idx}/{total_combos}] {kw} @ {city_name}  '
+                logger.info(f'[{combo_idx}/{total_combos}] {kw} @ {city_name}  '
                       f'(已用{elapsed/60:.1f}分 剩余≈{eta:.0f}分)')
 
                 n = self.scrape_keyword(kw, city_code, city_name=city_name)
-                print(f'  → +{n} 新增 | 累计 {len(self.all_jobs)} (跳过已有 {self.skipped_existing}, ID去重 {len(self._seen_job_ids)}, 过滤 {self.skipped})')
+                logger.info(f'  → +{n} 新增 | 累计 {len(self.all_jobs)} (跳过已有 {self.skipped_existing}, ID去重 {len(self._seen_job_ids)}, 过滤 {self.skipped})')
 
                 # 策略J: 更新组合缓存
                 _update_combo_cache(combo_cache, kw, city_name, n)
@@ -814,14 +811,14 @@ class BossDPSpider:
                     rest = random.uniform(5, 12)
                 else:
                     rest = random.uniform(CITY_REST_MIN, CITY_REST_MAX)
-                print(f'  ☕ 城市切换休息 {rest:.0f}s...')
+                logger.info(f'  ☕ 城市切换休息 {rest:.0f}s...')
                 simulate_human(self.page)
                 time.sleep(rest)
 
         # 策略J: 保存缓存
         _save_combo_cache(combo_cache)
         if skipped_combos > 0:
-            print(f'\n💤 策略J: 本次跳过 {skipped_combos}/{total_combos} 组')
+            logger.info(f'💤 策略J: 本次跳过 {skipped_combos}/{total_combos} 组')
 
         # 批量获取完整职位描述
         self.fetch_all_details()
@@ -830,8 +827,8 @@ class BossDPSpider:
         results = self._normalize_all()
         self.page.quit()
         # 不再清理 Profile，保留登录状态供下次使用
-        print(f'\n✅ 完成! 耗时 {elapsed_total:.1f} 分钟')
-        print(f'   新增强相关: {len(results)} 条 | 跳过已有: {self.skipped_existing} 条 | 过滤非相关: {self.skipped} 条')
+        logger.info(f'✅ 完成! 耗时 {elapsed_total:.1f} 分钟')
+        logger.info(f'   新增强相关: {len(results)} 条 | 跳过已有: {self.skipped_existing} 条 | 过滤非相关: {self.skipped} 条')
         return results
 
     def _cleanup_profile(self):
@@ -853,7 +850,7 @@ class BossDPSpider:
             return
 
         total = len(jobs_needing_detail)
-        print(f'\n📝 开始获取 {total} 个岗位的完整描述...')
+        logger.info(f'📝 开始获取 {total} 个岗位的完整描述...')
         success = 0
         fail = 0
         consecutive_fail = 0
@@ -936,12 +933,12 @@ class BossDPSpider:
 
                 # 连续失败过多，可能被封了，长休息
                 if consecutive_fail >= 5:
-                    print(f'  ⚠ 连续 {consecutive_fail} 次失败，休息 30s...')
+                    logger.warning(f'  ⚠ 连续 {consecutive_fail} 次失败，休息 30s...')
                     time.sleep(random.uniform(25, 35))
                     consecutive_fail = 0
 
                 if idx % 20 == 0:
-                    print(f'  详情进度: {idx}/{total} (成功 {success}, 失败 {fail})')
+                    logger.info(f'  详情进度: {idx}/{total} (成功 {success}, 失败 {fail})')
 
                 # 每条之间的延迟
                 random_delay(DETAIL_DELAY_MIN, DETAIL_DELAY_MAX)
@@ -949,7 +946,7 @@ class BossDPSpider:
                 # 每批详情后较长休息
                 if idx % DETAIL_BATCH_SIZE == 0:
                     pause = random.uniform(*DETAIL_BATCH_PAUSE)
-                    print(f'  ☕ 批次休息 {pause:.0f}s...')
+                    logger.info(f'  ☕ 批次休息 {pause:.0f}s...')
                     simulate_human(self.page)
                     time.sleep(pause)
 
@@ -958,7 +955,7 @@ class BossDPSpider:
                 fail += 1
                 self.page.listen.stop()
 
-        print(f'  ✅ 详情获取完成: 成功 {success}/{total}, 失败 {fail}')
+        logger.info(f'  ✅ 详情获取完成: 成功 {success}/{total}, 失败 {fail}')
 
     def _normalize_all(self) -> list:
         """标准化为 pipeline 格式"""

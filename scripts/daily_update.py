@@ -297,15 +297,15 @@ def main():
                 f'[{combo_idx}/{total_combos}] 新增 {job_count} 条 · 跳过已有 {skipped} · 剩余 {remaining} 组 ≈{eta_min:.0f}分钟',
                 all_steps)
         spider._progress_cb = _on_spider_progress
-        # 有持久化 Profile → headless 静默运行；无 Profile → 可见模式让用户登录
+        # BOSS直聘反爬会检测 headless，始终使用可见模式
+        # 持久化 Profile 已有登录态时会自动跳过登录步骤
         profile_dir = Path(__file__).parent.parent / '.chrome_profile'
         has_profile = profile_dir.exists() and any(profile_dir.iterdir()) if profile_dir.exists() else False
-        use_headless = has_profile
         if has_profile:
-            logger.info('检测到持久化 Profile，使用 headless 模式')
+            logger.info('检测到持久化 Profile，已有登录态将自动跳过登录')
         else:
             logger.info('首次运行，使用可见模式以便登录')
-        jobs = spider.run(keywords, cities, headless=use_headless)
+        jobs = spider.run(keywords, cities, headless=False)
         all_raw.extend(jobs)
         logger.info(f'BOSS直聘: 抓取 {len(jobs)} 条原始数据')
         status['crawl_raw'] = len(all_raw)
