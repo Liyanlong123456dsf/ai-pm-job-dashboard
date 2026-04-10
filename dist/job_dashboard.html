@@ -205,42 +205,6 @@ section{padding:80px 20px;scroll-margin-top:52px}
 </head>
 <body>
 
-<!-- PASSWORD GATE -->
-<div id="pwGate" style="position:fixed;inset:0;z-index:9999;background:#000;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:20px;transition:opacity .4s">
-  <div style="text-align:center">
-    <div style="font-size:48px;margin-bottom:12px">🔒</div>
-    <h2 style="font-size:24px;font-weight:700;letter-spacing:-.5px;margin-bottom:4px;background:linear-gradient(135deg,#2997ff,#64d2ff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent">AI 岗位全景分析</h2>
-    <p style="font-size:13px;color:rgba(255,255,255,.35)">请输入访问密码</p>
-  </div>
-  <div style="display:flex;gap:8px">
-    <input id="pwInput" type="password" placeholder="输入密码" autofocus
-      style="width:200px;padding:12px 18px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:#fff;font-size:16px;text-align:center;outline:none;letter-spacing:4px;transition:border-color .2s"
-      onfocus="this.style.borderColor='rgba(41,151,255,.5)'" onblur="this.style.borderColor='rgba(255,255,255,.12)'">
-    <button onclick="checkPw()"
-      style="padding:12px 24px;border-radius:12px;background:#0071e3;color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer;transition:background .2s"
-      onmouseenter="this.style.background='#0077ed'" onmouseleave="this.style.background='#0071e3'">进入</button>
-  </div>
-  <p id="pwErr" style="font-size:12px;color:#ff375f;opacity:0;transition:opacity .2s">密码错误，请重试</p>
-</div>
-<script>
-const PW_HASH = '12138';
-function checkPw(){
-  const v = document.getElementById('pwInput').value.trim();
-  if(v === PW_HASH){
-    sessionStorage.setItem('pw_ok','1');
-    const g = document.getElementById('pwGate');
-    g.style.opacity = '0';
-    setTimeout(() => g.remove(), 400);
-  } else {
-    document.getElementById('pwErr').style.opacity = '1';
-    document.getElementById('pwInput').style.borderColor = '#ff375f';
-    setTimeout(() => { document.getElementById('pwErr').style.opacity = '0'; }, 2000);
-  }
-}
-document.getElementById('pwInput').addEventListener('keydown', e => { if(e.key === 'Enter') checkPw(); });
-if(sessionStorage.getItem('pw_ok') === '1') document.getElementById('pwGate').remove();
-</script>
-
 <nav>
   <span class="nav-logo">AI Jobs</span>
   <a href="#hero" class="active" data-sec="hero">总览</a>
@@ -822,16 +786,24 @@ navLinks.forEach(a=>a.addEventListener('click',e=>{e.preventDefault();SFX.click(
     </div>
     <div id="cozeForm">
       <p style="font-size:12px;opacity:.6;margin-bottom:10px">填写扣子平台的 Token 和 Bot ID</p>
-      <input type="password" id="cozeKeyInput" placeholder="pat_xxxxxxxxxxxxxxxx">
-      <input type="text" id="cozeBotInput" placeholder="Bot ID（如 74xxx）" style="margin-top:8px;width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#fff;font-size:14px">
-      <button onclick="saveKey()" style="margin-top:10px">保存并开始</button>
+      <input type="password" id="cozeKeyInput" placeholder="输入新 Token 覆盖当前值">
+      <input type="password" id="cozeBotInput" placeholder="输入新 Bot ID 覆盖当前值" style="margin-top:8px;width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#fff;font-size:14px">
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button onclick="saveKey()" style="flex:1">保存并开始</button>
+        <button onclick="revealKeys()" style="flex:1;background:rgba(255,255,255,.08);color:rgba(255,255,255,.5)">🔒 查看当前 Key</button>
+      </div>
+      <p style="font-size:11px;color:rgba(255,255,255,.25);margin-top:8px">当前 Key 已隐藏 · 输入新值可直接覆盖 · 查看需密码</p>
       <a class="settings-link" href="https://www.coze.cn/open/api" target="_blank">→ 前往扣子开放平台获取</a>
     </div>
     <div id="kimiForm" style="display:none">
       <p style="font-size:12px;opacity:.6;margin-bottom:10px">支持两种 Key：<b>sk-kimi-</b>（Kimi Code）或 <b>sk-</b>（Moonshot平台）</p>
-      <input type="password" id="kimiKeyInput" placeholder="sk-kimi-xxx 或 sk-xxx">
+      <input type="password" id="kimiKeyInput" placeholder="输入新 Key 覆盖当前值">
       <div id="kimiKeyNote" style="display:none;font-size:12px;margin-top:6px"></div>
-      <button onclick="saveKey()" style="margin-top:10px">保存并开始</button>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button onclick="saveKey()" style="flex:1">保存并开始</button>
+        <button onclick="revealKeys()" style="flex:1;background:rgba(255,255,255,.08);color:rgba(255,255,255,.5)">🔒 查看当前 Key</button>
+      </div>
+      <p style="font-size:11px;color:rgba(255,255,255,.25);margin-top:8px">当前 Key 已隐藏 · 输入新值可直接覆盖 · 查看需密码</p>
       <a class="settings-link" href="https://platform.kimi.ai/console/api-keys" target="_blank">→ 获取 Kimi API Key</a>
     </div>
   </div>
@@ -982,39 +954,57 @@ function toggleChat() {
 document.getElementById('chatFab').onclick = toggleChat;
 
 // Settings
+const REVEAL_PW = '12138';
 function showSettings() {
   const s = document.getElementById('chatSettings');
   s.classList.add('show');
   const type = getApiType();
   switchApiTab(type);
-  const ct = getCozeToken();
-  const cb = getCozeBotId();
-  const kk = getKimiKey();
-  document.getElementById('cozeKeyInput').value = ct;
-  document.getElementById('cozeBotInput').value = cb;
-  document.getElementById('kimiKeyInput').value = kk;
+  // 不填入当前 Key，输入框留空，保护已有密钥不被看到
+  document.getElementById('cozeKeyInput').value = '';
+  document.getElementById('cozeBotInput').value = '';
+  document.getElementById('kimiKeyInput').value = '';
+  // 恢复密码框模式
+  document.getElementById('cozeKeyInput').type = 'password';
+  document.getElementById('cozeBotInput').type = 'password';
+  document.getElementById('kimiKeyInput').type = 'password';
 }
 function hideSettings() { document.getElementById('chatSettings').classList.remove('show'); }
+function revealKeys() {
+  const pw = prompt('请输入管理密码以查看当前 API Key：');
+  if (pw !== REVEAL_PW) { alert('密码错误'); return; }
+  const type = getApiType();
+  if (type === 'coze') {
+    document.getElementById('cozeKeyInput').type = 'text';
+    document.getElementById('cozeBotInput').type = 'text';
+    document.getElementById('cozeKeyInput').value = getCozeToken();
+    document.getElementById('cozeBotInput').value = getCozeBotId();
+  } else {
+    document.getElementById('kimiKeyInput').type = 'text';
+    document.getElementById('kimiKeyInput').value = getKimiKey();
+  }
+}
 function saveKey() {
   const type = getApiType();
   if (type === 'coze') {
     const token = document.getElementById('cozeKeyInput').value.trim();
     const botId = document.getElementById('cozeBotInput').value.trim();
-    if (!token || !botId) { alert('请填写 Token 和 Bot ID'); return; }
-    localStorage.setItem('coze_token', token);
-    localStorage.setItem('coze_bot_id', botId);
+    // 空值保留当前 Key，非空则覆盖
+    if (token) localStorage.setItem('coze_token', token);
+    if (botId) localStorage.setItem('coze_bot_id', botId);
   } else {
     const key = document.getElementById('kimiKeyInput').value.trim();
-    if (!key) { alert('请填写 API Key'); return; }
-    localStorage.setItem('kimi_api_key', key);
-    const note = document.getElementById('kimiKeyNote');
-    if (key.startsWith('sk-kimi-')) {
-      note.innerHTML = '✅ Kimi Code Key，直连 api.kimi.com';
-    } else {
-      note.innerHTML = '✅ Moonshot Key，直连 api.moonshot.ai';
+    if (key) {
+      localStorage.setItem('kimi_api_key', key);
+      const note = document.getElementById('kimiKeyNote');
+      if (key.startsWith('sk-kimi-')) {
+        note.innerHTML = '✅ Kimi Code Key，直连 api.kimi.com';
+      } else {
+        note.innerHTML = '✅ Moonshot Key，直连 api.moonshot.ai';
+      }
+      note.style.color = '#30d158';
+      note.style.display = 'block';
     }
-    note.style.color = '#30d158';
-    note.style.display = 'block';
   }
   hideSettings();
   if (!document.getElementById('chatBody').children.length) renderWelcome();
