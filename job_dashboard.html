@@ -25,12 +25,12 @@ nav a:hover{color:#fff}
 nav a.active{color:#fff}
 nav a.active::after{content:'';position:absolute;bottom:-2px;left:0;right:0;height:2px;background:var(--bright-blue);border-radius:1px}
 .nav-logo{font-size:15px;font-weight:600;letter-spacing:-.5px;color:#fff;margin-right:8px;background:linear-gradient(135deg,var(--bright-blue),#64d2ff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-.nav-ext{margin-left:auto;margin-right:16px;padding:5px 14px;border-radius:980px;font-size:12px;font-weight:500;color:var(--bright-blue)!important;border:1px solid rgba(41,151,255,.3);background:rgba(41,151,255,.08);text-decoration:none;transition:all .25s;white-space:nowrap;letter-spacing:-.1px}
-.nav-ext:hover{background:rgba(41,151,255,.18);border-color:rgba(41,151,255,.5);color:#fff!important}
-.nav-ext::after{display:none!important}
-
 /* ===== HERO ===== */
-.hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--black);padding:100px 24px 60px;text-align:center}
+.hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--black);padding:100px 24px 60px;text-align:center;position:relative;overflow:hidden}
+#heroGraph{position:absolute;inset:0;z-index:0;opacity:.35;pointer-events:none}
+.hero>*{position:relative;z-index:1}
+.hero-entry{display:inline-flex;align-items:center;gap:6px;margin-top:32px;padding:8px 22px;border-radius:980px;font-size:13px;font-weight:500;color:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);text-decoration:none;transition:all .3s;letter-spacing:-.1px}
+.hero-entry:hover{color:#fff;border-color:rgba(41,151,255,.4);background:rgba(41,151,255,.1)}
 .hero h1{font-size:clamp(32px,6vw,72px);font-weight:700;line-height:1.05;letter-spacing:-1.5px;margin-bottom:12px}
 .hero h1 span{background:linear-gradient(135deg,var(--bright-blue),#64d2ff,#5ac8fa);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 .hero p{font-size:19px;font-weight:300;line-height:1.4;color:rgba(255,255,255,.55);max-width:520px;margin-bottom:48px}
@@ -160,7 +160,6 @@ section{padding:80px 20px;scroll-margin-top:52px}
 }
 @media(max-width:768px){
   nav{gap:14px;padding:0 12px}nav a{font-size:11px}
-  .nav-ext{padding:4px 10px;font-size:11px;margin-right:8px}
   .dir-grid{grid-template-columns:repeat(2,1fr)}
   .grid{grid-template-columns:1fr}
   .kpi-row{gap:20px}.kpi .n{font-size:32px}
@@ -218,14 +217,17 @@ section{padding:80px 20px;scroll-margin-top:52px}
   <a href="#cities" data-sec="cities">城市</a>
   <a href="#explore" data-sec="explore">探索</a>
   <a href="#run-status" data-sec="run-status">状态</a>
-  <a class="nav-ext" href="https://liyanlong123456dsf.github.io/ai-pm-qieman-academy/" target="_blank">📚 PM 全流程 →</a>
 </nav>
 
 <section class="dark" id="hero">
   <div class="hero">
+    <canvas id="heroGraph"></canvas>
     <h1>AI 岗位<span>全景洞察</span></h1>
     <p id="heroSub">覆盖多个 AI 方向与热门城市，数据每日自动更新</p>
     <div class="kpi-row" id="kpis"></div>
+    <a class="hero-entry" href="https://liyanlong123456dsf.github.io/ai-pm-qieman-academy/" target="_blank">
+      🎓 产品经理学习入口 <span style="opacity:.4">→</span>
+    </a>
   </div>
 </section>
 
@@ -294,7 +296,7 @@ section{padding:80px 20px;scroll-margin-top:52px}
   <a href="https://liyanlong123456dsf.github.io/ai-pm-qieman-academy/" target="_blank"
      style="display:inline-flex;align-items:center;gap:8px;padding:12px 28px;border-radius:980px;background:#0071e3;color:#fff;text-decoration:none;font-size:15px;font-weight:500;letter-spacing:-.2px;transition:all .25s"
      onmouseenter="this.style.background='#0077ed'" onmouseleave="this.style.background='#0071e3'">
-    🎓 AI 产品经理全流程知识库
+    🎓 产品经理学习入口
     <span style="font-size:18px">→</span>
   </a>
   <p style="font-size:11px;color:rgba(255,255,255,.15);margin-top:10px">课程笔记 · 知识图谱 · RAG 专题 · Obsidian 集成</p>
@@ -580,8 +582,153 @@ function renderExplore(){
   if(exSummary) exSummary.textContent=`共 ${r.length} 个岗位${r.length?` · 均薪 ${avgS(r)}K/月`:''}`;
   renderGrid('exCards',r,'exMore');
 }
-function initAll(){ SYSTEM_PROMPT = buildSystemPrompt(); renderHero(); renderDir(); renderSalary(); renderCities(); renderExplore(); }
+function initAll(){ SYSTEM_PROMPT = buildSystemPrompt(); renderHero(); renderDir(); renderSalary(); renderCities(); renderExplore(); setupHeroGraph(); }
 boot();
+
+// === HERO FORCE GRAPH BACKGROUND ===
+function setupHeroGraph(){
+  const cv=document.getElementById('heroGraph');if(!cv)return;
+  const ctx=cv.getContext('2d');
+  const dpr=window.devicePixelRatio||1;
+  let W=0,H=0;
+  function resize(){
+    const p=cv.parentElement;
+    W=p?p.offsetWidth:window.innerWidth;
+    H=p?p.offsetHeight:window.innerHeight;
+    cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);
+    cv.style.width=W+'px';cv.style.height=H+'px';
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  resize();window.addEventListener('resize',resize);
+
+  // Graph data — AI job domain concepts
+  const CATS=[
+    {l:'大模型',c:'#3b82f6'},{l:'AI Agent',c:'#8b5cf6'},{l:'NLP',c:'#06b6d4'},
+    {l:'数据分析',c:'#10b981'},{l:'推荐系统',c:'#f59e0b'},{l:'计算机视觉',c:'#ef4444'},
+    {l:'AIGC',c:'#ec4899'},{l:'AI产品',c:'#6366f1'},{l:'搜索',c:'#14b8a6'},
+    {l:'行业应用',c:'#f97316'},{l:'企业服务',c:'#84cc16'}
+  ];
+  const CITIES=['深圳','上海','杭州','北京','广州','成都','厦门','南京','西安'];
+  const SKILLS=['Python','Prompt','RAG','LLM','数据','产品','运营','算法','工程'];
+
+  const nodes=[];const edges=[];
+  const cx=W/2,cy=H/2;
+
+  // Central node
+  nodes.push({id:'center',x:cx,y:cy,vx:0,vy:0,r:18,l:'AI 岗位',c:'#2997ff',t:'center',fx:cx,fy:cy});
+
+  // Category ring
+  CATS.forEach((cat,i)=>{
+    const a=(i/CATS.length)*Math.PI*2-Math.PI/2;
+    const rx=W*.3,ry=H*.28;
+    const x=cx+Math.cos(a)*rx,y=cy+Math.sin(a)*ry;
+    nodes.push({id:'cat-'+i,x:x+(Math.random()-.5)*40,y:y+(Math.random()-.5)*40,vx:0,vy:0,r:10,l:cat.l,c:cat.c,t:'cat'});
+    edges.push({a:'center',b:'cat-'+i});
+  });
+
+  // City ring (outer)
+  CITIES.forEach((city,i)=>{
+    const a=(i/CITIES.length)*Math.PI*2;
+    const rx=W*.42,ry=H*.38;
+    nodes.push({id:'city-'+i,x:cx+Math.cos(a)*rx+(Math.random()-.5)*30,y:cy+Math.sin(a)*ry+(Math.random()-.5)*30,vx:0,vy:0,r:5,l:city,c:'#5e6ad2',t:'city'});
+    // Connect to 2 random categories
+    edges.push({a:'cat-'+(i%CATS.length),b:'city-'+i});
+    edges.push({a:'cat-'+((i+3)%CATS.length),b:'city-'+i});
+  });
+
+  // Skills (inner ring)
+  SKILLS.forEach((sk,i)=>{
+    const a=(i/SKILLS.length)*Math.PI*2+.3;
+    const rx=W*.18,ry=H*.16;
+    nodes.push({id:'sk-'+i,x:cx+Math.cos(a)*rx+(Math.random()-.5)*20,y:cy+Math.sin(a)*ry+(Math.random()-.5)*20,vx:0,vy:0,r:4,l:sk,c:'rgba(255,255,255,.3)',t:'skill'});
+    edges.push({a:'cat-'+(i%CATS.length),b:'sk-'+i});
+  });
+
+  // Some cross-links
+  for(let i=0;i<6;i++){
+    edges.push({a:'cat-'+i,b:'cat-'+((i+4)%CATS.length),cross:true});
+  }
+
+  const getN=id=>nodes.find(n=>n.id===id);
+  let time=0;
+
+  function tick(){
+    time+=.005;
+    const damping=.92,strength=.012;
+    // Repulsion
+    for(let i=0;i<nodes.length;i++){
+      for(let j=i+1;j<nodes.length;j++){
+        const a=nodes[i],b=nodes[j];
+        let dx=b.x-a.x,dy=b.y-a.y;
+        let d=Math.sqrt(dx*dx+dy*dy)||1;
+        const minD=a.r+b.r+60;
+        if(d<minD){
+          const f=(minD-d)*strength;
+          const fx=dx/d*f,fy=dy/d*f;
+          if(!a.fx){a.vx-=fx;a.vy-=fy;}
+          if(!b.fx){b.vx+=fx;b.vy+=fy;}
+        }
+      }
+    }
+    // Edge attraction
+    edges.forEach(e=>{
+      const a=getN(e.a),b=getN(e.b);if(!a||!b)return;
+      const dx=b.x-a.x,dy=b.y-a.y;
+      const d=Math.sqrt(dx*dx+dy*dy)||1;
+      const target=a.t==='center'?150:100;
+      const f=(d-target)*strength*.5;
+      const fx=dx/d*f,fy=dy/d*f;
+      if(!a.fx){a.vx+=fx;a.vy+=fy;}
+      if(!b.fx){b.vx-=fx;b.vy-=fy;}
+    });
+    // Gentle drift + boundary
+    nodes.forEach(n=>{
+      if(n.fx){n.x=n.fx;n.y=n.fy;n.vx=0;n.vy=0;return;}
+      n.vx+=Math.sin(time+n.x*.01)*.08;
+      n.vy+=Math.cos(time+n.y*.01)*.08;
+      n.vx*=damping;n.vy*=damping;
+      n.x+=n.vx;n.y+=n.vy;
+      if(n.x<40)n.vx+=.5;if(n.x>W-40)n.vx-=.5;
+      if(n.y<40)n.vy+=.5;if(n.y>H-40)n.vy-=.5;
+    });
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    // Edges
+    edges.forEach(e=>{
+      const a=getN(e.a),b=getN(e.b);if(!a||!b)return;
+      ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);
+      ctx.strokeStyle=e.cross?'rgba(94,106,210,.08)':'rgba(255,255,255,.04)';
+      ctx.lineWidth=e.cross?.5:1;
+      ctx.stroke();
+    });
+    // Nodes
+    nodes.forEach(n=>{
+      ctx.beginPath();ctx.arc(n.x,n.y,n.r,0,Math.PI*2);
+      const alpha=n.t==='center'?.6:n.t==='cat'?.25:n.t==='city'?.12:.08;
+      ctx.fillStyle=n.c.startsWith('rgba')?n.c:n.c+Math.round(alpha*255).toString(16).padStart(2,'0');
+      ctx.fill();
+      // Glow for categories
+      if(n.t==='cat'||n.t==='center'){
+        ctx.beginPath();ctx.arc(n.x,n.y,n.r+8,0,Math.PI*2);
+        const g=ctx.createRadialGradient(n.x,n.y,n.r,n.x,n.y,n.r+8);
+        g.addColorStop(0,n.c+'15');g.addColorStop(1,'transparent');
+        ctx.fillStyle=g;ctx.fill();
+      }
+      // Labels
+      if(n.t==='center'||n.t==='cat'){
+        ctx.font=(n.t==='center'?'600 11px':'400 9px')+' Inter,-apple-system,sans-serif';
+        ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillStyle=n.t==='center'?'rgba(255,255,255,.7)':'rgba(255,255,255,.3)';
+        ctx.fillText(n.l,n.x,n.y+n.r+12);
+      }
+    });
+    tick();
+    requestAnimationFrame(draw);
+  }
+  draw();
+}
 
 // === RUN STATUS ===
 async function loadRunStatus() {
