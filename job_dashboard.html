@@ -205,6 +205,42 @@ section{padding:80px 20px;scroll-margin-top:52px}
 </head>
 <body>
 
+<!-- PASSWORD GATE -->
+<div id="pwGate" style="position:fixed;inset:0;z-index:9999;background:#000;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:20px;transition:opacity .4s">
+  <div style="text-align:center">
+    <div style="font-size:48px;margin-bottom:12px">🔒</div>
+    <h2 style="font-size:24px;font-weight:700;letter-spacing:-.5px;margin-bottom:4px;background:linear-gradient(135deg,#2997ff,#64d2ff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent">AI 岗位全景分析</h2>
+    <p style="font-size:13px;color:rgba(255,255,255,.35)">请输入访问密码</p>
+  </div>
+  <div style="display:flex;gap:8px">
+    <input id="pwInput" type="password" placeholder="输入密码" autofocus
+      style="width:200px;padding:12px 18px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:#fff;font-size:16px;text-align:center;outline:none;letter-spacing:4px;transition:border-color .2s"
+      onfocus="this.style.borderColor='rgba(41,151,255,.5)'" onblur="this.style.borderColor='rgba(255,255,255,.12)'">
+    <button onclick="checkPw()"
+      style="padding:12px 24px;border-radius:12px;background:#0071e3;color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer;transition:background .2s"
+      onmouseenter="this.style.background='#0077ed'" onmouseleave="this.style.background='#0071e3'">进入</button>
+  </div>
+  <p id="pwErr" style="font-size:12px;color:#ff375f;opacity:0;transition:opacity .2s">密码错误，请重试</p>
+</div>
+<script>
+const PW_HASH = '12138';
+function checkPw(){
+  const v = document.getElementById('pwInput').value.trim();
+  if(v === PW_HASH){
+    sessionStorage.setItem('pw_ok','1');
+    const g = document.getElementById('pwGate');
+    g.style.opacity = '0';
+    setTimeout(() => g.remove(), 400);
+  } else {
+    document.getElementById('pwErr').style.opacity = '1';
+    document.getElementById('pwInput').style.borderColor = '#ff375f';
+    setTimeout(() => { document.getElementById('pwErr').style.opacity = '0'; }, 2000);
+  }
+}
+document.getElementById('pwInput').addEventListener('keydown', e => { if(e.key === 'Enter') checkPw(); });
+if(sessionStorage.getItem('pw_ok') === '1') document.getElementById('pwGate').remove();
+</script>
+
 <nav>
   <span class="nav-logo">AI Jobs</span>
   <a href="#hero" class="active" data-sec="hero">总览</a>
@@ -897,13 +933,17 @@ let SYSTEM_PROMPT = '';
 let chatHistory = [];
 let isStreaming = false;
 
+// === DEFAULT API KEYS (用户可在设置中覆盖) ===
+const DEFAULT_COZE_TOKEN = 'pat_KuvQgmKUDf89H3bsPMotmaBXlIUOT7aZmd8WFv8TbFAROgAuhxgy31dY2Rsq53lt';
+const DEFAULT_COZE_BOT_ID = '7624892981719957538';
+const DEFAULT_KIMI_KEY = 'sk-kimi-vwsB6fRIyz9zRVoLWnG9p2oRjNcsilN2EWqAAyIeJdOflxco3IeXTkmHeo7kKv1R';
+
 // API provider: 'coze' or 'kimi'
 function getApiType() { return localStorage.getItem('chat_api_type') || 'coze'; }
-function hasApiConfig() {
-  const t = getApiType();
-  if (t === 'coze') return !!(localStorage.getItem('coze_token') && localStorage.getItem('coze_bot_id'));
-  return !!localStorage.getItem('kimi_api_key');
-}
+function hasApiConfig() { return true; /* 内置默认 Key，始终可用 */ }
+function getCozeToken() { return localStorage.getItem('coze_token') || DEFAULT_COZE_TOKEN; }
+function getCozeBotId() { return localStorage.getItem('coze_bot_id') || DEFAULT_COZE_BOT_ID; }
+function getKimiKey() { return localStorage.getItem('kimi_api_key') || DEFAULT_KIMI_KEY; }
 function switchApiTab(type) {
   localStorage.setItem('chat_api_type', type);
   document.querySelectorAll('.api-tab').forEach(b => b.classList.toggle('on', b.dataset.api === type));
@@ -920,10 +960,8 @@ function updateApiBadge() {
 function quickSwitchApi() {
   const cur = getApiType();
   const next = cur === 'coze' ? 'kimi' : 'coze';
-  if (!hasApiConfig() || confirm(`切换到 ${next === 'coze' ? '扣子 Coze' : 'Kimi'}？`)) {
-    switchApiTab(next);
-    if (!hasApiConfig()) showSettings();
-  }
+  switchApiTab(next);
+  clearChat();
 }
 // 初始化 badge
 setTimeout(updateApiBadge, 0);
@@ -949,12 +987,12 @@ function showSettings() {
   s.classList.add('show');
   const type = getApiType();
   switchApiTab(type);
-  const ct = localStorage.getItem('coze_token');
-  const cb = localStorage.getItem('coze_bot_id');
-  const kk = localStorage.getItem('kimi_api_key');
-  if (ct) document.getElementById('cozeKeyInput').value = ct;
-  if (cb) document.getElementById('cozeBotInput').value = cb;
-  if (kk) document.getElementById('kimiKeyInput').value = kk;
+  const ct = getCozeToken();
+  const cb = getCozeBotId();
+  const kk = getKimiKey();
+  document.getElementById('cozeKeyInput').value = ct;
+  document.getElementById('cozeBotInput').value = cb;
+  document.getElementById('kimiKeyInput').value = kk;
 }
 function hideSettings() { document.getElementById('chatSettings').classList.remove('show'); }
 function saveKey() {
@@ -1075,19 +1113,19 @@ async function sendMsg(overrideText) {
 
   let apiUrl, headers, body;
   if (apiType === 'coze') {
-    const token = localStorage.getItem('coze_token');
-    const botId = localStorage.getItem('coze_bot_id');
+    const token = getCozeToken();
+    const botId = getCozeBotId();
     // 本地/Netlify 直连扣子 API；GitHub Pages 走 Netlify 代理绕 CORS
     apiUrl = (isLocal || isNetlify) ? 'https://api.coze.cn/v3/chat' : API_BASE + '/api/coze/chat';
     headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token };
     body = { bot_id: botId, user_id: 'dashboard_user', stream: true, auto_save_history: false,
              additional_messages: [{ role: 'user', content: text, content_type: 'text' }] };
   } else {
-    const apiKey = localStorage.getItem('kimi_api_key');
+    const apiKey = getKimiKey();
     const isKimiCode = apiKey.startsWith('sk-kimi-');
     if (isKimiCode) {
-      // Kimi Code: 本地直连，线上走 Netlify 代理（/api/kimi/messages）
-      apiUrl = isLocal ? 'https://api.kimi.com/coding/v1/messages' : API_BASE + '/api/kimi/messages';
+      // Kimi Code: 全部走 Netlify 代理（浏览器直调 api.kimi.com 会 CORS 报错）
+      apiUrl = 'https://ai-pm-job-dashboard.netlify.app/api/kimi/messages';
       headers = { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' };
       body = { model: 'kimi-for-coding', system: SYSTEM_PROMPT, messages: userMsgs, max_tokens: 4096, stream: true };
     } else {
