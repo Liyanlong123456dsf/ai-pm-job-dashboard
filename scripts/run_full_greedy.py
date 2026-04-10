@@ -156,20 +156,61 @@ def main():
         return new_count, existing_count, relevant_count, 0, 0
     spider._add_jobs = patched_add_jobs
 
+    # 中间结果保存路径
+    CHECKPOINT_FILE = BASE_DIR / 'logs' / 'greedy_checkpoint.json'
+
+    # 加载断点（如果有的话，从上次中断处继续）
+    done_combos = set()
+    if CHECKPOINT_FILE.exists():
+        try:
+            cp = json.loads(CHECKPOINT_FILE.read_text(encoding='utf-8'))
+            done_combos = set(cp.get('done_combos', []))
+            logger.info(f'📌 发现断点文件，已完成 {len(done_combos)} 个组合，将跳过')
+        except Exception:
+            pass
+
+    def save_checkpoint():
+        """每个城市完成后保存中间结果，防止中断丢失"""
+        results = spider._normalize_all()
+        cp_data = {
+            'saved_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'total_jobs': len(results),
+            'done_combos': list(done_combos),
+        }
+        CHECKPOINT_FILE.write_text(json.dumps(cp_data, ensure_ascii=False, indent=2), encoding='utf-8')
+        # 保存原始数据到临时文件
+        raw_file = BASE_DIR / 'logs' / 'greedy_raw_jobs.json'
+        raw_file.write_text(json.dumps(results, ensure_ascii=False, indent=2), encoding='utf-8')
+        logger.info(f'💾 已保存断点: {len(results)} 条原始数据, {len(done_combos)} 个组合完成')
+
     # 顺序执行所有组合
     combo_idx = 0
     for city_name, city_code in cities.items():
         logger.info(f'\n🏙 === {city_name} ===')
+        city_new = 0
         for kw in keywords:
             combo_idx += 1
+            combo_key = f'{kw}@{city_name}'
+
+            # 跳过已完成的组合（断点恢复）
+            if combo_key in done_combos:
+                logger.info(f'[{combo_idx}/{total_combos}] {combo_key} — 已完成，跳过')
+                continue
+
             elapsed = time.time() - t0
             eta = (elapsed / max(combo_idx - 1, 1)) * (total_combos - combo_idx) / 60 if combo_idx > 1 else 0
             logger.info(f'[{combo_idx}/{total_combos}] {kw} @ {city_name}  (已用{elapsed/60:.1f}分 剩余≈{eta:.0f}分)')
 
             n = scrape_keyword_greedy(spider, kw, city_code, city_name)
+            city_new += n
             logger.info(f'  → +{n} 新增 | 累计 {len(spider.all_jobs)} (过滤 {spider.skipped})')
+            done_combos.add(combo_key)
 
             random_delay(KEYWORD_REST_MIN, KEYWORD_REST_MAX)
+
+        # 每个城市完成后保存断点
+        logger.info(f'🏙 {city_name} 完成: +{city_new} 新增')
+        save_checkpoint()
 
         if combo_idx < total_combos:
             rest = random.uniform(CITY_REST_MIN, CITY_REST_MAX)
@@ -207,6 +248,12 @@ def main():
     logger.info(f'   抓取: {len(results)} → 清洗: {len(cleaned)} → 新增: {added_count}')
     logger.info(f'   总计: {len(merged)} 条')
     logger.info(f'   ⚠️  combo_cache.json 未被修改，原爬虫代码未改动')
+
+    # 清理断点文件
+    for f in [CHECKPOINT_FILE, BASE_DIR / 'logs' / 'greedy_raw_jobs.json']:
+        if f.exists():
+            f.unlink()
+            logger.info(f'🗑 已删除临时文件: {f.name}')
     logger.info('=' * 60)
 
 
