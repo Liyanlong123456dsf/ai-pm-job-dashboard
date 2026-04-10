@@ -25,6 +25,9 @@ nav a:hover{color:#fff}
 nav a.active{color:#fff}
 nav a.active::after{content:'';position:absolute;bottom:-2px;left:0;right:0;height:2px;background:var(--bright-blue);border-radius:1px}
 .nav-logo{font-size:15px;font-weight:600;letter-spacing:-.5px;color:#fff;margin-right:8px;background:linear-gradient(135deg,var(--bright-blue),#64d2ff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.nav-ext{margin-left:auto;margin-right:16px;padding:5px 14px;border-radius:980px;font-size:12px;font-weight:500;color:var(--bright-blue)!important;border:1px solid rgba(41,151,255,.3);background:rgba(41,151,255,.08);text-decoration:none;transition:all .25s;white-space:nowrap;letter-spacing:-.1px}
+.nav-ext:hover{background:rgba(41,151,255,.18);border-color:rgba(41,151,255,.5);color:#fff!important}
+.nav-ext::after{display:none!important}
 
 /* ===== HERO ===== */
 .hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--black);padding:100px 24px 60px;text-align:center}
@@ -157,6 +160,7 @@ section{padding:80px 20px;scroll-margin-top:52px}
 }
 @media(max-width:768px){
   nav{gap:14px;padding:0 12px}nav a{font-size:11px}
+  .nav-ext{padding:4px 10px;font-size:11px;margin-right:8px}
   .dir-grid{grid-template-columns:repeat(2,1fr)}
   .grid{grid-template-columns:1fr}
   .kpi-row{gap:20px}.kpi .n{font-size:32px}
@@ -171,36 +175,37 @@ section{padding:80px 20px;scroll-margin-top:52px}
   section{padding:60px 16px}
 }
 
-/* ===== RUN STATUS ===== */
-.status-empty{text-align:center;padding:48px;opacity:.35;font-size:15px}
-.rs-board{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:32px}
-@media(max-width:640px){.rs-board{grid-template-columns:1fr}}
-.rs-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:24px;position:relative;overflow:hidden}
-.rs-card .rs-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.35);margin-bottom:8px}
-.rs-card .rs-val{font-size:28px;font-weight:700;letter-spacing:-1px;background:linear-gradient(135deg,var(--bright-blue),#5ac8fa);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-.rs-card .rs-sub{font-size:12px;color:rgba(255,255,255,.35);margin-top:4px}
-.rs-overall{display:inline-flex;align-items:center;gap:8px;padding:8px 20px;border-radius:980px;font-size:14px;font-weight:600;margin-bottom:24px}
-.rs-overall.success{background:rgba(48,209,88,.12);color:#30d158;border:1px solid rgba(48,209,88,.2)}
-.rs-overall.partial{background:rgba(255,159,10,.12);color:#ff9f0a;border:1px solid rgba(255,159,10,.2)}
-.rs-overall.failed{background:rgba(255,55,95,.12);color:#ff375f;border:1px solid rgba(255,55,95,.2)}
-.rs-overall.running{background:rgba(41,151,255,.12);color:var(--bright-blue);border:1px solid rgba(41,151,255,.2);animation:pulse 2s infinite}
-.rs-overall .rs-dot{width:8px;height:8px;border-radius:50%;background:currentColor}
-.rs-timeline{position:relative;padding-left:28px}
-.rs-step{position:relative;padding-bottom:20px}
+/* ===== RUN STATUS (compact) ===== */
+.status-empty{text-align:center;padding:24px;opacity:.35;font-size:13px}
+.rs-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center;padding:16px 20px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:14px;margin-bottom:12px}
+.rs-chip{font-size:12px;color:rgba(255,255,255,.5);display:flex;align-items:center;gap:5px}
+.rs-chip b{color:rgba(255,255,255,.85);font-weight:600}
+.rs-chip .dot{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.15);flex-shrink:0}
+.rs-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:980px;font-size:12px;font-weight:600}
+.rs-badge.success{background:rgba(48,209,88,.12);color:#30d158;border:1px solid rgba(48,209,88,.2)}
+.rs-badge.partial{background:rgba(255,159,10,.12);color:#ff9f0a;border:1px solid rgba(255,159,10,.2)}
+.rs-badge.failed{background:rgba(255,55,95,.12);color:#ff375f;border:1px solid rgba(255,55,95,.2)}
+.rs-badge.running{background:rgba(41,151,255,.12);color:var(--bright-blue);border:1px solid rgba(41,151,255,.2)}
+.rs-toggle{background:none;border:1px solid rgba(255,255,255,.08);color:rgba(255,255,255,.35);font-size:12px;padding:6px 14px;border-radius:8px;cursor:pointer;transition:all .2s;margin:0 auto;display:block}
+.rs-toggle:hover{color:rgba(255,255,255,.6);border-color:rgba(255,255,255,.15)}
+.rs-detail{max-height:0;overflow:hidden;transition:max-height .35s ease}
+.rs-detail.open{max-height:600px}
+.rs-timeline{position:relative;padding:12px 0 0 24px}
+.rs-step{position:relative;padding-bottom:14px;font-size:12px}
 .rs-step:last-child{padding-bottom:0}
-.rs-step::before{content:'';position:absolute;left:-20px;top:8px;width:12px;height:12px;border-radius:50%;border:2px solid rgba(255,255,255,.15);background:var(--black)}
+.rs-step::before{content:'';position:absolute;left:-17px;top:5px;width:8px;height:8px;border-radius:50%;border:2px solid rgba(255,255,255,.12);background:var(--black)}
 .rs-step.ok::before{background:#30d158;border-color:#30d158}
 .rs-step.fail::before{background:#ff375f;border-color:#ff375f}
-.rs-step::after{content:'';position:absolute;left:-15px;top:22px;bottom:-2px;width:2px;background:rgba(255,255,255,.06)}
+.rs-step::after{content:'';position:absolute;left:-14px;top:16px;bottom:-2px;width:1.5px;background:rgba(255,255,255,.05)}
 .rs-step:last-child::after{display:none}
-.rs-step-head{display:flex;align-items:center;gap:10px}
-.rs-step-name{font-size:14px;font-weight:600;color:rgba(255,255,255,.85)}
-.rs-step-time{font-size:11px;color:rgba(255,255,255,.25);font-variant-numeric:tabular-nums}
-.rs-step-detail{font-size:12px;color:rgba(255,255,255,.4);margin-top:3px;padding-left:0}
-.rs-errors{margin-top:24px;padding:16px;background:rgba(255,55,95,.06);border:1px solid rgba(255,55,95,.15);border-radius:12px}
-.rs-errors h4{font-size:13px;font-weight:700;color:#ff375f;margin-bottom:8px}
-.rs-errors li{font-size:12px;color:rgba(255,255,255,.5);margin-bottom:4px;list-style:disc inside}
-.rs-meta{text-align:center;font-size:11px;color:rgba(255,255,255,.2);margin-top:20px}
+.rs-step-head{display:flex;align-items:center;gap:8px}
+.rs-step-name{font-weight:600;color:rgba(255,255,255,.7)}
+.rs-step-time{font-size:10px;color:rgba(255,255,255,.2)}
+.rs-step-detail{font-size:11px;color:rgba(255,255,255,.3);margin-top:2px}
+.rs-errors{margin-top:12px;padding:10px;background:rgba(255,55,95,.06);border:1px solid rgba(255,55,95,.12);border-radius:8px;font-size:12px}
+.rs-errors h4{font-size:12px;font-weight:600;color:#ff375f;margin-bottom:4px}
+.rs-errors li{font-size:11px;color:rgba(255,255,255,.4);margin-bottom:2px;list-style:disc inside}
+.rs-meta{text-align:center;font-size:10px;color:rgba(255,255,255,.15);margin-top:8px}
 </style>
 </head>
 <body>
@@ -213,6 +218,7 @@ section{padding:80px 20px;scroll-margin-top:52px}
   <a href="#cities" data-sec="cities">城市</a>
   <a href="#explore" data-sec="explore">探索</a>
   <a href="#run-status" data-sec="run-status">状态</a>
+  <a class="nav-ext" href="https://liyanlong123456dsf.github.io/ai-pm-qieman-academy/" target="_blank">📚 PM 全流程 →</a>
 </nav>
 
 <section class="dark" id="hero">
@@ -274,12 +280,24 @@ section{padding:80px 20px;scroll-margin-top:52px}
   </div>
 </section>
 
-<section class="deep" id="run-status">
+<section class="deep" id="run-status" style="padding:40px 0 32px">
   <div class="wrap">
-    <h2 class="sec-h">运行状态</h2>
-    <p class="sec-sub">每日自动更新流水线的执行情况</p>
+    <h2 class="sec-h" style="font-size:22px;margin-bottom:6px">运行状态</h2>
+    <p class="sec-sub" style="margin-bottom:16px">每日凌晨自动爬取更新</p>
     <div id="statusContent" class="status-empty">加载中...</div>
   </div>
+</section>
+
+<!-- PM 全流程入口 -->
+<section style="padding:40px 20px;text-align:center;background:#000;border-top:1px solid rgba(255,255,255,.04)">
+  <p style="font-size:13px;color:rgba(255,255,255,.3);margin-bottom:12px">想系统学习 AI 产品经理全流程？</p>
+  <a href="https://liyanlong123456dsf.github.io/ai-pm-qieman-academy/" target="_blank"
+     style="display:inline-flex;align-items:center;gap:8px;padding:12px 28px;border-radius:980px;background:#0071e3;color:#fff;text-decoration:none;font-size:15px;font-weight:500;letter-spacing:-.2px;transition:all .25s"
+     onmouseenter="this.style.background='#0077ed'" onmouseleave="this.style.background='#0071e3'">
+    🎓 AI 产品经理全流程知识库
+    <span style="font-size:18px">→</span>
+  </a>
+  <p style="font-size:11px;color:rgba(255,255,255,.15);margin-top:10px">课程笔记 · 知识图谱 · RAG 专题 · Obsidian 集成</p>
 </section>
 
 <footer class="footer">
@@ -570,60 +588,53 @@ async function loadRunStatus() {
   const el = document.getElementById('statusContent');
   try {
     const resp = await fetch('./run_status.json?t=' + Date.now());
-    if (!resp.ok) throw new Error('未找到 run_status.json');
+    if (!resp.ok) throw new Error('not found');
     const s = await resp.json();
-    const LABELS = {success:'✅ 全部成功', partial:'⚠️ 部分完成', failed:'❌ 执行失败', running:'🔄 正在运行'};
+    const LABELS = {success:'✅ 成功', partial:'⚠️ 部分', failed:'❌ 失败', running:'🔄 运行中'};
     const cls = s.overall || 'running';
     const mins = s.duration_sec ? Math.floor(s.duration_sec / 60) : 0;
     const secs = s.duration_sec ? s.duration_sec % 60 : 0;
-    const dur = s.duration_sec ? (mins > 0 ? mins + '分' + secs + '秒' : secs + '秒') : '-';
+    const dur = s.duration_sec ? (mins > 0 ? mins + '\'' + secs + '"' : secs + '"') : '-';
 
-    let html = `<div style="text-align:center;margin-bottom:20px">
-      <div class="rs-overall ${cls}"><span class="rs-dot"></span>${LABELS[cls] || cls}</div>
-    </div>`;
-
-    // KPI cards
-    html += '<div class="rs-board">';
-    html += `<div class="rs-card"><div class="rs-label">执行日期</div><div class="rs-val">${s.date || '-'}</div><div class="rs-sub">启动于 ${s.start_time || '-'}（${s.mode === 'quick' ? '快速模式' : '全量模式'}）</div></div>`;
-    html += `<div class="rs-card"><div class="rs-label">耗时</div><div class="rs-val">${dur}</div><div class="rs-sub">从爬取到部署完成</div></div>`;
-    html += `<div class="rs-card"><div class="rs-label">今日新增</div><div class="rs-val">${s.added || 0}</div><div class="rs-sub">原始 ${s.crawl_raw || 0} → 清洗 ${s.crawl_cleaned || 0} → 新增 ${s.added || 0}</div></div>`;
-    html += `<div class="rs-card"><div class="rs-label">数据总量</div><div class="rs-val">${s.total || 0}</div><div class="rs-sub">有链接 ${s.has_url || 0} · 有描述 ${s.has_desc || 0}</div></div>`;
+    // Compact summary bar
+    let html = '<div class="rs-bar">';
+    html += `<span class="rs-badge ${cls}">${LABELS[cls]||cls}</span>`;
+    html += `<span class="rs-chip"><span class="dot"></span>${s.date || '-'} ${s.start_time || ''}</span>`;
+    html += `<span class="rs-chip"><span class="dot"></span>耗时 <b>${dur}</b></span>`;
+    html += `<span class="rs-chip"><span class="dot"></span>新增 <b>${s.added||0}</b></span>`;
+    html += `<span class="rs-chip"><span class="dot"></span>总计 <b>${s.total||0}</b></span>`;
+    html += `<span class="rs-chip"><span class="dot"></span>${s.git_pushed?'✅':'❌'} Git</span>`;
+    html += `<span class="rs-chip"><span class="dot"></span>${s.deployed?'✅':'❌'} Deploy</span>`;
     html += '</div>';
 
-    // Upload status
-    html += '<div class="rs-board">';
-    html += `<div class="rs-card"><div class="rs-label">Git 推送</div><div class="rs-val" style="${s.git_pushed ? '' : '-webkit-text-fill-color:rgba(255,255,255,.3)'}">${s.git_pushed ? '✅ 已推送' : '❌ 未推送'}</div><div class="rs-sub">代码推送至 GitHub</div></div>`;
-    html += `<div class="rs-card"><div class="rs-label">Netlify 部署</div><div class="rs-val" style="${s.deployed ? '' : '-webkit-text-fill-color:rgba(255,255,255,.3)'}">${s.deployed ? '✅ 已部署' : '❌ 未部署'}</div><div class="rs-sub">网页数据同步</div></div>`;
-    html += '</div>';
-
-    // Timeline
-    if (s.steps && s.steps.length) {
-      html += '<h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:rgba(255,255,255,.7)">执行时间线</h3>';
-      html += '<div class="rs-timeline">';
-      s.steps.forEach(st => {
-        html += `<div class="rs-step ${st.ok ? 'ok' : 'fail'}">
-          <div class="rs-step-head">
-            <span class="rs-step-name">${st.name}</span>
-            <span class="rs-step-time">${st.time || ''}</span>
-          </div>
-          ${st.detail ? '<div class="rs-step-detail">' + st.detail + '</div>' : ''}
-        </div>`;
-      });
+    // Collapsible detail
+    const hasDetail = (s.steps && s.steps.length) || (s.errors && s.errors.length);
+    if (hasDetail) {
+      html += '<button class="rs-toggle" onclick="this.nextElementSibling.classList.toggle(\'open\');this.textContent=this.nextElementSibling.classList.contains(\'open\')?\'▲ 收起详情\':\'▼ 展开执行时间线\'">▼ 展开执行时间线</button>';
+      html += '<div class="rs-detail">';
+      if (s.steps && s.steps.length) {
+        html += '<div class="rs-timeline">';
+        s.steps.forEach(st => {
+          html += `<div class="rs-step ${st.ok ? 'ok' : 'fail'}">
+            <div class="rs-step-head"><span class="rs-step-name">${st.name}</span><span class="rs-step-time">${st.time||''}</span></div>
+            ${st.detail ? '<div class="rs-step-detail">' + st.detail + '</div>' : ''}
+          </div>`;
+        });
+        html += '</div>';
+      }
+      if (s.errors && s.errors.length) {
+        html += '<div class="rs-errors"><h4>⚠️ 错误</h4><ul>';
+        s.errors.forEach(e => html += '<li>' + e + '</li>');
+        html += '</ul></div>';
+      }
       html += '</div>';
     }
 
-    // Errors
-    if (s.errors && s.errors.length) {
-      html += '<div class="rs-errors"><h4>⚠️ 错误记录</h4><ul>';
-      s.errors.forEach(e => html += '<li>' + e + '</li>');
-      html += '</ul></div>';
-    }
-
-    html += `<div class="rs-meta">最后更新于 ${s.updated || '-'}</div>`;
+    html += `<div class="rs-meta">更新于 ${s.updated || '-'}</div>`;
     el.innerHTML = html;
     el.className = '';
   } catch(e) {
-    el.innerHTML = '<div class="status-empty">暂无运行记录<br><span style="font-size:12px;opacity:.5">等待首次执行 daily_update.py 后生成状态数据</span></div>';
+    el.innerHTML = '<div class="status-empty">暂无运行记录</div>';
     el.className = '';
   }
 }
