@@ -44,18 +44,36 @@
       "ok": true,
       "detail": "",
       "time": "13:06:01"
+    },
+    {
+      "name": "Git 推送",
+      "ok": true,
+      "detail": "daily: 2026-04-10",
+      "time": "13:06:06"
+    },
+    {
+      "name": "Netlify 部署",
+      "ok": true,
+      "detail": "",
+      "time": "13:06:21"
+    },
+    {
+      "name": "全流程完成",
+      "ok": true,
+      "detail": "总 1838 条，新增 342 条",
+      "time": "13:06:21"
     }
   ],
-  "overall": "running",
+  "overall": "success",
   "crawl_raw": 345,
   "crawl_cleaned": 343,
   "added": 342,
   "total": 1838,
-  "has_url": 0,
-  "has_desc": 0,
-  "git_pushed": false,
-  "deployed": false,
+  "has_url": 1722,
+  "has_desc": 1744,
+  "git_pushed": true,
+  "deployed": true,
   "errors": [],
-  "duration_sec": 0,
-  "updated": "2026-04-10 13:06:01"
+  "duration_sec": 9694,
+  "updated": "2026-04-10 13:06:21"
 }

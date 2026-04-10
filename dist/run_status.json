@@ -1,31 +1,79 @@
 {
   "date": "2026-04-10",
-  "start_time": "02:21:30",
+  "start_time": "10:24:46",
   "mode": "full",
   "steps": [
     {
       "name": "爬取 BOSS 直聘",
       "ok": true,
-      "detail": "抓取 0 条原始数据",
-      "time": "02:22:04"
+      "detail": "抓取 345 条原始数据",
+      "time": "13:03:59"
     },
     {
-      "name": "终止",
-      "ok": false,
-      "detail": "未抓取到任何数据",
-      "time": "02:22:04"
+      "name": "数据清洗",
+      "ok": true,
+      "detail": "343 条有效岗位",
+      "time": "13:03:59"
+    },
+    {
+      "name": "增量合并",
+      "ok": true,
+      "detail": "原1496+抓345→清343→新+342=总1838",
+      "time": "13:03:59"
+    },
+    {
+      "name": "回填链接",
+      "ok": true,
+      "detail": "",
+      "time": "13:03:59"
+    },
+    {
+      "name": "补全描述",
+      "ok": true,
+      "detail": "补全 18 条",
+      "time": "13:06:01"
+    },
+    {
+      "name": "导出总表",
+      "ok": true,
+      "detail": "",
+      "time": "13:06:01"
+    },
+    {
+      "name": "生成知识库",
+      "ok": true,
+      "detail": "",
+      "time": "13:06:01"
+    },
+    {
+      "name": "Git 推送",
+      "ok": true,
+      "detail": "daily: 2026-04-10",
+      "time": "13:06:06"
+    },
+    {
+      "name": "Netlify 部署",
+      "ok": true,
+      "detail": "",
+      "time": "13:06:21"
+    },
+    {
+      "name": "全流程完成",
+      "ok": true,
+      "detail": "总 1838 条，新增 342 条",
+      "time": "13:06:21"
     }
   ],
-  "overall": "failed",
-  "crawl_raw": 0,
-  "crawl_cleaned": 0,
-  "added": 0,
-  "total": 0,
-  "has_url": 0,
-  "has_desc": 0,
-  "git_pushed": false,
-  "deployed": false,
+  "overall": "success",
+  "crawl_raw": 345,
+  "crawl_cleaned": 343,
+  "added": 342,
+  "total": 1838,
+  "has_url": 1722,
+  "has_desc": 1744,
+  "git_pushed": true,
+  "deployed": true,
   "errors": [],
-  "duration_sec": 34,
-  "updated": "2026-04-10 02:22:04"
+  "duration_sec": 9694,
+  "updated": "2026-04-10 13:06:21"
 }
