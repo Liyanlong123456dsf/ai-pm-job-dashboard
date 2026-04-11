@@ -34,6 +34,10 @@ path = "/api/kimi/*"
 function = "cors-proxy"
 
 [[edge_functions]]
+path = "/api/moonshot/*"
+function = "cors-proxy"
+
+[[edge_functions]]
 path = "/api/coze/*"
 function = "cors-proxy"
 
@@ -53,6 +57,18 @@ force = true
 
 [redirects.headers]
 X-From = "netlify-proxy"
+
+[[redirects]]
+from = "/api/moonshot/*"
+to = "https://api.moonshot.ai/v1/:splat"
+status = 200.0
+force = true
+
+[redirects.query]
+
+[redirects.conditions]
+
+[redirects.headers]
 
 [[redirects]]
 from = "/api/coze/*"
