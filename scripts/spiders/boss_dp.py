@@ -21,18 +21,6 @@ logger = logging.getLogger('spider.boss_dp')
 
 # ==================== 配置 ====================
 
-# 全量: 5关键词×10城市 ≈ 12分钟
-SEARCH_KEYWORDS = [
-    'AI产品经理',
-    'AIGC产品经理',
-    '大模型产品经理',
-    '智能产品经理',
-    '算法产品经理',
-]
-
-# 快速: 2关键词×5城市 ≈ 5分钟
-QUICK_KEYWORDS = ['AI产品经理', 'AIGC产品经理']
-
 CONFIG_DIR = Path(__file__).parent.parent.parent / 'config'
 PROFILE_DIR = Path(__file__).parent.parent.parent / '.chrome_profile'  # 持久化登录
 
@@ -72,10 +60,27 @@ _PM_TERMS = [
 ]
 
 
-def load_cities():
+def load_config():
+    """加载 keywords.json 全量配置"""
     cfg_file = CONFIG_DIR / 'keywords.json'
     with open(cfg_file, 'r', encoding='utf-8') as f:
-        return json.load(f)['cities']
+        return json.load(f)
+
+
+def load_cities():
+    return load_config()['cities']
+
+
+def load_keywords(quick=False):
+    """加载关键词：全量读全部，快速随机抽 3-5 个"""
+    config = load_config()
+    all_kw = config['keywords']
+    if quick:
+        n = random.randint(3, 5)
+        selected = random.sample(all_kw, min(n, len(all_kw)))
+        logger.info(f'[快速模式] 随机抽取 {len(selected)} 个关键词: {selected}')
+        return selected
+    return all_kw
 
 
 def random_delay(lo=MIN_DELAY, hi=MAX_DELAY):
@@ -284,8 +289,13 @@ class BossDPSpider:
         return True
 
     def _add_jobs(self, api_jobs):
-        """添加岗位（带强相关过滤和去重）"""
+        """添加岗位（带强相关过滤和去重）
+        返回: (new_count, existing_count, relevant_count)
+        为兼容旧调用方，int() 取 new_count 即可
+        """
         new_count = 0
+        existing_count = 0
+        relevant_count = 0
         for job in api_jobs:
             name = job.get('job_name', '')
             skills = job.get('skills', '')
@@ -294,11 +304,14 @@ class BossDPSpider:
                 self.skipped += 1
                 continue
 
+            relevant_count += 1
             key = f"{name}_{job.get('company', '')}"
-            if key not in self.all_jobs and name:
+            if key in self.all_jobs:
+                existing_count += 1
+            elif name:
                 self.all_jobs[key] = job
                 new_count += 1
-        return new_count
+        return new_count, existing_count, relevant_count
 
     def scrape_keyword(self, keyword: str, city_code: str) -> int:
         """用 API 拦截 + 翻页模式抓取一个关键词"""
@@ -333,7 +346,7 @@ class BossDPSpider:
 
             # 收集翻页触发的 API
             page_jobs = collect_api_responses(self.page, timeout=8)
-            page_new = self._add_jobs(page_jobs)
+            page_new, _, _ = self._add_jobs(page_jobs)
             keyword_new += page_new
 
             if len(page_jobs) == 0:
@@ -357,7 +370,7 @@ class BossDPSpider:
 
                 scroll_jobs = collect_api_responses(self.page, timeout=2)
                 if scroll_jobs:
-                    sn = self._add_jobs(scroll_jobs)
+                    sn, _, _ = self._add_jobs(scroll_jobs)
                     keyword_new += sn
                     scroll_no_new = 0 if sn > 0 else scroll_no_new + 1
                 else:
@@ -380,7 +393,76 @@ class BossDPSpider:
 
         return keyword_new
 
-    def run(self, keywords: list, cities: dict, headless: bool = False) -> list:
+    def scrape_keyword_greedy(self, keyword: str, city_code: str, city_name: str = '') -> int:
+        """贪婪模式：翻到底为止（连续5页0新增判定翻到底）"""
+        keyword_new = 0
+        page_num = 0
+        consecutive_zero = 0
+        MAX_CONSECUTIVE_ZERO = 5
+
+        while True:
+            page_num += 1
+            self.page.listen.start('wapi/zpgeek/search/joblist.json')
+
+            if page_num == 1:
+                url = f'https://www.zhipin.com/web/geek/job?query={keyword}&city={city_code}'
+                self.page.get(url)
+            else:
+                try:
+                    next_btn = self.page.ele('css:.ui-icon-arrow-right', timeout=3)
+                    if next_btn:
+                        next_btn.click()
+                    else:
+                        url = f'https://www.zhipin.com/web/geek/job?query={keyword}&city={city_code}&page={page_num}'
+                        self.page.get(url)
+                except:
+                    url = f'https://www.zhipin.com/web/geek/job?query={keyword}&city={city_code}&page={page_num}'
+                    self.page.get(url)
+
+            random_delay(1.5, 3.0)
+            if random.random() < 0.2:
+                simulate_human(self.page)
+
+            page_jobs = collect_api_responses(self.page, timeout=8)
+
+            if len(page_jobs) == 0:
+                self.page.listen.stop()
+                logger.info(f'    ↳ 第{page_num}页: API返回空，停止')
+                break
+
+            page_new, page_existing, page_relevant = self._add_jobs(page_jobs)
+            keyword_new += page_new
+
+            logger.info(f'    ↳ 第{page_num}页: +{page_new}新 / {page_relevant}相关 / {page_existing}重复 (原始{len(page_jobs)}条)')
+
+            if page_new == 0:
+                consecutive_zero += 1
+                if consecutive_zero >= MAX_CONSECUTIVE_ZERO:
+                    self.page.listen.stop()
+                    logger.info(f'    ↳ 连续{MAX_CONSECUTIVE_ZERO}页无新增，判定已翻到底（共{page_num}页）')
+                    break
+            else:
+                consecutive_zero = 0
+
+            # 滚动加载
+            for scroll_i in range(3):
+                dist = random.randint(300, 700)
+                steps = random.randint(2, 3)
+                for _ in range(steps):
+                    self.page.scroll.down(dist // steps + random.randint(-30, 30))
+                    time.sleep(random.uniform(0.08, 0.25))
+                random_delay(0.8, 2.0)
+                scroll_jobs = collect_api_responses(self.page, timeout=2)
+                if scroll_jobs:
+                    sn, _, _ = self._add_jobs(scroll_jobs)
+                    keyword_new += sn
+
+            self.page.listen.stop()
+            random_delay(1.5, 3.5)
+
+        return keyword_new
+
+    def run(self, keywords: list, cities: dict, headless: bool = False, greedy: bool = False) -> list:
         """完整抓取流程"""
         self.start_browser(headless=headless)
         first_city = list(cities.values())[0]
@@ -400,7 +482,8 @@ class BossDPSpider:
         combo_idx = 0
         t_start = time.time()
 
-        print(f'\n📊 {len(keywords)} 关键词 × {len(cities)} 城市 = {total_combos} 组')
+        mode_label = '贪婪' if greedy else '标准'
+        print(f'\n📊 [{mode_label}] {len(keywords)} 关键词 × {len(cities)} 城市 = {total_combos} 组')
         print(f'⏱  预计 {max(1, total_combos * 15 // 60)}-{total_combos * 25 // 60} 分钟\n')
 
         # 随机打乱城市顺序，避免固定遍历模式
@@ -419,7 +502,7 @@ class BossDPSpider:
                 print(f'[{combo_idx}/{total_combos}] {kw} @ {city_name}  '
                       f'(已用{elapsed/60:.1f}分 剩余≈{eta/60:.0f}分)')
 
-                n = self.scrape_keyword(kw, city_code)
+                n = self.scrape_keyword_greedy(kw, city_code, city_name) if greedy else self.scrape_keyword(kw, city_code)
                 print(f'  → +{n} 强相关 | 累计 {len(self.all_jobs)} (过滤 {self.skipped})')
                 # 进度回调
                 if self._progress_cb:
@@ -592,7 +675,8 @@ def main():
 
     parser = argparse.ArgumentParser(description='BOSS直聘 AI PM 强相关岗位采集')
     parser.add_argument('--city', type=str, help='只抓指定城市')
-    parser.add_argument('--quick', action='store_true', help='快速模式(≈5分钟)')
+    parser.add_argument('--quick', action='store_true', help='快速模式（随机3-5个关键词）')
+    parser.add_argument('--greedy', action='store_true', help='贪婪模式（翻到底，连续5页无新增停止）')
     parser.add_argument('--merge', action='store_true', help='自动合并到 Dashboard')
     parser.add_argument('--login', action='store_true', help='仅登录保存Cookie（首次使用）')
     parser.add_argument('--headless', action='store_true', help='无头模式（定时任务用）')
@@ -602,7 +686,7 @@ def main():
                         format='%(asctime)s [%(name)s] %(message)s')
 
     cities = load_cities()
-    keywords = QUICK_KEYWORDS if args.quick else SEARCH_KEYWORDS
+    keywords = load_keywords(quick=args.quick)
 
     if args.city:
         cities = {k: v for k, v in cities.items() if k == args.city}
@@ -622,7 +706,7 @@ def main():
         spider.page.quit()
         return
 
-    raw_jobs = spider.run(keywords, cities, headless=args.headless)
+    raw_jobs = spider.run(keywords, cities, headless=args.headless, greedy=args.greedy)
 
     if args.merge and raw_jobs:
         from pipeline import process_batch

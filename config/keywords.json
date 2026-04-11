@@ -19,6 +19,15 @@
     "郑州": "101180100",
     "南京": "101190100"
   },
+  "schedule": {
+    "login_hour": 22,
+    "login_minute": 0,
+    "crawl_hour": 0,
+    "crawl_minute": 0,
+    "rotation": ["full", "quick", "quick"],
+    "cleanup_days": [1, 15],
+    "cleanup_max_age_days": 30
+  },
   "cat_rules": {
     "大模型/LLM": ["大模型", "LLM", "GPT", "NLP", "基座模型", "语言模型", "Transformer", "预训练", "微调", "fine-tune"],
     "AI Agent/智能体": ["Agent", "agent", "智能体", "自主", "编排", "workflow", "RPA", "自动化"],

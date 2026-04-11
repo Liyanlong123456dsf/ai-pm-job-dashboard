@@ -205,6 +205,7 @@ def _popup_report(status):
 def main():
     parser = argparse.ArgumentParser(description='AI PM 岗位每日更新')
     parser.add_argument('--dry-run', action='store_true', help='仅测试抓取，不写入文件')
+    parser.add_argument('--quick', action='store_true', help='快速模式（随机3-5个关键词，标准翻页）')
     args = parser.parse_args()
 
     # ---- 运行状态追踪 ----
@@ -212,7 +213,7 @@ def main():
     status = {
         'date': datetime.now().strftime('%Y-%m-%d'),
         'start_time': datetime.now().strftime('%H:%M:%S'),
-        'mode': 'full',
+        'mode': 'quick' if args.quick else 'full',
         'steps': [],
         'overall': 'running',
         'crawl_raw': 0,
@@ -238,13 +239,13 @@ def main():
     logger.info('=' * 50)
 
     # Load config
-    config_file = BASE_DIR / 'config' / 'keywords.json'
-    with open(config_file, 'r', encoding='utf-8') as f:
-        config = json.load(f)
-
-    keywords = config['keywords']
+    from spiders.boss_dp import load_config, load_keywords
+    config = load_config()
+    keywords = load_keywords(quick=args.quick)
     cities = config['cities']
-    logger.info(f'[全量] 关键词: {keywords}, 城市: {list(cities.keys())}')
+    is_greedy = not args.quick  # 全量模式用贪婪策略，快速模式用标准策略
+    mode_label = '快速' if args.quick else '全量(贪婪)'
+    logger.info(f'[{mode_label}] 关键词: {keywords}, 城市: {list(cities.keys())}')
 
     # === 1. 抓取 ===
     all_raw = []
@@ -305,7 +306,7 @@ def main():
             logger.info('检测到持久化 Profile，已有登录态将自动跳过登录')
         else:
             logger.info('首次运行，使用可见模式以便登录')
-        jobs = spider.run(keywords, cities, headless=False)
+        jobs = spider.run(keywords, cities, headless=False, greedy=is_greedy)
         all_raw.extend(jobs)
         logger.info(f'BOSS直聘: 抓取 {len(jobs)} 条原始数据')
         status['crawl_raw'] = len(all_raw)

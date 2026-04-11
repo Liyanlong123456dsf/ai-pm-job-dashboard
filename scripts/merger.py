@@ -33,18 +33,32 @@ def load_existing() -> tuple:
 
 def merge(existing_jobs: list, existing_keys: set, new_jobs: list) -> tuple:
     added = []
+    refreshed = 0
+    today_str = datetime.date.today().isoformat()
+
+    # 建立 existing key -> index 映射，用于快速查找重复
+    key_to_idx = {}
+    for i, ej in enumerate(existing_jobs):
+        k = ej.get('_key')
+        if k:
+            key_to_idx[k] = i
+
     for job in new_jobs:
         key = job.get('_key', '')
         if key and key not in existing_keys:
             existing_keys.add(key)
             job['_new'] = True  # mark as new for Dashboard
             added.append(job)
+        elif key and key in key_to_idx:
+            # 重复岗位：刷新日期（证明还在招）
+            existing_jobs[key_to_idx[key]]['_date'] = today_str
+            refreshed += 1
 
     merged = existing_jobs + added
     # Sort by avg salary descending
     merged.sort(key=lambda x: -x.get('avg', 0))
 
-    logger.info(f'Merge: {len(existing_jobs)} existing + {len(added)} new = {len(merged)} total')
+    logger.info(f'Merge: {len(existing_jobs)} existing + {len(added)} new = {len(merged)} total (refreshed {refreshed} dates)')
     return merged, len(added)
 
 
