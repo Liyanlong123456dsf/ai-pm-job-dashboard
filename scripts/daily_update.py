@@ -255,7 +255,7 @@ def main():
         # 后续流程步骤（未执行）
         _pending_phases = [
             '数据清洗', '增量合并', '补全描述',
-            '导出总表', '生成知识库', 'Git 推送', '云同步',
+            '导出总表', '生成知识库', '飞书同步', 'Git 推送', '云同步',
         ]
 
         def _on_spider_progress(combo_idx, total_combos, kw, city, job_count):
@@ -407,6 +407,21 @@ def main():
     except Exception as e:
         logger.warning(f'知识库生成失败(非致命): {e}')
         _step('生成知识库', False, str(e))
+
+    # === 7.6 同步知识库到飞书云文档 ===
+    _write_progress(85, '📤 同步知识库到飞书...', '', status.get('steps', []))
+    try:
+        result = subprocess.run([sys.executable, str(SCRIPT_DIR / 'sync_feishu.py')],
+                       cwd=str(BASE_DIR), capture_output=True, text=True, timeout=300)
+        if result.returncode == 0:
+            logger.info('✅ 知识库已同步到飞书云文档')
+            _step('飞书同步', True)
+        else:
+            logger.warning(f'飞书同步失败: {result.stderr[:200]}')
+            _step('飞书同步', False, result.stderr[:200])
+    except Exception as e:
+        logger.warning(f'飞书同步失败(非致命): {e}')
+        _step('飞书同步', False, str(e))
 
     # === 8. Git 提交 + 推送 ===
     _write_progress(87, '🔀 Git 推送中...', '', status.get('steps', []))

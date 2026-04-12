@@ -3,8 +3,8 @@ plugins = []
 headers = []
 
 [build]
-edge_functions = "/Users/harry/Desktop/工作集合表/netlify/edge-functions"
-publish = "/Users/harry/Desktop/工作集合表/dist"
+edge_functions = "E:\\桌面\\工作集合表\\netlify\\edge-functions"
+publish = "E:\\桌面\\工作集合表\\dist"
 publishOrigin = "config"
 
 [build.environment]
