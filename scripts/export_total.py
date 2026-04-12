@@ -1,18 +1,23 @@
 #!/usr/bin/env python3
 """导出统一格式总表：合并 CSV + XLSX + jobs_data.json 去重输出"""
+import sys, io
+if sys.stdout.encoding != 'utf-8':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 import csv, json, re, os
 from collections import OrderedDict
+from pathlib import Path as _Path
 
 try:
     import openpyxl
 except ImportError:
     openpyxl = None
 
-BASE = '/Users/harry/Desktop/工作集合表'
-CSV_PATH = f'{BASE}/AIPM4月岗位需求收集_数据表.csv'
-XLSX_PATH = f'{BASE}/五期1组AIPM四月岗位收集.xlsx'
-JSON_PATH = f'{BASE}/jobs_data.json'
-OUTPUT_CSV = f'{BASE}/AIPM总表_统一格式.csv'
+BASE = str(_Path(__file__).parent.parent)
+CSV_PATH = str(_Path(BASE) / 'AIPM4月岗位需求收集_数据表.csv')
+XLSX_PATH = str(_Path(BASE) / '五期1组AIPM四月岗位收集.xlsx')
+JSON_PATH = str(_Path(BASE) / 'jobs_data.json')
+OUTPUT_CSV = str(_Path(BASE) / 'AIPM总表_统一格式.csv')
 
 HEADER = ['公司名称（全称）', '岗位名称', '所在城市', '薪资区间', 'BOSS链接',
           '年限要求', '学历要求', '方向分类', '关键词', '岗位描述', '数据来源']

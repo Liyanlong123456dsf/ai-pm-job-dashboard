@@ -13,6 +13,10 @@
      - 访问异常 → 跳过
   5. 保存更新后的 jobs_data.json
 """
+import sys, io
+if sys.stdout.encoding != 'utf-8':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 import json
 import time
 import random

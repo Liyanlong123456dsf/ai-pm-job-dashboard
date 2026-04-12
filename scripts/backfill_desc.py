@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """追踪原链接补全缺失的岗位描述"""
-import json, time, random, re, sys
+import sys, io
+if sys.stdout.encoding != 'utf-8':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+import json, time, random, re
 from pathlib import Path
 
 BASE = Path(__file__).parent.parent

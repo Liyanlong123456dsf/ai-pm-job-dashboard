@@ -2,11 +2,14 @@
 """
 每日自动更新入口
 用法：
-  python3 daily_update.py              # 正常运行（抓取+合并）
-  python3 daily_update.py --dry-run    # 仅测试爬虫，不写入文件
-  python3 daily_update.py --boss-cookie "xxx"  # 指定 BOSS 直聘 Cookie
+  python daily_update.py              # 正常运行（抓取+合并）
+  python daily_update.py --dry-run    # 仅测试爬虫，不写入文件
+  python daily_update.py --boss-cookie "xxx"  # 指定 BOSS 直聘 Cookie
 """
-import sys
+import sys, io
+if sys.stdout.encoding != 'utf-8':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 import json
 import logging
 import argparse
@@ -62,8 +65,7 @@ def _write_progress(pct, phase, detail, steps=None, done=False):
 
 
 def _start_progress_window():
-    """启动原生 macOS 桌面进度弹窗（Tkinter）
-    必须用 /usr/bin/python3（macOS 系统自带，含 tkinter）运行"""
+    """启动桌面进度弹窗（Tkinter）"""
     import subprocess
     _write_progress(0, '启动中...', '')
     gui_script = SCRIPT_DIR / 'progress_gui.py'
@@ -84,11 +86,10 @@ def _finish_progress(status):
 
 
 def _notify(title, message):
-    """发送 macOS 原生通知"""
+    """发送系统通知（跨平台）"""
     try:
-        import subprocess
-        script = f'display notification "{message}" with title "{title}" sound name "Glass"'
-        subprocess.run(['osascript', '-e', script], timeout=5)
+        from platform_utils import notify
+        notify(title, message)
     except Exception:
         pass
 
@@ -152,8 +153,8 @@ def _generate_report(status):
 
 
 def _popup_report(status):
-    """同时触发：① 右上角横幅通知 ② 弹窗对话框 ③ 浏览器报告"""
-    import subprocess
+    """同时触发：① 系统通知 ② 弹窗对话框 ③ 浏览器报告"""
+    from platform_utils import show_dialog, open_file
     s = status
     overall = s.get('overall', 'unknown')
     labels = {'success': '✅ 全部成功', 'partial': '⚠️ 部分完成', 'failed': '❌ 执行失败'}
@@ -165,7 +166,7 @@ def _popup_report(status):
     dur = f'{mins}分{secs}秒' if mins else f'{secs}秒'
     banner_msg = f'新增 {added} 条，总计 {total} 条' if overall != 'failed' else '今日未抓取到数据'
 
-    # ① 右上角横幅通知（不阻塞）
+    # ① 系统通知（不阻塞）
     _notify(f'AI 岗位扒取情况 - {label}', banner_msg)
 
     # ② 弹窗对话框（阻塞直到用户点击）
@@ -174,30 +175,23 @@ def _popup_report(status):
         net_s = '✅ 已部署' if s.get('deployed') else '❌ 未部署'
         err_line = f'\n⚠️ {len(s["errors"])} 个错误' if s.get('errors') else ''
         dialog_msg = (
-            f'📅 执行日期: {s.get("date", "")}\n'
-            f'⏱ 耗时: {dur}\n'
-            f'📊 今日新增: {added} 条\n'
-            f'📦 数据总量: {total} 条\n'
-            f'🔀 爬取: {s.get("crawl_raw", 0)} → 清洗: {s.get("crawl_cleaned", 0)}\n\n'
+            f'执行日期: {s.get("date", "")}\n'
+            f'耗时: {dur}\n'
+            f'今日新增: {added} 条\n'
+            f'数据总量: {total} 条\n'
+            f'爬取: {s.get("crawl_raw", 0)} -> 清洗: {s.get("crawl_cleaned", 0)}\n\n'
             f'Git: {git_s}\n'
             f'Netlify: {net_s}\n\n'
             f'{label}{err_line}'
         )
-        dialog_script = (
-            f'display dialog "{dialog_msg}" '
-            f'with title "AI 岗位扒取情况" '
-            f'buttons {{"查看详细报告", "好的"}} default button 2 with icon note'
-        )
-        result = subprocess.run(['osascript', '-e', dialog_script],
-                                capture_output=True, text=True, timeout=300)
-        clicked_report = '查看详细报告' in result.stdout
+        show_dialog('AI 岗位扒取情况', dialog_msg, buttons='ok', icon='info')
     except Exception:
-        clicked_report = False
+        pass
 
-    # ③ 浏览器报告（弹窗点了"查看详细报告"或自动打开）
+    # ③ 浏览器报告
     try:
         report = _generate_report(status)
-        subprocess.Popen(['open', str(report)])
+        open_file(report)
     except Exception as e:
         logger.warning(f'报告弹出失败: {e}')
 
@@ -261,7 +255,7 @@ def main():
         # 后续流程步骤（未执行）
         _pending_phases = [
             '数据清洗', '增量合并', '补全描述',
-            '导出总表', '生成知识库', 'Git 推送', 'Netlify 部署',
+            '导出总表', '生成知识库', 'Git 推送', '云同步',
         ]
 
         def _on_spider_progress(combo_idx, total_combos, kw, city, job_count):
@@ -432,32 +426,13 @@ def main():
         status['errors'].append(f'Git 推送失败: {e}')
         _step('Git 推送', False, str(e))
 
-    # === 9. 同步 dist 目录 + Netlify 部署 ===
-    _write_progress(93, '🌐 Netlify 部署中...', '', status.get('steps', []))
-    try:
-        dist_dir = BASE_DIR / 'dist'
-        dist_dir.mkdir(exist_ok=True)
-        import shutil
-        for fname in ['job_dashboard.html', 'jobs_data.json', 'index.html', 'netlify.toml',
-                      'knowledge_base.md', 'run_status.json', 'AIPM总表_统一格式.csv']:
-            src = BASE_DIR / fname
-            if src.exists():
-                shutil.copy2(src, dist_dir / fname)
-        logger.info(f'dist 目录已同步')
-        result = subprocess.run(['netlify', 'deploy', '--prod', '--dir=dist'],
-                                cwd=str(BASE_DIR), capture_output=True, text=True)
-        if result.returncode == 0:
-            logger.info('✅ Netlify 部署完成')
-            status['deployed'] = True
-            _step('Netlify 部署', True)
-        else:
-            logger.warning(f'Netlify 部署失败: {result.stderr}')
-            status['errors'].append(f'Netlify: {result.stderr[:200]}')
-            _step('Netlify 部署', False, result.stderr[:200])
-    except Exception as e:
-        logger.warning(f'Netlify 部署失败(非致命): {e}')
-        status['errors'].append(f'Netlify: {e}')
-        _step('Netlify 部署', False, str(e))
+    # === 9. 数据已通过 Git 推送同步（GitHub Raw URL 自动更新，无需 Netlify 部署） ===
+    _write_progress(93, '☁️ 数据已通过 Git 云同步', '', status.get('steps', []))
+    if status.get('git_pushed'):
+        status['deployed'] = True
+        _step('云同步', True, '数据已通过 GitHub Raw URL 自动更新')
+    else:
+        _step('云同步', False, 'Git 推送未成功，数据未同步')
 
     # === 10. 最终汇报 ===
     with open(BASE_DIR / 'jobs_data.json', 'r', encoding='utf-8') as f:

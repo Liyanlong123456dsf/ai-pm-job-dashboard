@@ -4,11 +4,14 @@ BOSS直聘爬虫 - API拦截模式 + 强相关过滤
 基于 boss-zp-main 的 API 拦截方案，速度快、数据完整
 
 用法:
-  python3 boss_dp.py --merge           # 全量抓取并合并到 Dashboard
-  python3 boss_dp.py --quick --merge   # 快速模式(≈8分钟)
-  python3 boss_dp.py --city 杭州       # 只抓指定城市
+  python boss_dp.py --merge           # 全量抓取并合并到 Dashboard
+  python boss_dp.py --quick --merge   # 快速模式(≈8分钟)
+  python boss_dp.py --city 杭州       # 只抓指定城市
 """
-import sys
+import sys, io
+if sys.stdout.encoding != 'utf-8':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 import json
 import time
 import random
@@ -202,10 +205,17 @@ class BossDPSpider:
         co.set_argument('--disable-blink-features=AutomationControlled')
         # 现代 Chrome UA，随机小版本
         minor = random.randint(0, 99)
-        co.set_user_agent(
-            f'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
-            f'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.{minor} Safari/537.36'
-        )
+        import platform as _plat
+        if _plat.system() == 'Windows':
+            co.set_user_agent(
+                f'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                f'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.{minor} Safari/537.36'
+            )
+        else:
+            co.set_user_agent(
+                f'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
+                f'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.{minor} Safari/537.36'
+            )
         co.set_pref('excludeSwitches', ['enable-automation'])
         co.set_pref('useAutomationExtension', False)
         # 随机 viewport 尺寸（常见分辨率附近浮动）
@@ -240,7 +250,8 @@ class BossDPSpider:
         print('✓ 浏览器已启动 (Profile:', PROFILE_DIR, ')')
 
     def ensure_login(self, city_code):
-        """检测登录状态，未登录则弹出 Chrome + macOS 弹窗提示用户登录"""
+        """检测登录状态，未登录则弹窗提示用户登录"""
+        from platform_utils import activate_chrome, notify, show_login_dialog
         url = f'https://www.zhipin.com/web/geek/job?query=AI产品经理&city={city_code}'
         self.page.get(url)
         time.sleep(5)
@@ -263,25 +274,17 @@ class BossDPSpider:
                 pass
             time.sleep(3)
 
-        # 未登录 — 弹出 Chrome 到前台 + macOS 弹窗通知
-        import subprocess
-        # 把 Chrome 窗口带到前台
-        subprocess.run(['osascript', '-e',
-            'tell application "Google Chrome" to activate'], timeout=5)
-        # 发 macOS 通知
-        subprocess.run(['osascript', '-e',
-            'display notification "请在 Chrome 中登录 BOSS 直聘" '
-            'with title "AI 岗位爬取" sound name "Basso"'], timeout=5)
-        # 弹窗等待用户确认（无论交互/非交互模式都能工作）
-        result = subprocess.run(['osascript', '-e',
-            'display dialog "需要登录 BOSS 直聘\n\n'
+        # 未登录 — 弹出 Chrome 到前台 + 弹窗通知
+        activate_chrome()
+        notify('AI 岗位爬取', '请在 Chrome 中登录 BOSS 直聘')
+        confirmed = show_login_dialog(
+            'AI 岗位爬取 - 登录',
+            '需要登录 BOSS 直聘\n\n'
             '请在已打开的 Chrome 窗口中完成登录，\n'
-            '登录成功后点击「已登录」继续爬取。\n\n'
-            'Cookie 会自动保存，下次无需再登录。" '
-            'with title "AI 岗位爬取 - 登录" '
-            'buttons {"取消", "已登录"} default button 2 with icon caution'],
-            capture_output=True, text=True, timeout=600)
-        if result.returncode != 0 or '取消' in result.stdout:
+            '登录成功后点击「是」继续爬取。\n\n'
+            'Cookie 会自动保存，下次无需再登录。'
+        )
+        if not confirmed:
             print('⚠ 用户取消登录')
             return False
         print('✓ 用户确认已登录')

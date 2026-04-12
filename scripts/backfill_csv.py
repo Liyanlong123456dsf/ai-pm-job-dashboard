@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """从 CSV + XLSX 两个表格回填 BOSS 链接到 jobs_data.json
 注：原始 CSV/XLSX 已清理，此脚本仅在文件存在时执行，否则安全跳过。"""
+import sys, io
+if sys.stdout.encoding != 'utf-8':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 import csv, json, re, os
 from pathlib import Path
 

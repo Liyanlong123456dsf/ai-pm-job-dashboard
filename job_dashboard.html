@@ -423,7 +423,7 @@ let DATA = [];
 let DATA_META = {};
 async function boot() {
   try {
-    const resp = await fetch('./jobs_data.json?t=' + Date.now());
+    const resp = await fetch('https://raw.githubusercontent.com/Liyanlong123456dsf/ai-pm-job-dashboard/main/jobs_data.json?t=' + Date.now());
     const json = await resp.json();
     DATA = json.jobs || json;
     DATA_META = json.meta || {};
@@ -827,7 +827,7 @@ function setupHeroGraph(){
 async function loadRunStatus() {
   const el = document.getElementById('statusContent');
   try {
-    const resp = await fetch('./run_status.json?t=' + Date.now());
+    const resp = await fetch('https://raw.githubusercontent.com/Liyanlong123456dsf/ai-pm-job-dashboard/main/run_status.json?t=' + Date.now());
     if (!resp.ok) throw new Error('not found');
     const s = await resp.json();
     const LABELS = {success:'✅ 成功', partial:'⚠️ 部分', failed:'❌ 失败', running:'🔄 运行中'};

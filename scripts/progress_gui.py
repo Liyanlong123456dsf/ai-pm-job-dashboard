@@ -1,16 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-macOS 原生桌面进度弹窗 — Apple Design System 风格
-Tk 9.0 + Homebrew Python 3.14
+桌面进度弹窗 — 深色主题
 每 800ms 读取 logs/progress.json 实时刷新
-
-设计参考：Apple HIG
-- SF Pro Display / Text 字体体系
-- Apple Blue (#0071e3) 唯一强调色
-- #1d1d1f / #f5f5f7 明暗交替
-- 紧凑行高标题 + 宽松正文
-- 极简、克制、产品即主角
+设计参考：Apple HIG 风格
 """
 import json
 import tkinter as tk
@@ -33,11 +26,15 @@ GREEN      = '#30d158'
 ORANGE     = '#ff9f0a'
 RED        = '#ff453a'
 
-# Apple 风格字体（SF Pro 在 macOS 上可通过系统字体名调用）
-FONT_DISPLAY = 'SF Pro Display'
-FONT_TEXT    = 'SF Pro Text'
-# Fallback
-FONT_FALLBACK = ('Helvetica Neue', 'Helvetica', 'Arial')
+# 跨平台字体选择
+import platform as _plat
+if _plat.system() == 'Windows':
+    FONT_DISPLAY = 'Segoe UI'
+    FONT_TEXT    = 'Segoe UI'
+else:
+    FONT_DISPLAY = 'SF Pro Display'
+    FONT_TEXT    = 'SF Pro Text'
+FONT_FALLBACK = ('Segoe UI', 'Helvetica Neue', 'Helvetica', 'Arial')
 
 W = 480
 H = 500

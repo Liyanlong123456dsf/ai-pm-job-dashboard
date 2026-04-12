@@ -9,4 +9,8 @@ __pycache__/
 
 # 系统文件
 .DS_Store
+Thumbs.db
+desktop.ini
 .env
+__MACOSX/
+工作集合表/

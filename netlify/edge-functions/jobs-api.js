@@ -21,7 +21,7 @@
  * GET /api/jobs/stats — 返回数据概况统计
  */
 
-const SITE_URL = 'https://ai-pm-job-dashboard.netlify.app';
+const GITHUB_RAW_URL = 'https://raw.githubusercontent.com/Liyanlong123456dsf/ai-pm-job-dashboard/main';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -40,7 +40,7 @@ async function loadData() {
   if (cachedData && (now - cacheTime) < CACHE_TTL) {
     return cachedData;
   }
-  const resp = await fetch(`${SITE_URL}/jobs_data.json?t=${now}`);
+  const resp = await fetch(`${GITHUB_RAW_URL}/jobs_data.json?t=${now}`);
   cachedData = await resp.json();
   cacheTime = now;
   return cachedData;

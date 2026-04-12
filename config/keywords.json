@@ -20,11 +20,9 @@
     "南京": "101190100"
   },
   "schedule": {
-    "login_hour": 22,
-    "login_minute": 0,
-    "crawl_hour": 0,
-    "crawl_minute": 0,
-    "rotation": ["full", "quick", "quick"],
+    "mode": "continuous",
+    "interval_minutes": 60,
+    "always_full": true,
     "cleanup_days": [1, 15],
     "cleanup_max_age_days": 30
   },

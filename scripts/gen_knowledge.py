@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 """生成知识库markdown + RAG工程文档 + Agent提示词"""
+import sys, io
+if sys.stdout.encoding != 'utf-8':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 import json, re
 from collections import defaultdict
 from pathlib import Path
@@ -243,10 +247,10 @@ rag_doc = f'''# AI求职助手 — RAG工程搭建指南
 
 ```bash
 # 1. 执行每日爬取（自动完成全流程）
-python3 scripts/daily_update.py
+python scripts/daily_update.py
 
 # 2. 重新生成知识库和提示词
-python3 scripts/gen_knowledge.py
+python scripts/gen_knowledge.py
 
 # 3. 在扣子平台重新上传 knowledge_base.md
 #    （替换旧文档，等待重新索引）
