@@ -21,6 +21,7 @@ if sys.stdout.encoding != 'utf-8':
 import os
 import json
 import time
+import hashlib
 import logging
 import requests
 from pathlib import Path
@@ -46,7 +47,7 @@ CREATE_DOC_URL = f'{FEISHU_HOST}/open-apis/docx/v1/documents'
 # 文档块操作
 DOC_BLOCKS_URL = lambda doc_id: f'{FEISHU_HOST}/open-apis/docx/v1/documents/{doc_id}/blocks'
 DOC_BLOCK_CHILDREN_URL = lambda doc_id, block_id: f'{FEISHU_HOST}/open-apis/docx/v1/documents/{doc_id}/blocks/{block_id}/children'
-DOC_BLOCK_BATCH_DELETE_URL = lambda doc_id, block_id: f'{FEISHU_HOST}/open-apis/docx/v1/documents/{doc_id}/blocks/{block_id}/children/batch_delete'
+DOC_BATCH_DELETE_URL = lambda doc_id, block_id: f'{FEISHU_HOST}/open-apis/docx/v1/documents/{doc_id}/blocks/{block_id}/children/batch_delete'
 
 # 飞书文档每次创建子块数量限制
 BATCH_SIZE = 50
@@ -169,36 +170,36 @@ def get_block_children(token, doc_id, block_id):
     return children
 
 
-def delete_block_children(token, doc_id, block_id, child_ids):
-    """批量删除子块"""
-    if not child_ids:
-        return
+def clear_document(token, doc_id):
+    """清空文档所有子块（高效版：先统计总数，然后循环从头删50个，无需每次重查）"""
     headers = {'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}
-    # 飞书 API 每次最多删除 50 个
-    for i in range(0, len(child_ids), BATCH_SIZE):
-        batch = child_ids[i:i + BATCH_SIZE]
-        body = {
-            'start_index': 0,
-            'end_index': len(batch),
-        }
+    # 先获取总子块数
+    children = get_block_children(token, doc_id, doc_id)
+    remaining = len(children)
+    if remaining == 0:
+        return 0
+    total_deleted = 0
+    logger.info(f'  共 {remaining} 个子块需要删除...')
+    while remaining > 0:
+        # 每次删除前 50 个（删除后后面的块自动前移）
+        count = min(remaining, BATCH_SIZE)
         resp = requests.delete(
-            DOC_BLOCK_CHILDREN_URL(doc_id, block_id),
+            DOC_BATCH_DELETE_URL(doc_id, doc_id),
             headers=headers,
-            json=body,
+            json={'start_index': 0, 'end_index': count},
             timeout=15,
         )
-        # 逐个删除备用方案
-        if resp.status_code != 200 or resp.json().get('code') != 0:
-            # 尝试用 batch_delete
-            resp2 = requests.post(
-                DOC_BLOCK_BATCH_DELETE_URL(doc_id, block_id),
-                headers=headers,
-                json={'children': batch},
-                timeout=15,
-            )
-            if resp2.json().get('code') != 0:
-                logger.warning(f'删除子块部分失败: {resp2.json()}')
-        time.sleep(0.3)
+        data = resp.json() if resp.status_code == 200 else {}
+        if data.get('code') == 0:
+            total_deleted += count
+            remaining -= count
+            if total_deleted % 500 == 0 or remaining == 0:
+                logger.info(f'  已删除 {total_deleted} 个块，剩余 {remaining}...')
+        else:
+            logger.warning(f'删除失败: {resp.status_code} {resp.text[:200]}')
+            break
+        time.sleep(0.15)
+    return total_deleted
 
 
 def md_to_blocks(md_content):
@@ -214,7 +215,7 @@ def md_to_blocks(md_content):
     heading_key_map = {3: 'heading1', 4: 'heading2', 5: 'heading3',
                        6: 'heading4', 7: 'heading5', 8: 'heading6'}
 
-    # 按 ===== 分隔符拆分为岗位段落，每个段落合并为一个文本块
+    # 按 ===== 分隔符拆分为岗位段落
     sections = md_content.split('\n=====\n')
 
     for sec_idx, section in enumerate(sections):
@@ -267,55 +268,41 @@ def md_to_blocks(md_content):
                     })
             continue
 
-        # 后续段落：提取标题，其余合并为一个文本块
-        # 添加分隔线
-        blocks.append({'block_type': 22, 'divider': {}})
-
-        heading_line = None
+        # 后续岗位段落：===== 分隔符 + 标题加粗 + 正文，合并为单个文本块
+        # 保留 ===== 分隔符供扣子 RAG 按此切割 chunk
+        heading_text = ''
         body_lines = []
         for line in lines:
             line_s = line.strip()
             if not line_s:
                 continue
-            if line_s.startswith('#') and heading_line is None:
-                heading_line = line_s
+            if line_s.startswith('#') and not heading_text:
+                level = 0
+                for ch in line_s:
+                    if ch == '#':
+                        level += 1
+                    else:
+                        break
+                heading_text = line_s[level:].strip()
             else:
                 body_lines.append(line_s)
 
-        # 标题
-        if heading_line:
-            level = 0
-            for ch in heading_line:
-                if ch == '#':
-                    level += 1
-                else:
-                    break
-            level = min(level, 6)
-            text = heading_line[level:].strip()
-            if text:
-                bt = heading_type_map.get(level, 8)
-                key = heading_key_map[bt]
-                blocks.append({
-                    'block_type': bt,
-                    key: {
-                        'elements': [{'text_run': {'content': text[:4500], 'text_element_style': {}}}],
-                        'style': {},
-                    }
-                })
-
-        # 正文合并为一个大文本块（飞书单块内容限制约 5000 字符）
+        # 将分隔符+标题+正文合为一个文本块
+        elements = []
+        # ===== 作为 chunk 分隔标记（扣子 RAG 按此切割）
+        elements.append({'text_run': {'content': '=====\n', 'text_element_style': {}}})
+        if heading_text:
+            elements.append({'text_run': {'content': heading_text[:4500] + '\n', 'text_element_style': {'bold': True}}})
         if body_lines:
-            merged = '\n'.join(body_lines)
-            # 如果超长，分成多个块
-            chunks = [merged[i:i+4000] for i in range(0, len(merged), 4000)]
-            for chunk in chunks:
-                blocks.append({
-                    'block_type': 2,
-                    'text': {
-                        'elements': [{'text_run': {'content': chunk, 'text_element_style': {}}}],
-                        'style': {},
-                    }
-                })
+            body = '\n'.join(body_lines)
+            for i in range(0, len(body), 4000):
+                elements.append({'text_run': {'content': body[i:i+4000], 'text_element_style': {}}})
+
+        if elements:
+            blocks.append({
+                'block_type': 2,
+                'text': {'elements': elements, 'style': {}},
+            })
 
     return blocks
 
@@ -355,7 +342,7 @@ def create_block_children(token, doc_id, block_id, blocks):
 
         if created % 200 == 0 or created == total:
             logger.info(f'  进度: {created}/{total} 块')
-        time.sleep(0.5)  # 控制频率
+        time.sleep(0.15)  # 控制频率（飞书限频 3/s，网络延迟已占 ~0.2s）
 
     return created
 
@@ -386,7 +373,8 @@ def main():
         return False
 
     md_content = KB_FILE.read_text(encoding='utf-8')
-    logger.info(f'📄 知识库文件: {len(md_content)} 字符, {md_content.count(chr(10))} 行')
+    content_md5 = hashlib.md5(md_content.encode('utf-8')).hexdigest()
+    logger.info(f'📄 知识库文件: {len(md_content)} 字符, {md_content.count(chr(10))} 行, MD5={content_md5[:8]}')
 
     # 2. 获取飞书凭证和 token
     try:
@@ -414,30 +402,16 @@ def main():
             return False
     else:
         logger.info(f'📝 使用已有文档: {doc_id}')
+        # MD5 校验：内容未变则跳过同步
+        if state.get('content_md5') == content_md5:
+            logger.info('⏭️  内容无变化，跳过同步')
+            return True
 
     # 4. 清空文档现有内容
     logger.info('🗑️  清空文档现有内容...')
     try:
-        children = get_block_children(token, doc_id, doc_id)
-        if children:
-            child_ids = [c['block_id'] for c in children]
-            logger.info(f'  找到 {len(child_ids)} 个子块，正在删除...')
-            # 使用 batch_delete API
-            headers = {'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}
-            # 逐批删除
-            for i in range(0, len(child_ids), BATCH_SIZE):
-                batch = child_ids[i:i + BATCH_SIZE]
-                resp = requests.delete(
-                    DOC_BLOCK_CHILDREN_URL(doc_id, doc_id),
-                    headers=headers,
-                    params={
-                        'start_index': 0,
-                        'end_index': min(len(batch), len(child_ids) - i),
-                    },
-                    timeout=15,
-                )
-                time.sleep(0.3)
-            logger.info('✅ 文档内容已清空')
+        deleted = clear_document(token, doc_id)
+        logger.info(f'✅ 文档内容已清空（删除 {deleted} 个块）')
     except Exception as e:
         logger.warning(f'⚠️ 清空文档失败（可能是新文档）: {e}')
 
@@ -459,6 +433,7 @@ def main():
     state['last_sync'] = time.strftime('%Y-%m-%d %H:%M:%S')
     state['blocks_count'] = len(blocks)
     state['content_size'] = len(md_content)
+    state['content_md5'] = content_md5
     save_doc_state(state)
 
     logger.info('=' * 50)

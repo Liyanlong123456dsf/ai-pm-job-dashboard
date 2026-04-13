@@ -3,6 +3,7 @@ import re
 import json
 import hashlib
 import logging
+from datetime import datetime, date
 from pathlib import Path
 
 logger = logging.getLogger('pipeline')
@@ -122,7 +123,8 @@ def process_one(raw: dict) -> dict:
         'kw': kw,
         'desc': desc,
         '_key': dedup_key({'title': title, 'company': company, 'city': city}),
-        '_date': __import__('datetime').date.today().isoformat(),
+        '_date': date.today().isoformat(),
+        '_crawled_at': datetime.now().strftime('%Y-%m-%d %H:%M'),
     }
     if url:
         result['url'] = url

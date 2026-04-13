@@ -1,31 +1,67 @@
 {
   "date": "2026-04-13",
-  "start_time": "02:57:39",
-  "mode": "quick",
+  "start_time": "16:27:58",
+  "mode": "full",
   "steps": [
     {
       "name": "爬取 BOSS 直聘",
       "ok": true,
-      "detail": "抓取 0 条原始数据",
-      "time": "03:06:59"
+      "detail": "抓取 1675 条原始数据",
+      "time": "00:43:08"
     },
     {
-      "name": "终止",
+      "name": "数据清洗",
+      "ok": true,
+      "detail": "1668 条有效岗位",
+      "time": "00:43:08"
+    },
+    {
+      "name": "增量合并",
+      "ok": true,
+      "detail": "原2913+抓1675→清1668→新+134=总3047",
+      "time": "00:43:09"
+    },
+    {
+      "name": "回填链接",
+      "ok": true,
+      "detail": "",
+      "time": "00:43:09"
+    },
+    {
+      "name": "补全描述",
+      "ok": true,
+      "detail": "补全 283 条",
+      "time": "01:09:17"
+    },
+    {
+      "name": "导出总表",
       "ok": false,
-      "detail": "未抓取到任何数据",
-      "time": "03:06:59"
+      "detail": "Command '['C:\\\\Users\\\\lenovo\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python312\\\\python.exe', 'E:\\\\桌面\\\\工作集合表\\\\scripts\\\\export_total.py']' returned non-zero exit status 1.",
+      "time": "01:09:17"
+    },
+    {
+      "name": "生成知识库",
+      "ok": true,
+      "detail": "",
+      "time": "01:09:17"
+    },
+    {
+      "name": "飞书同步",
+      "ok": true,
+      "detail": "",
+      "time": "01:11:10"
     }
   ],
-  "overall": "failed",
-  "crawl_raw": 0,
-  "crawl_cleaned": 0,
-  "added": 0,
-  "total": 0,
+  "overall": "running",
+  "crawl_raw": 1675,
+  "crawl_cleaned": 1668,
+  "added": 134,
+  "total": 3047,
   "has_url": 0,
   "has_desc": 0,
   "git_pushed": false,
   "deployed": false,
   "errors": [],
-  "duration_sec": 560,
-  "updated": "2026-04-13 03:06:59"
+  "duration_sec": 0,
+  "updated": "2026-04-14 01:11:10"
 }

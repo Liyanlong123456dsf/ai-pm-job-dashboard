@@ -6,7 +6,7 @@
 
 | 文件 | 用途 | 上传位置 |
 |---|---|---|
-| `knowledge_base.md` | 知识库源文件（2913条岗位） | 扣子 → 知识库 → 上传文档 |
+| `knowledge_base.md` | 知识库源文件（3047条岗位） | 扣子 → 知识库 → 上传文档 |
 | `coze_prompt.txt` | Agent系统提示词 | 扣子 → Bot → 人设与回复逻辑 |
 | `jobs_data.json` | 原始结构化数据（备用） | 本地留存，后续更新用 |
 
@@ -131,10 +131,10 @@
 
 ```bash
 # 1. 执行每日爬取（自动完成全流程）
-python3 scripts/daily_update.py
+python scripts/daily_update.py
 
 # 2. 重新生成知识库和提示词
-python3 scripts/gen_knowledge.py
+python scripts/gen_knowledge.py
 
 # 3. 在扣子平台重新上传 knowledge_base.md
 #    （替换旧文档，等待重新索引）

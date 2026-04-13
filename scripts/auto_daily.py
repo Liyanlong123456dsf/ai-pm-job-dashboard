@@ -47,8 +47,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger('auto_daily')
 
-# 超时保护：180 分钟（全量模式可能需要更长）
-MAX_RUNTIME_SEC = 180 * 60
+# 超时保护：无限制（全量贪婪模式需完整执行完爬取+详情+清洗+上传）
+MAX_RUNTIME_SEC = 0  # 0 = 不限时
 
 # 防休眠状态由 platform_utils 管理
 
@@ -106,6 +106,7 @@ def run_stale_cleanup():
             [sys.executable, str(script)],
             cwd=str(BASE_DIR),
             capture_output=True, text=True,
+            encoding='utf-8', errors='replace',
             timeout=7200,  # 2小时超时
         )
         if result.returncode == 0:
@@ -183,6 +184,7 @@ def run_login_check():
             [sys.executable, str(script)],
             cwd=str(BASE_DIR),
             capture_output=True, text=True,
+            encoding='utf-8', errors='replace',
             timeout=600,  # 10分钟超时
         )
         if result.returncode == 0:
@@ -203,7 +205,8 @@ def run_daily_update(quick=False):
         cmd.append('--quick')
 
     mode_label = '快速' if quick else '全量'
-    logger.info(f'🚀 启动 daily_update.py [{mode_label}模式] (超时 {MAX_RUNTIME_SEC // 60} 分钟)')
+    timeout_hint = f'超时 {MAX_RUNTIME_SEC // 60} 分钟' if MAX_RUNTIME_SEC > 0 else '不限时'
+    logger.info(f'🚀 启动 daily_update.py [{mode_label}模式] ({timeout_hint})')
 
     proc = subprocess.Popen(
         cmd,
@@ -211,6 +214,8 @@ def run_daily_update(quick=False):
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
+        encoding='utf-8',
+        errors='replace',
         bufsize=1,
     )
 
@@ -226,7 +231,7 @@ def run_daily_update(quick=False):
             elif proc.poll() is not None:
                 break
 
-            if time.time() - start > MAX_RUNTIME_SEC:
+            if MAX_RUNTIME_SEC > 0 and time.time() - start > MAX_RUNTIME_SEC:
                 logger.error(f'⏰ 超时！已运行 {MAX_RUNTIME_SEC // 60} 分钟，强制终止')
                 proc.kill()
                 proc.wait()

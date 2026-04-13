@@ -50,8 +50,12 @@ def merge(existing_jobs: list, existing_keys: set, new_jobs: list) -> tuple:
             job['_new'] = True  # mark as new for Dashboard
             added.append(job)
         elif key and key in key_to_idx:
-            # 重复岗位：刷新日期（证明还在招）
-            existing_jobs[key_to_idx[key]]['_date'] = today_str
+            # 重复岗位：刷新日期（证明还在招），但保留首次爬取时间
+            idx = key_to_idx[key]
+            existing_jobs[idx]['_date'] = today_str
+            # 如果旧数据没有 _crawled_at，从新数据补全
+            if not existing_jobs[idx].get('_crawled_at') and job.get('_crawled_at'):
+                existing_jobs[idx]['_crawled_at'] = job['_crawled_at']
             refreshed += 1
 
     merged = existing_jobs + added
@@ -68,7 +72,7 @@ def save(jobs: list):
         'total': len(jobs),
     }
     # Clean internal fields for frontend, but keep _key and _date for dedup
-    KEEP = {'_key', '_date'}
+    KEEP = {'_key', '_date', '_crawled_at'}
     frontend_jobs = []
     for j in jobs:
         fj = {k: v for k, v in j.items() if not k.startswith('_') or k in KEEP}

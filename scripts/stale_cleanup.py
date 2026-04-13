@@ -142,10 +142,10 @@ def main():
     cutoff = (today - timedelta(days=max_age)).isoformat()
     today_str = today.isoformat()
 
-    # 筛选需要检查的岗位
+    # 筛选需要检查的岗位（优先用 _crawled_at 首次爬取时间判断超期，回退 _date）
     stale_indices = []
     for i, job in enumerate(jobs):
-        job_date = job.get('_date', '9999-99-99')
+        job_date = job.get('_crawled_at', '') or job.get('_date', '9999-99-99')
         has_url = bool(job.get('url'))
         if has_url and job_date < cutoff:
             stale_indices.append(i)

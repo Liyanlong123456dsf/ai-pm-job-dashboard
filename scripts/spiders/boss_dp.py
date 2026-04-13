@@ -28,16 +28,16 @@ CONFIG_DIR = Path(__file__).parent.parent.parent / 'config'
 PROFILE_DIR = Path(__file__).parent.parent.parent / '.chrome_profile'  # 持久化登录
 
 # 翻页与滚动
-MAX_PAGES = 4           # 每个关键词最多翻4页，覆盖更全
-MAX_SCROLLS_PER_PAGE = 3
+MAX_PAGES = 3           # 标准模式最多3页
+MAX_SCROLLS_PER_PAGE = 2
 
-# 防封参数 — 风控是红线，完全模拟真人节奏，目标☂50分钟
-MIN_DELAY, MAX_DELAY = 1.5, 3.5
-KEYWORD_REST_MIN, KEYWORD_REST_MAX = 5, 12
-CITY_REST_MIN, CITY_REST_MAX = 8, 18
-DETAIL_DELAY_MIN, DETAIL_DELAY_MAX = 1.5, 3.0
-DETAIL_BATCH_PAUSE = (8, 15)   # 每批详情后的长休息
-DETAIL_BATCH_SIZE = 15         # 每扱15个，更小批次更安全
+# 防封参数 — 强硬省时版，在安全边界内压缩等待
+MIN_DELAY, MAX_DELAY = 0.8, 1.8
+KEYWORD_REST_MIN, KEYWORD_REST_MAX = 2, 5
+CITY_REST_MIN, CITY_REST_MAX = 3, 8
+DETAIL_DELAY_MIN, DETAIL_DELAY_MAX = 0.8, 1.5
+DETAIL_BATCH_PAUSE = (3, 6)    # 每批详情后的短休息
+DETAIL_BATCH_SIZE = 25         # 每批25个，减少批次间休息次数
 
 # 强相关过滤：岗位名必须命中以下任一关键词才算"AI PM 强相关"
 RELEVANT_KEYWORDS = [
@@ -91,9 +91,9 @@ def random_delay(lo=MIN_DELAY, hi=MAX_DELAY):
     mean = (lo + hi) / 2
     std = (hi - lo) / 4
     delay = max(lo * 0.8, random.gauss(mean, std))
-    # 5% 概率出现一次「走神」长停顿
-    if random.random() < 0.05:
-        delay += random.uniform(2, 6)
+    # 3% 概率出现一次「走神」短停顿
+    if random.random() < 0.03:
+        delay += random.uniform(1, 3)
     time.sleep(delay)
 
 
@@ -342,9 +342,9 @@ class BossDPSpider:
                     self.page.get(url)
 
             # 页面加载后等待（模拟阅读）
-            random_delay(1.5, 3.0)
-            # 20% 概率模拟浏览行为
-            if random.random() < 0.2:
+            random_delay(0.8, 1.8)
+            # 10% 概率模拟浏览行为
+            if random.random() < 0.1:
                 simulate_human(self.page)
 
             # 收集翻页触发的 API
@@ -397,11 +397,11 @@ class BossDPSpider:
         return keyword_new
 
     def scrape_keyword_greedy(self, keyword: str, city_code: str, city_name: str = '') -> int:
-        """贪婪模式：翻到底为止（连续5页0新增判定翻到底）"""
+        """贪婪模式：翻到底为止（连续2页0新增判定翻到底）"""
         keyword_new = 0
         page_num = 0
         consecutive_zero = 0
-        MAX_CONSECUTIVE_ZERO = 5
+        MAX_CONSECUTIVE_ZERO = 2
 
         while True:
             page_num += 1
@@ -447,21 +447,18 @@ class BossDPSpider:
             else:
                 consecutive_zero = 0
 
-            # 滚动加载
-            for scroll_i in range(3):
-                dist = random.randint(300, 700)
-                steps = random.randint(2, 3)
-                for _ in range(steps):
-                    self.page.scroll.down(dist // steps + random.randint(-30, 30))
-                    time.sleep(random.uniform(0.08, 0.25))
-                random_delay(0.8, 2.0)
+            # 滚动加载（精简版）
+            for scroll_i in range(2):
+                dist = random.randint(300, 600)
+                self.page.scroll.down(dist)
+                time.sleep(random.uniform(0.3, 0.8))
                 scroll_jobs = collect_api_responses(self.page, timeout=2)
                 if scroll_jobs:
                     sn, _, _ = self._add_jobs(scroll_jobs)
                     keyword_new += sn
 
             self.page.listen.stop()
-            random_delay(1.5, 3.5)
+            random_delay(0.8, 1.8)
 
         return keyword_new
 
