@@ -470,6 +470,30 @@ class BossDPSpider:
         self.all_jobs = {}    # key -> raw job
         self.skipped = 0      # 被过滤掉的非相关岗位
         self._progress_cb = None  # 进度回调: (combo_idx, total, kw, city, job_count)
+        self._keyword_done_cb = None  # 关键词完成回调: (kw, raw_count, total_so_far)
+
+    def _browser_alive(self) -> bool:
+        """检测浏览器是否仍然存活"""
+        try:
+            _ = self.page.title
+            return True
+        except Exception:
+            return False
+
+    def _safe_listen_start(self, target):
+        """安全启动 listen，浏览器断连时返回 False"""
+        try:
+            self.page.listen.start(target)
+            return True
+        except Exception:
+            return False
+
+    def _safe_listen_stop(self):
+        """安全停止 listen"""
+        try:
+            self.page.listen.stop()
+        except Exception:
+            pass
 
     def _build_options(self, headless=False):
         from DrissionPage import ChromiumOptions
@@ -687,7 +711,8 @@ class BossDPSpider:
         no_new_pages = 0
 
         for page_num in range(1, MAX_PAGES + 1):
-            self.page.listen.start('wapi/zpgeek/search/joblist.json')
+            if not self._safe_listen_start('wapi/zpgeek/search/joblist.json'):
+                break
 
             if page_num == 1:
                 # 首页：正常导航
@@ -718,7 +743,7 @@ class BossDPSpider:
             keyword_new += page_new
 
             if len(page_jobs) == 0:
-                self.page.listen.stop()
+                self._safe_listen_stop()
                 break
 
             # 滚动触发更多加载
@@ -747,7 +772,7 @@ class BossDPSpider:
                 if scroll_no_new >= 2:
                     break
 
-            self.page.listen.stop()
+            self._safe_listen_stop()
 
             if page_new == 0:
                 no_new_pages += 1
@@ -770,7 +795,8 @@ class BossDPSpider:
 
         while True:
             page_num += 1
-            self.page.listen.start('wapi/zpgeek/search/joblist.json')
+            if not self._safe_listen_start('wapi/zpgeek/search/joblist.json'):
+                break
 
             if page_num == 1:
                 url = f'https://www.zhipin.com/web/geek/job?query={keyword}&city={city_code}'
@@ -794,7 +820,7 @@ class BossDPSpider:
             page_jobs = collect_api_responses(self.page, timeout=8)
 
             if len(page_jobs) == 0:
-                self.page.listen.stop()
+                self._safe_listen_stop()
                 logger.info(f'    ↳ 第{page_num}页: API返回空，停止')
                 break
 
@@ -806,7 +832,7 @@ class BossDPSpider:
             if page_new == 0:
                 consecutive_zero += 1
                 if consecutive_zero >= MAX_CONSECUTIVE_ZERO:
-                    self.page.listen.stop()
+                    self._safe_listen_stop()
                     logger.info(f'    ↳ 连续{MAX_CONSECUTIVE_ZERO}页无新增，判定已翻到底（共{page_num}页）')
                     break
             else:
@@ -822,13 +848,186 @@ class BossDPSpider:
                     sn, _, _ = self._add_jobs(scroll_jobs)
                     keyword_new += sn
 
-            self.page.listen.stop()
+            self._safe_listen_stop()
             random_delay(0.8, 1.8)
 
         return keyword_new
 
+    def run_keyword(self, keyword: str, cities: dict, greedy: bool = False) -> list:
+        """爬取单个关键词×所有城市，获取详情，返回标准化结果"""
+        if not self._browser_alive():
+            logger.warning(f'浏览器已断连，跳过关键词 {keyword}')
+            return []
+
+        kw_before = len(self.all_jobs)
+        city_items = list(cities.items())
+        random.shuffle(city_items)
+
+        for city_i, (city_name, city_code) in enumerate(city_items):
+            if not self._browser_alive():
+                logger.warning(f'浏览器已断连，停止关键词 {keyword} (城市 {city_i}/{len(city_items)})')
+                break
+
+            n = self.scrape_keyword_greedy(keyword, city_code, city_name) if greedy else self.scrape_keyword(keyword, city_code)
+            print(f'  → {keyword} @ {city_name}: +{n} | 累计 {len(self.all_jobs)} (过滤 {self.skipped})')
+
+            # 进度回调
+            if self._progress_cb:
+                try:
+                    combo_idx = kw_before + city_i + 1
+                    total_combos = len(cities)
+                    self._progress_cb(combo_idx, total_combos, keyword, city_name, len(self.all_jobs))
+                except:
+                    pass
+
+            # 城市间休息
+            if city_i < len(city_items) - 1:
+                random_delay(KEYWORD_REST_MIN, KEYWORD_REST_MAX)
+
+        # 获取该关键词下所有新岗位的详情
+        kw_new_keys = {k for k, j in self.all_jobs.items() if k not in self._processed_keys}
+        if kw_new_keys:
+            self._fetch_keyword_details(kw_new_keys)
+            self._processed_keys.update(kw_new_keys)
+
+        # 标准化该关键词的结果
+        results = []
+        for key in kw_new_keys:
+            if key in self.all_jobs:
+                job = self.all_jobs[key]
+                city = job.get('city', '')
+                desc = job.get('full_desc', '') or job.get('skills', '')
+                results.append({
+                    'title': job.get('job_name', ''),
+                    'company': job.get('company', ''),
+                    'city': city,
+                    'salary': job.get('salary', ''),
+                    'exp': job.get('experience', ''),
+                    'edu': job.get('degree', ''),
+                    'desc': desc,
+                    'url': job.get('url', ''),
+                    '_source': 'boss_dp',
+                })
+
+        kw_raw = len(self.all_jobs) - kw_before
+        logger.info(f'关键词 [{keyword}] 完成: 原始 {kw_raw} 条 → 标准化 {len(results)} 条')
+        return results
+
+    def _fetch_keyword_details(self, new_keys: set):
+        """获取指定 key 集合的岗位详情（增量版 fetch_all_details）"""
+        jobs_needing_detail = [
+            (k, j) for k, j in self.all_jobs.items()
+            if k in new_keys and j.get('security_id') and not j.get('full_desc')
+        ]
+        if not jobs_needing_detail:
+            return
+
+        total = len(jobs_needing_detail)
+        success = 0
+        fail = 0
+        consecutive_fail = 0
+
+        for idx, (key, job) in enumerate(jobs_needing_detail, 1):
+            if not self._browser_alive():
+                logger.warning(f'  ⚠ 浏览器已断连，停止详情获取 (已完成 {idx-1}/{total})')
+                break
+
+            sid = job['security_id']
+            try:
+                eid = job.get('encrypt_job_id', '')
+                got_desc = False
+
+                if eid:
+                    detail_page_url = f'https://www.zhipin.com/job_detail/{eid}.html'
+                    if not self._safe_listen_start('wapi/zpgeek/job/detail.json'):
+                        fail += 1
+                        continue
+                    self.page.get(detail_page_url)
+                    random_delay(1.0, 2.0)
+
+                    try:
+                        r = self.page.listen.wait(timeout=4)
+                        if r and r.response and r.response.body:
+                            body = r.response.body
+                            if isinstance(body, str):
+                                body = json.loads(body)
+                            desc = body.get('zpData', {}).get('jobInfo', {}).get('postDescription', '')
+                            if desc:
+                                job['full_desc'] = desc
+                                success += 1
+                                got_desc = True
+                    except:
+                        pass
+                    self._safe_listen_stop()
+
+                    if not got_desc:
+                        try:
+                            desc_text = self.page.run_js(
+                                'return document.querySelector(".job-sec-text")?.innerText || '
+                                'document.querySelector(".job-detail-section .text")?.innerText || ""'
+                            )
+                            if desc_text and len(desc_text) > 20:
+                                job['full_desc'] = desc_text
+                                success += 1
+                                got_desc = True
+                        except:
+                            pass
+
+                    if got_desc and random.random() < 0.1:
+                        simulate_human(self.page)
+
+                if not got_desc and not job.get('full_desc'):
+                    try:
+                        detail_url = f'{DETAIL_API}?securityId={sid}'
+                        if not self._safe_listen_start('wapi/zpgeek/job/detail.json'):
+                            fail += 1
+                            continue
+                        self.page.get(detail_url)
+                        r = self.page.listen.wait(timeout=5)
+                        if r and r.response and r.response.body:
+                            body = r.response.body
+                            if isinstance(body, str):
+                                body = json.loads(body)
+                            desc = body.get('zpData', {}).get('jobInfo', {}).get('postDescription', '')
+                            if desc:
+                                job['full_desc'] = desc
+                                success += 1
+                                got_desc = True
+                        self._safe_listen_stop()
+                    except Exception:
+                        self._safe_listen_stop()
+
+                if not job.get('full_desc'):
+                    fail += 1
+                    consecutive_fail += 1
+                else:
+                    consecutive_fail = 0
+
+                if consecutive_fail >= 5:
+                    print(f'  ⚠ 连续 {consecutive_fail} 次失败，休息 10s...')
+                    time.sleep(random.uniform(8, 12))
+                    consecutive_fail = 0
+
+                if idx % 20 == 0:
+                    print(f'  详情进度: {idx}/{total} (成功 {success}, 失败 {fail})')
+
+                random_delay(DETAIL_DELAY_MIN, DETAIL_DELAY_MAX)
+
+                if idx % DETAIL_BATCH_SIZE == 0:
+                    pause = random.uniform(*DETAIL_BATCH_PAUSE)
+                    print(f'  ☕ 批次休息 {pause:.0f}s...')
+                    simulate_human(self.page)
+                    time.sleep(pause)
+
+            except Exception as e:
+                logger.warning(f'获取详情失败 [{key}]: {e}')
+                fail += 1
+                self._safe_listen_stop()
+
+        print(f'  ✅ 详情获取完成: 成功 {success}/{total}, 失败 {fail}')
+
     def run(self, keywords: list, cities: dict, headless: bool = False, greedy: bool = False) -> list:
-        """完整抓取流程"""
+        """完整抓取流程（兼容旧接口，内部按关键词逐个调用 run_keyword）"""
         self.start_browser(headless=headless)
         first_city = list(cities.values())[0]
         if not self.ensure_login(first_city):
@@ -843,57 +1042,56 @@ class BossDPSpider:
             co = self._build_options(headless=True)
             self.page = ChromiumPage(addr_or_opts=co)
 
-        total_combos = len(keywords) * len(cities)
-        combo_idx = 0
-        t_start = time.time()
+        self._processed_keys = set()  # 跟踪已处理详情的 key
 
         mode_label = '贪婪' if greedy else '标准'
-        print(f'\n📊 [{mode_label}] {len(keywords)} 关键词 × {len(cities)} 城市 = {total_combos} 组')
-        print(f'⏱  预计 {max(1, total_combos * 15 // 60)}-{total_combos * 25 // 60} 分钟\n')
+        total_kws = len(keywords)
+        print(f'\n📊 [{mode_label}] {total_kws} 关键词 × {len(cities)} 城市')
+        print(f'⏱  预计 {max(1, total_kws * len(cities) * 15 // 60)}-{total_kws * len(cities) * 25 // 60} 分钟\n')
 
-        # 随机打乱城市顺序，避免固定遍历模式
-        city_items = list(cities.items())
-        random.shuffle(city_items)
+        # 随机打乱关键词顺序
+        kw_list = list(keywords)
+        random.shuffle(kw_list)
 
-        for city_i, (city_name, city_code) in enumerate(city_items):
-            # 每个城市内随机打乱关键词顺序
-            kw_list = list(keywords)
-            random.shuffle(kw_list)
+        all_results = []
+        t_start = time.time()
 
-            for kw in kw_list:
-                combo_idx += 1
-                elapsed = time.time() - t_start
-                eta = (elapsed / max(combo_idx - 1, 1)) * (total_combos - combo_idx) if combo_idx > 1 else 0
-                print(f'[{combo_idx}/{total_combos}] {kw} @ {city_name}  '
-                      f'(已用{elapsed/60:.1f}分 剩余≈{eta/60:.0f}分)')
+        for kw_idx, kw in enumerate(kw_list, 1):
+            if not self._browser_alive():
+                logger.warning(f'浏览器已断连，停止爬取 (已完成 {kw_idx-1}/{total_kws} 关键词)')
+                break
 
-                n = self.scrape_keyword_greedy(kw, city_code, city_name) if greedy else self.scrape_keyword(kw, city_code)
-                print(f'  → +{n} 强相关 | 累计 {len(self.all_jobs)} (过滤 {self.skipped})')
-                # 进度回调
-                if self._progress_cb:
-                    try:
-                        self._progress_cb(combo_idx, total_combos, kw, city_name, len(self.all_jobs))
-                    except:
-                        pass
-                # 关键词间休息
-                random_delay(KEYWORD_REST_MIN, KEYWORD_REST_MAX)
+            elapsed = time.time() - t_start
+            print(f'\n[{kw_idx}/{total_kws}] 关键词: {kw}  (已用{elapsed/60:.1f}分)')
 
-            # 城市间休息 + 模拟行为
-            if combo_idx < total_combos:
+            try:
+                kw_results = self.run_keyword(kw, cities, greedy=greedy)
+                all_results.extend(kw_results)
+            except Exception as e:
+                logger.error(f'关键词 [{kw}] 爬取失败: {e}')
+
+            # 关键词完成回调
+            if self._keyword_done_cb:
+                try:
+                    self._keyword_done_cb(kw, len(all_results), kw_idx, total_kws)
+                except:
+                    pass
+
+            # 关键词间休息
+            if kw_idx < total_kws:
                 rest = random.uniform(CITY_REST_MIN, CITY_REST_MAX)
-                print(f'  ☕ 城市切换休息 {rest:.0f}s...')
+                print(f'  ☕ 关键词切换休息 {rest:.0f}s...')
                 simulate_human(self.page)
                 time.sleep(rest)
 
-        # 批量获取完整职位描述
-        self.fetch_all_details()
-
         elapsed_total = (time.time() - t_start) / 60
-        results = self._normalize_all()
-        self.page.quit()
+        try:
+            self.page.quit()
+        except Exception:
+            pass
         print(f'\n✅ 完成! 耗时 {elapsed_total:.1f} 分钟')
-        print(f'   强相关岗位: {len(results)} 条 | 过滤非相关: {self.skipped} 条')
-        return results
+        print(f'   强相关岗位: {len(all_results)} 条 | 过滤非相关: {self.skipped} 条')
+        return all_results
 
     def fetch_all_details(self):
         """批量获取所有岗位的完整职位描述"""
@@ -914,10 +1112,7 @@ class BossDPSpider:
         random.shuffle(jobs_needing_detail)
 
         for idx, (key, job) in enumerate(jobs_needing_detail, 1):
-            # 浏览器断连保护：提前检测是否还活着
-            try:
-                _ = self.page.title
-            except Exception:
+            if not self._browser_alive():
                 logger.warning(f'  ⚠ 浏览器已断连，停止详情获取 (已完成 {idx-1}/{total})')
                 break
 
@@ -929,7 +1124,9 @@ class BossDPSpider:
 
                 if eid:
                     detail_page_url = f'https://www.zhipin.com/job_detail/{eid}.html'
-                    self.page.listen.start('wapi/zpgeek/job/detail.json')
+                    if not self._safe_listen_start('wapi/zpgeek/job/detail.json'):
+                        fail += 1
+                        continue
                     self.page.get(detail_page_url)
                     random_delay(1.0, 2.0)
 
@@ -947,10 +1144,7 @@ class BossDPSpider:
                                 got_desc = True
                     except:
                         pass
-                    try:
-                        self.page.listen.stop()
-                    except Exception:
-                        pass
+                    self._safe_listen_stop()
 
                     # API 失败则从页面 DOM 抓取
                     if not got_desc:
@@ -974,7 +1168,9 @@ class BossDPSpider:
                     # 回退：直接用 API
                     try:
                         detail_url = f'{DETAIL_API}?securityId={sid}'
-                        self.page.listen.start('wapi/zpgeek/job/detail.json')
+                        if not self._safe_listen_start('wapi/zpgeek/job/detail.json'):
+                            fail += 1
+                            continue
                         self.page.get(detail_url)
                         r = self.page.listen.wait(timeout=5)
                         if r and r.response and r.response.body:
@@ -986,15 +1182,9 @@ class BossDPSpider:
                                 job['full_desc'] = desc
                                 success += 1
                                 got_desc = True
-                        try:
-                            self.page.listen.stop()
-                        except Exception:
-                            pass
+                        self._safe_listen_stop()
                     except Exception:
-                        try:
-                            self.page.listen.stop()
-                        except Exception:
-                            pass
+                        self._safe_listen_stop()
 
                 if not job.get('full_desc'):
                     fail += 1
@@ -1024,10 +1214,7 @@ class BossDPSpider:
             except Exception as e:
                 logger.warning(f'获取详情失败 [{key}]: {e}')
                 fail += 1
-                try:
-                    self.page.listen.stop()
-                except Exception:
-                    pass
+                self._safe_listen_stop()
 
         print(f'  ✅ 详情获取完成: 成功 {success}/{total}, 失败 {fail}')
 

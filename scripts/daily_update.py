@@ -16,6 +16,7 @@ import argparse
 from pathlib import Path
 from datetime import datetime
 import time as _time
+import subprocess
 
 # Setup paths
 SCRIPT_DIR = Path(__file__).parent
@@ -249,76 +250,130 @@ def main():
     mode_label = '快速' if args.quick else '全量(贪婪)'
     logger.info(f'[{mode_label}] 关键词: {keywords}, 城市: {list(cities.keys())}')
 
-    # === 1. 抓取 ===
-    all_raw = []
-    _write_progress(5, '🔍 正在爬取 BOSS 直聘...', f'{len(keywords)} 关键词 × {len(cities)} 城市', status.get('steps', []))
+    # === 1. 逐关键词爬取+清洗+合并+保存 ===
+    from pipeline import process_batch
+    from merger import load_existing, merge, save, save_snapshot
+    from spiders.boss_dp import BossDPSpider
 
-    # BOSS直聘 (DrissionPage 自动化浏览器)
+    spider = BossDPSpider()
+    total_kws = len(keywords)
+    total_added = 0
+    total_raw = 0
+    total_cleaned = 0
+    _crawl_t0 = _time.time()
+
+    # 后续流程步骤（未执行）
+    _pending_phases = [
+        '导出总表', '生成知识库', '飞书同步', 'Git 推送', '云同步',
+    ]
+
+    _write_progress(5, '🔍 正在爬取 BOSS 直聘...', f'{total_kws} 关键词 × {len(cities)} 城市', status.get('steps', []))
+
+    # 启动浏览器 + 登录
     try:
-        from spiders.boss_dp import BossDPSpider
-        spider = BossDPSpider()
-        _crawl_t0 = _time.time()
-        _crawl_done_steps = []  # 累积所有已完成的爬取步骤
-
-        # 后续流程步骤（未执行）
-        _pending_phases = [
-            '数据清洗', '增量合并', '补全描述',
-            '导出总表', '生成知识库', '飞书同步', 'Git 推送', '云同步',
-        ]
-
-        def _on_spider_progress(combo_idx, total_combos, kw, city, job_count):
-            pct = 5 + int(45 * combo_idx / max(total_combos, 1))
-            remaining = total_combos - combo_idx
-            elapsed = _time.time() - _crawl_t0
-            eta_min = (elapsed / max(combo_idx, 1)) * remaining / 60
-            skipped = getattr(spider, 'skipped_existing', 0)
-
-            # 记录已完成步骤
-            _crawl_done_steps.append({
-                'name': f'{kw} @ {city}',
-                'ok': True,
-                'detail': f'累计 {job_count} 条' + (f' (跳过已有{skipped})' if skipped else ''),
-                'time': datetime.now().strftime('%H:%M:%S'),
-            })
-
-            # 构建完整步骤列表: 前置步骤 + 已完成爬取 + 当前 + 未执行后续
-            all_steps = list(status.get('steps', []))
-            # 只显示最近 8 条已完成爬取（避免列表太长）
-            recent = _crawl_done_steps[-8:] if len(_crawl_done_steps) > 8 else _crawl_done_steps
-            if len(_crawl_done_steps) > 8:
-                all_steps.append({
-                    'name': f'... 已完成 {len(_crawl_done_steps)-8} 组 ...',
-                    'ok': True, 'detail': '', 'time': '',
-                })
-            all_steps.extend(recent)
-            # 未执行的后续流程
-            for phase in _pending_phases:
-                all_steps.append({'name': phase, 'ok': None, 'detail': '待执行', 'time': ''})
-
-            _write_progress(
-                pct, f'爬取: {kw} @ {city}',
-                f'[{combo_idx}/{total_combos}] 新增 {job_count} 条 · 跳过已有 {skipped} · 剩余 {remaining} 组 ≈{eta_min:.0f}分钟',
-                all_steps)
-        spider._progress_cb = _on_spider_progress
-        # BOSS直聘反爬会检测 headless，始终使用可见模式
-        # 持久化 Profile 已有登录态时会自动跳过登录步骤
-        profile_dir = Path(__file__).parent.parent / '.chrome_profile'
-        has_profile = profile_dir.exists() and any(profile_dir.iterdir()) if profile_dir.exists() else False
-        if has_profile:
-            logger.info('检测到持久化 Profile，已有登录态将自动跳过登录')
-        else:
-            logger.info('首次运行，使用可见模式以便登录')
-        jobs = spider.run(keywords, cities, headless=False, greedy=is_greedy)
-        all_raw.extend(jobs)
-        logger.info(f'BOSS直聘: 抓取 {len(jobs)} 条原始数据')
-        status['crawl_raw'] = len(all_raw)
-        _step('爬取 BOSS 直聘', True, f'抓取 {len(jobs)} 条原始数据')
+        spider.start_browser(headless=False)
+        first_city = list(cities.values())[0]
+        if not spider.ensure_login(first_city):
+            try:
+                spider.page.quit()
+            except Exception:
+                pass
+            logger.error('登录失败，无法继续')
+            status['errors'].append('登录失败')
+            _step('登录', False, '登录未成功')
+            status['overall'] = 'failed'
+            status['duration_sec'] = round(_time.time() - _t0)
+            _save_status(status)
+            _finish_progress(status)
+            _popup_report(status)
+            return False
+        _step('登录', True, '已登录')
     except Exception as e:
-        logger.error(f'BOSS直聘 爬虫失败: {e}', exc_info=True)
-        status['errors'].append(f'爬虫失败: {e}')
-        _step('爬取 BOSS 直聘', False, str(e))
+        logger.error(f'浏览器启动/登录失败: {e}', exc_info=True)
+        status['errors'].append(f'登录失败: {e}')
+        _step('登录', False, str(e))
+        status['overall'] = 'failed'
+        status['duration_sec'] = round(_time.time() - _t0)
+        _save_status(status)
+        _finish_progress(status)
+        _popup_report(status)
+        return False
 
-    if not all_raw:
+    spider._processed_keys = set()
+
+    # 逐关键词爬取+清洗+合并+保存
+    kw_list = list(keywords)
+    import random as _rand
+    _rand.shuffle(kw_list)
+
+    for kw_idx, kw in enumerate(kw_list, 1):
+        pct = 5 + int(75 * (kw_idx - 1) / max(total_kws, 1))
+        _write_progress(pct, f'🔍 爬取: {kw}', f'[{kw_idx}/{total_kws}]', status.get('steps', []))
+
+        try:
+            # 爬取单个关键词×所有城市
+            kw_raw = spider.run_keyword(kw, cities, greedy=is_greedy)
+            total_raw += len(kw_raw)
+            logger.info(f'关键词 [{kw}] 抓取 {len(kw_raw)} 条原始数据')
+
+            if not kw_raw:
+                _step(f'爬取: {kw}', True, '无新数据')
+                continue
+
+            # 清洗
+            kw_cleaned = process_batch(kw_raw)
+            total_cleaned += len(kw_cleaned)
+            logger.info(f'关键词 [{kw}] 清洗后 {len(kw_cleaned)} 条')
+
+            if args.dry_run:
+                logger.info(f'[DRY RUN] 关键词 {kw}: {len(kw_cleaned)} 条')
+                for j in kw_cleaned[:3]:
+                    logger.info(f'  {j["title"]} | {j["company"]} | {j["city"]}')
+                continue
+
+            # 合并+保存
+            existing_keys, existing_jobs = load_existing()
+            old_total = len(existing_jobs)
+            merged, kw_added = merge(existing_jobs, existing_keys, kw_cleaned)
+            save(merged)
+            save_snapshot(kw_cleaned)
+            total_added += kw_added
+
+            logger.info(f'关键词 [{kw}] 合并: 原{old_total}+新{len(kw_raw)}→清{len(kw_cleaned)}→+{kw_added}=总{len(merged)}')
+            _step(f'爬取+清洗+合并: {kw}', True, f'+{kw_added}条 (累计+{total_added})')
+
+            status['crawl_raw'] = total_raw
+            status['crawl_cleaned'] = total_cleaned
+            status['added'] = total_added
+            status['total'] = len(merged)
+            _save_status(status)
+
+        except Exception as e:
+            logger.error(f'关键词 [{kw}] 处理失败: {e}', exc_info=True)
+            status['errors'].append(f'{kw}: {e}')
+            _step(f'爬取: {kw}', False, str(e)[:200])
+            # 继续下一个关键词，不中断整个流程
+
+        # 关键词间进度更新
+        pct = 5 + int(75 * kw_idx / max(total_kws, 1))
+        elapsed = _time.time() - _crawl_t0
+        eta_min = (elapsed / max(kw_idx, 1)) * (total_kws - kw_idx) / 60
+        _write_progress(pct, f'🔍 已完成 {kw_idx}/{total_kws} 关键词',
+                        f'累计新增 {total_added} 条 · 剩余 ≈{eta_min:.0f}分钟',
+                        status.get('steps', []) + [{'name': ph, 'ok': None, 'detail': '待执行', 'time': ''} for ph in _pending_phases])
+
+    # 关闭浏览器
+    try:
+        spider.page.quit()
+    except Exception:
+        pass
+
+    status['crawl_raw'] = total_raw
+    status['crawl_cleaned'] = total_cleaned
+    status['added'] = total_added
+    _save_status(status)
+
+    if total_raw == 0:
         logger.warning('今日未抓取到任何数据！')
         status['overall'] = 'failed'
         status['duration_sec'] = round(_time.time() - _t0)
@@ -328,72 +383,12 @@ def main():
         _popup_report(status)
         return False
 
-    # === 2. 清洗 ===
-    _write_progress(52, '🧹 数据清洗中...', f'原始 {len(all_raw)} 条', status.get('steps', []))
-    from pipeline import process_batch
-    cleaned = process_batch(all_raw)
-    logger.info(f'清洗后: {len(cleaned)} 条有效岗位')
-    status['crawl_cleaned'] = len(cleaned)
-    _step('数据清洗', True, f'{len(cleaned)} 条有效岗位')
-
     if args.dry_run:
-        logger.info('[DRY RUN] 不写入文件，打印前 5 条:')
-        for j in cleaned[:5]:
-            logger.info(f'  {j["title"]} | {j["company"]} | {j["city"]} | {j["salary"]}')
+        logger.info('[DRY RUN] 完成，不写入文件')
         return True
 
-    # === 3. 合并 ===
-    _write_progress(55, '🔀 增量合并中...', f'{len(cleaned)} 条清洗数据', status.get('steps', []))
-    from merger import load_existing, merge, save, save_snapshot
-    existing_keys, existing_jobs = load_existing()
-    old_total = len(existing_jobs)
-    merged, added_count = merge(existing_jobs, existing_keys, cleaned)
-
-    # === 4. 保存 ===
-    save(merged)
-    save_snapshot(cleaned)
-
-    logger.info(f'合并对比: 原有 {old_total} 条 + 抓取 {len(all_raw)} 条 → 清洗 {len(cleaned)} 条 → 新增 {added_count} 条 → 总计 {len(merged)} 条')
-    status['added'] = added_count
-    status['total'] = len(merged)
-    _step('增量合并', True, f'原{old_total}+抓{len(all_raw)}→清{len(cleaned)}→新+{added_count}=总{len(merged)}')
-
-    if added_count == 0:
+    if total_added == 0:
         logger.warning('⚠️ 今日新增为 0，可能被反爬或无新岗位')
-
-    # === 5. 回填链接 ===
-    _write_progress(62, '🔗 回填链接...', '', status.get('steps', []))
-    try:
-        logger.info('开始回填链接...')
-        import subprocess
-        subprocess.run([sys.executable, str(SCRIPT_DIR / 'backfill_csv.py')],
-                       cwd=str(BASE_DIR), check=True)
-        logger.info('✅ 链接回填完成')
-        _step('回填链接', True)
-    except Exception as e:
-        logger.warning(f'链接回填失败(非致命): {e}')
-        _step('回填链接', False, str(e))
-
-    # === 6. 补全缺失描述 ===
-    _write_progress(68, '📝 补全描述中...', '', status.get('steps', []))
-    try:
-        with open(BASE_DIR / 'jobs_data.json', 'r', encoding='utf-8') as f:
-            data_check = json.load(f)
-        missing = sum(1 for j in data_check.get('jobs', [])
-                      if j.get('url') and ((not j.get('desc') or len(j['desc'].strip()) < 20)
-                       or not str(j.get('salary') or '').strip()))
-        if missing > 0:
-            logger.info(f'发现 {missing} 条详情缺失，开始追踪补全...')
-            subprocess.run([sys.executable, str(SCRIPT_DIR / 'backfill_desc.py')],
-                           cwd=str(BASE_DIR), check=True)
-            logger.info('✅ 详情补全完成')
-            _step('补全描述', True, f'补全 {missing} 条(描述/薪资)')
-        else:
-            logger.info('所有可追踪岗位详情完整，跳过补全')
-            _step('补全描述', True, '描述/薪资完整，跳过')
-    except Exception as e:
-        logger.warning(f'详情补全失败(非致命): {e}')
-        _step('补全描述', False, str(e))
 
     # === 7. 导出统一总表 ===
     _write_progress(78, '📊 导出总表...', '', status.get('steps', []))
@@ -447,7 +442,6 @@ def main():
     # === 8. Git 提交 + 推送 ===
     _write_progress(87, '🔀 Git 推送中...', '', status.get('steps', []))
     try:
-        import subprocess
         today = datetime.now().strftime('%Y-%m-%d')
         subprocess.run(['git', 'add', '-A'], cwd=str(BASE_DIR), check=True)
         diff_ret = subprocess.run(['git', 'diff', '--cached', '--quiet'], cwd=str(BASE_DIR))
@@ -457,7 +451,7 @@ def main():
             _step('Git 推送', True, '无文件变更，跳过提交')
         else:
             commit_ret = subprocess.run(['git', 'commit', '-m',
-                              f'daily: {today} 新增{added_count}条 总{len(merged)}条'],
+                              f'daily: {today} 新增{total_added}条 总{status["total"]}条'],
                             cwd=str(BASE_DIR), capture_output=True, text=True,
                             encoding='utf-8', errors='replace')
             if commit_ret.returncode != 0:
@@ -502,7 +496,7 @@ def main():
     logger.info('=' * 50)
     logger.info(f'✅ 每日更新全流程完成')
     logger.info(f'   总岗位: {len(final_jobs)}')
-    logger.info(f'   新增: {added_count}')
+    logger.info(f'   新增: {total_added}')
     logger.info(f'   有链接: {has_url}/{len(final_jobs)}')
     logger.info(f'   有描述: {has_desc}/{len(final_jobs)}')
     logger.info('=' * 50)
@@ -513,7 +507,7 @@ def main():
     status['has_desc'] = has_desc
     status['duration_sec'] = round(_time.time() - _t0)
     status['overall'] = 'success' if not status['errors'] else 'partial'
-    _step('全流程完成', True, f'总 {len(final_jobs)} 条，新增 {added_count} 条')
+    _step('全流程完成', True, f'总 {len(final_jobs)} 条，新增 {total_added} 条')
     _save_status(status)
     _finish_progress(status)
     _popup_report(status)

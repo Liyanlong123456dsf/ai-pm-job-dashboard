@@ -1,33 +1,79 @@
 {
-  "date": "2026-04-14",
-  "start_time": "18:36:15",
+  "date": "2026-04-15",
+  "start_time": "00:38:17",
   "mode": "full",
   "steps": [
     {
-      "name": "爬取 BOSS 直聘",
-      "ok": false,
-      "detail": "'NoneType' object has no attribute 'stop'",
-      "time": "23:37:37"
+      "name": "登录",
+      "ok": true,
+      "detail": "已登录",
+      "time": "00:38:23"
     },
     {
-      "name": "终止",
-      "ok": false,
-      "detail": "未抓取到任何数据",
-      "time": "23:37:37"
+      "name": "爬取+清洗+合并: 智能产品经理",
+      "ok": true,
+      "detail": "+4条 (累计+4)",
+      "time": "01:23:30"
+    },
+    {
+      "name": "爬取+清洗+合并: AI交互产品经理",
+      "ok": true,
+      "detail": "+11条 (累计+15)",
+      "time": "02:28:38"
+    },
+    {
+      "name": "爬取+清洗+合并: AI解决方案产品经理",
+      "ok": true,
+      "detail": "+36条 (累计+51)",
+      "time": "03:11:53"
+    },
+    {
+      "name": "爬取+清洗+合并: AI产品专家",
+      "ok": true,
+      "detail": "+16条 (累计+67)",
+      "time": "03:52:33"
+    },
+    {
+      "name": "爬取+清洗+合并: 机器学习产品经理",
+      "ok": true,
+      "detail": "+22条 (累计+89)",
+      "time": "04:18:11"
+    },
+    {
+      "name": "爬取+清洗+合并: AIGC产品经理",
+      "ok": true,
+      "detail": "+0条 (累计+89)",
+      "time": "04:51:54"
+    },
+    {
+      "name": "导出总表",
+      "ok": true,
+      "detail": "",
+      "time": "04:51:56"
+    },
+    {
+      "name": "生成知识库",
+      "ok": true,
+      "detail": "",
+      "time": "04:51:56"
+    },
+    {
+      "name": "飞书同步",
+      "ok": true,
+      "detail": "",
+      "time": "04:54:03"
     }
   ],
-  "overall": "failed",
-  "crawl_raw": 0,
-  "crawl_cleaned": 0,
-  "added": 0,
-  "total": 0,
+  "overall": "running",
+  "crawl_raw": 978,
+  "crawl_cleaned": 972,
+  "added": 89,
+  "total": 3136,
   "has_url": 0,
   "has_desc": 0,
   "git_pushed": false,
   "deployed": false,
-  "errors": [
-    "爬虫失败: 'NoneType' object has no attribute 'stop'"
-  ],
-  "duration_sec": 18082,
-  "updated": "2026-04-14 23:37:37"
+  "errors": [],
+  "duration_sec": 0,
+  "updated": "2026-04-15 04:54:03"
 }
