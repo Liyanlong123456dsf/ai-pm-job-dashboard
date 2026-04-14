@@ -372,18 +372,19 @@ def main():
         with open(BASE_DIR / 'jobs_data.json', 'r', encoding='utf-8') as f:
             data_check = json.load(f)
         missing = sum(1 for j in data_check.get('jobs', [])
-                      if j.get('url') and (not j.get('desc') or len(j['desc'].strip()) < 20))
+                      if j.get('url') and ((not j.get('desc') or len(j['desc'].strip()) < 20)
+                       or not str(j.get('salary') or '').strip()))
         if missing > 0:
-            logger.info(f'发现 {missing} 条描述缺失，开始追踪补全...')
+            logger.info(f'发现 {missing} 条详情缺失，开始追踪补全...')
             subprocess.run([sys.executable, str(SCRIPT_DIR / 'backfill_desc.py')],
                            cwd=str(BASE_DIR), check=True)
-            logger.info('✅ 描述补全完成')
-            _step('补全描述', True, f'补全 {missing} 条')
+            logger.info('✅ 详情补全完成')
+            _step('补全描述', True, f'补全 {missing} 条(描述/薪资)')
         else:
-            logger.info('所有岗位描述完整，跳过补全')
-            _step('补全描述', True, '描述完整，跳过')
+            logger.info('所有可追踪岗位详情完整，跳过补全')
+            _step('补全描述', True, '描述/薪资完整，跳过')
     except Exception as e:
-        logger.warning(f'描述补全失败(非致命): {e}')
+        logger.warning(f'详情补全失败(非致命): {e}')
         _step('补全描述', False, str(e))
 
     # === 7. 导出统一总表 ===
@@ -432,10 +433,21 @@ def main():
         subprocess.run(['git', 'commit', '-m',
                          f'daily: {today} 新增{added_count}条 总{len(merged)}条'],
                        cwd=str(BASE_DIR), check=True)
-        subprocess.run(['git', 'push', 'origin', 'main'], cwd=str(BASE_DIR), check=True)
-        logger.info('✅ Git 提交推送完成')
-        status['git_pushed'] = True
-        _step('Git 推送', True, f'daily: {today}')
+        push_ok = False
+        for _try in range(3):
+            ret = subprocess.run(['git', 'push', 'origin', 'main'],
+                                 cwd=str(BASE_DIR), capture_output=True, text=True)
+            if ret.returncode == 0:
+                push_ok = True
+                break
+            logger.warning(f'Git push 第{_try+1}次失败(code={ret.returncode}): {ret.stderr[:120]}')
+            import time as _t; _t.sleep(5)
+        if push_ok:
+            logger.info('✅ Git 提交推送完成')
+            status['git_pushed'] = True
+            _step('Git 推送', True, f'daily: {today}')
+        else:
+            raise RuntimeError(f'Git push 3次均失败: {ret.stderr[:200]}')
     except Exception as e:
         logger.warning(f'Git 推送失败(非致命): {e}')
         status['errors'].append(f'Git 推送失败: {e}')

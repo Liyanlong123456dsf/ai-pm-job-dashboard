@@ -123,11 +123,20 @@ for j in jobs:
 print(f'爬虫新增: {json_add}, 总计: {len(all_rows)}')
 
 # 4. 输出
-with open(OUTPUT_CSV, 'w', encoding='utf-8-sig', newline='') as f:
-    writer = csv.DictWriter(f, fieldnames=HEADER)
-    writer.writeheader()
-    for row in all_rows.values():
-        writer.writerow(row)
+def _write_csv(path):
+    with open(path, 'w', encoding='utf-8-sig', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=HEADER)
+        writer.writeheader()
+        for row in all_rows.values():
+            writer.writerow(row)
+    return path
 
-print(f'\n✅ 总表已导出: {OUTPUT_CSV}')
+try:
+    out = _write_csv(OUTPUT_CSV)
+except PermissionError:
+    alt = OUTPUT_CSV.replace('.csv', f'_{int(__import__("time").time())}.csv')
+    print(f'⚠️  文件被占用: {OUTPUT_CSV}，改写到备用路径')
+    out = _write_csv(alt)
+
+print(f'\n✅ 总表已导出: {out}')
 print(f'   总行数: {len(all_rows)}')
