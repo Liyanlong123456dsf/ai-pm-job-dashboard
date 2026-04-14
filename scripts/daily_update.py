@@ -68,8 +68,15 @@ def _start_progress_window():
     """启动桌面进度弹窗（Tkinter）"""
     import subprocess
     _write_progress(0, '启动中...', '')
+    try:
+        from platform_utils import should_show_progress_gui
+        if not should_show_progress_gui():
+            logger.info('已禁用进度 GUI，仅写入 progress.json')
+            return
+    except Exception:
+        pass
     gui_script = SCRIPT_DIR / 'progress_gui.py'
-    subprocess.Popen([sys.executable, str(gui_script)])
+    subprocess.Popen([sys.executable, str(gui_script)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 def _finish_progress(status):
@@ -179,7 +186,7 @@ def _popup_report(status):
             f'耗时: {dur}\n'
             f'今日新增: {added} 条\n'
             f'数据总量: {total} 条\n'
-            f'爬取: {s.get("crawl_raw", 0)} -> 清洗: {s.get("crawl_cleaned", 0)}\n\n'
+            f'爬取: {s.get("crawl_raw", 0)} → 清洗: {s.get("crawl_cleaned", 0)}\n\n'
             f'Git: {git_s}\n'
             f'Netlify: {net_s}\n\n'
             f'{label}{err_line}'
@@ -191,6 +198,7 @@ def _popup_report(status):
     # ③ 浏览器报告
     try:
         report = _generate_report(status)
+        logger.info(f'报告已生成: {report}')
         open_file(report)
     except Exception as e:
         logger.warning(f'报告弹出失败: {e}')
@@ -318,7 +326,7 @@ def main():
         _save_status(status)
         _finish_progress(status)
         _popup_report(status)
-        return
+        return False
 
     # === 2. 清洗 ===
     _write_progress(52, '🧹 数据清洗中...', f'原始 {len(all_raw)} 条', status.get('steps', []))
@@ -332,7 +340,7 @@ def main():
         logger.info('[DRY RUN] 不写入文件，打印前 5 条:')
         for j in cleaned[:5]:
             logger.info(f'  {j["title"]} | {j["company"]} | {j["city"]} | {j["salary"]}')
-        return
+        return True
 
     # === 3. 合并 ===
     _write_progress(55, '🔀 增量合并中...', f'{len(cleaned)} 条清洗数据', status.get('steps', []))
@@ -412,16 +420,28 @@ def main():
     # === 7.6 同步知识库到飞书云文档 ===
     _write_progress(85, '📤 同步知识库到飞书...', '', status.get('steps', []))
     try:
-        result = subprocess.run([sys.executable, str(SCRIPT_DIR / 'sync_feishu.py')],
-                       cwd=str(BASE_DIR), capture_output=True, text=True, timeout=300)
-        if result.returncode == 0:
+        sync_ok = False
+        sync_err = ''
+        for _try in range(3):
+            result = subprocess.run([sys.executable, str(SCRIPT_DIR / 'sync_feishu.py')],
+                           cwd=str(BASE_DIR), capture_output=True, text=True,
+                           encoding='utf-8', errors='replace', timeout=600)
+            if result.returncode == 0:
+                sync_ok = True
+                break
+            sync_err = (result.stderr or result.stdout or '')[:300]
+            logger.warning(f'飞书同步第{_try+1}次失败: {sync_err[:200]}')
+            _time.sleep(10 * (_try + 1))
+        if sync_ok:
             logger.info('✅ 知识库已同步到飞书云文档')
             _step('飞书同步', True)
         else:
-            logger.warning(f'飞书同步失败: {result.stderr[:200]}')
-            _step('飞书同步', False, result.stderr[:200])
+            logger.warning(f'飞书同步失败: {sync_err[:200]}')
+            status['errors'].append(f'飞书同步失败: {sync_err[:200]}')
+            _step('飞书同步', False, sync_err[:200])
     except Exception as e:
         logger.warning(f'飞书同步失败(非致命): {e}')
+        status['errors'].append(f'飞书同步失败: {e}')
         _step('飞书同步', False, str(e))
 
     # === 8. Git 提交 + 推送 ===
@@ -430,24 +450,36 @@ def main():
         import subprocess
         today = datetime.now().strftime('%Y-%m-%d')
         subprocess.run(['git', 'add', '-A'], cwd=str(BASE_DIR), check=True)
-        subprocess.run(['git', 'commit', '-m',
-                         f'daily: {today} 新增{added_count}条 总{len(merged)}条'],
-                       cwd=str(BASE_DIR), check=True)
-        push_ok = False
-        for _try in range(3):
-            ret = subprocess.run(['git', 'push', 'origin', 'main'],
-                                 cwd=str(BASE_DIR), capture_output=True, text=True)
-            if ret.returncode == 0:
-                push_ok = True
-                break
-            logger.warning(f'Git push 第{_try+1}次失败(code={ret.returncode}): {ret.stderr[:120]}')
-            import time as _t; _t.sleep(5)
-        if push_ok:
-            logger.info('✅ Git 提交推送完成')
+        diff_ret = subprocess.run(['git', 'diff', '--cached', '--quiet'], cwd=str(BASE_DIR))
+        if diff_ret.returncode == 0:
+            logger.info('✅ 无文件变更，跳过 Git 提交与推送')
             status['git_pushed'] = True
-            _step('Git 推送', True, f'daily: {today}')
+            _step('Git 推送', True, '无文件变更，跳过提交')
         else:
-            raise RuntimeError(f'Git push 3次均失败: {ret.stderr[:200]}')
+            commit_ret = subprocess.run(['git', 'commit', '-m',
+                              f'daily: {today} 新增{added_count}条 总{len(merged)}条'],
+                            cwd=str(BASE_DIR), capture_output=True, text=True,
+                            encoding='utf-8', errors='replace')
+            if commit_ret.returncode != 0:
+                raise RuntimeError(f'Git commit 失败: {(commit_ret.stderr or commit_ret.stdout)[:200]}')
+            push_ok = False
+            last_push_err = ''
+            for _try in range(5):
+                ret = subprocess.run(['git', 'push', 'origin', 'main'],
+                                      cwd=str(BASE_DIR), capture_output=True, text=True,
+                                      encoding='utf-8', errors='replace')
+                if ret.returncode == 0:
+                    push_ok = True
+                    break
+                last_push_err = (ret.stderr or ret.stdout or '')[:200]
+                logger.warning(f'Git push 第{_try+1}次失败(code={ret.returncode}): {last_push_err[:120]}')
+                _time.sleep(5 * (_try + 1))
+            if push_ok:
+                logger.info('✅ Git 提交推送完成')
+                status['git_pushed'] = True
+                _step('Git 推送', True, f'daily: {today}')
+            else:
+                raise RuntimeError(f'Git push 5次均失败: {last_push_err}')
     except Exception as e:
         logger.warning(f'Git 推送失败(非致命): {e}')
         status['errors'].append(f'Git 推送失败: {e}')
@@ -485,7 +517,8 @@ def main():
     _save_status(status)
     _finish_progress(status)
     _popup_report(status)
+    return not status['errors']
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(0 if main() else 1)

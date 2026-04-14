@@ -23,8 +23,10 @@ if sys.stdout.encoding != 'utf-8':
 import os
 import json
 import time
+import queue
 import logging
 import subprocess
+import threading
 import traceback
 from pathlib import Path
 from datetime import datetime, timedelta
@@ -35,6 +37,14 @@ LOG_DIR = BASE_DIR / 'logs'
 LOG_DIR.mkdir(exist_ok=True)
 CONFIG_FILE = BASE_DIR / 'config' / 'keywords.json'
 ROTATION_FILE = LOG_DIR / 'rotation_index.json'
+LOCK_FILE = LOG_DIR / 'auto_daily.lock'
+RUNTIME_STATE_FILE = LOG_DIR / 'auto_daily_state.json'
+KEYWORD_REFRESH_STATE_FILE = LOG_DIR / 'keyword_refresh_state.json'
+LOGIN_STATUS_FILE = LOG_DIR / 'login_status.json'
+PROGRESS_FILE = LOG_DIR / 'progress.json'
+RUN_STATUS_FILE = BASE_DIR / 'run_status.json'
+JOBS_DATA_FILE = BASE_DIR / 'jobs_data.json'
+STALL_WARN_SEC = 900
 
 # 日志
 logging.basicConfig(
@@ -179,6 +189,8 @@ def run_login_check():
     """执行登录检查（调用 login_check.py）"""
     script = SCRIPT_DIR / 'login_check.py'
     logger.info('🔑 开始登录检查...')
+    result = None
+    before_mtime = _tracked_mtime(LOGIN_STATUS_FILE)
     try:
         result = subprocess.run(
             [sys.executable, str(script)],
@@ -186,15 +198,49 @@ def run_login_check():
             capture_output=True, text=True,
             encoding='utf-8', errors='replace',
             timeout=600,  # 10分钟超时
+            env=_child_env(),
         )
-        if result.returncode == 0:
-            logger.info('🔑 登录检查完成')
-        else:
-            logger.warning(f'🔑 登录检查异常（退出码 {result.returncode}）')
+        if result.stdout:
+            for line in result.stdout.strip().split('\n')[-5:]:
+                logger.info(f'  | {line}')
+        if result.stderr:
+            for line in result.stderr.strip().split('\n')[-3:]:
+                if line.strip():
+                    logger.warning(f'  ! {line}')
     except subprocess.TimeoutExpired:
         logger.warning('🔑 登录检查超时（10分钟）')
+        status = _safe_load_json(LOGIN_STATUS_FILE) or {
+            'logged_in': False,
+            'status': 'timeout',
+            'detail': '登录检查超时',
+            'retry_after_sec': 600,
+            'needs_user': False,
+        }
+        return False, status
     except Exception as e:
         logger.warning(f'🔑 登录检查异常: {e}')
+        return False, {
+            'logged_in': False,
+            'status': 'error',
+            'detail': str(e),
+            'retry_after_sec': 600,
+            'needs_user': False,
+        }
+    after_mtime = _tracked_mtime(LOGIN_STATUS_FILE)
+    status = _safe_load_json(LOGIN_STATUS_FILE) if after_mtime > before_mtime else {}
+    if result and result.returncode == 0 and status.get('logged_in'):
+        logger.info('🔑 登录检查完成')
+        return True, status
+    if not status:
+        status = {
+            'logged_in': False,
+            'status': 'needs_login' if result and result.returncode == 2 else 'error',
+            'detail': ((result.stderr or result.stdout or '登录检查失败')[:200] if result else '登录检查失败'),
+            'retry_after_sec': 3600 if result and result.returncode == 2 else 600,
+            'needs_user': bool(result and result.returncode == 2),
+        }
+    logger.warning(f'🔑 登录检查未就绪 [{status.get("status", "unknown")}] — {status.get("detail", "")[:120]}')
+    return False, status
 
 
 def run_daily_update(quick=False):
@@ -217,36 +263,92 @@ def run_daily_update(quick=False):
         encoding='utf-8',
         errors='replace',
         bufsize=1,
+        env=_child_env(),
     )
 
     output_lines = []
     start = time.time()
+    last_activity = start
+    last_idle_log = start
+    last_stall_warn = start
+    tracked_files = [PROGRESS_FILE, RUN_STATUS_FILE, JOBS_DATA_FILE]
+    tracked_mtimes = {str(path): _tracked_mtime(path) for path in tracked_files}
+    output_queue = queue.Queue()
+
+    def _reader_thread():
+        try:
+            for line in iter(proc.stdout.readline, ''):
+                output_queue.put(line.rstrip())
+        except Exception as e:
+            output_queue.put(f'[stdout-reader-error] {e}')
+        finally:
+            try:
+                proc.stdout.close()
+            except Exception:
+                pass
+
+    reader = threading.Thread(target=_reader_thread, daemon=True)
+    reader.start()
     try:
         while True:
-            line = proc.stdout.readline()
-            if line:
-                line = line.rstrip()
-                logger.info(f'  | {line}')
-                output_lines.append(line)
-            elif proc.poll() is not None:
+            saw_output = False
+            while True:
+                try:
+                    line = output_queue.get_nowait()
+                except queue.Empty:
+                    break
+                if line:
+                    logger.info(f'  | {line}')
+                    output_lines.append(line)
+                    saw_output = True
+
+            if saw_output:
+                last_activity = time.time()
+
+            for path in tracked_files:
+                key = str(path)
+                mtime = _tracked_mtime(path)
+                if mtime > tracked_mtimes[key]:
+                    tracked_mtimes[key] = mtime
+                    last_activity = time.time()
+
+            if proc.poll() is not None and output_queue.empty() and not reader.is_alive():
                 break
+
+            idle_sec = time.time() - last_activity
+            if idle_sec >= STALL_WARN_SEC and time.time() - last_stall_warn >= STALL_WARN_SEC:
+                logger.warning(f'⏳ daily_update 已静默 {int(idle_sec // 60)} 分钟，进程仍在运行，继续等待...')
+                last_stall_warn = time.time()
+            elif time.time() - last_idle_log >= 300:
+                logger.info(f'⏳ daily_update 运行中，最近活动距今 {int(idle_sec)} 秒')
+                last_idle_log = time.time()
 
             if MAX_RUNTIME_SEC > 0 and time.time() - start > MAX_RUNTIME_SEC:
                 logger.error(f'⏰ 超时！已运行 {MAX_RUNTIME_SEC // 60} 分钟，强制终止')
                 proc.kill()
                 proc.wait()
                 return False, '超时终止'
+            time.sleep(1)
     except Exception as e:
         proc.kill()
         proc.wait()
         return False, str(e)
+
+    while True:
+        try:
+            line = output_queue.get_nowait()
+        except queue.Empty:
+            break
+        if line:
+            logger.info(f'  | {line}')
+            output_lines.append(line)
 
     rc = proc.returncode
     if rc == 0:
         return True, '正常完成'
     else:
         last_lines = '\n'.join(output_lines[-5:])
-        return False, f'退出码 {rc}: {last_lines}'
+        return False, f'退出码 {rc}: {last_lines or "无输出"}'
 
 
 def preflight_check():
@@ -285,6 +387,14 @@ def preflight_check():
         logger.info('✅ 网络连通（zhipin.com 可达）')
     except Exception:
         errors.append('网络不通: 无法访问 zhipin.com')
+
+    for name, url in [('GitHub', 'https://github.com'), ('Feishu', 'https://open.feishu.cn')]:
+        try:
+            import urllib.request
+            urllib.request.urlopen(url, timeout=10)
+            logger.info(f'✅ {name} 可达')
+        except Exception as e:
+            logger.warning(f'⚠️ {name} 暂不可达，后续阶段将自动重试: {e}')
 
     # 4. 磁盘空间
     try:
@@ -329,29 +439,222 @@ def preflight_check():
     return passed, errors
 
 
+def _child_env():
+    env = os.environ.copy()
+    env.setdefault('AI_PM_UNATTENDED', '1')
+    env.setdefault('AI_PM_SHOW_PROGRESS_GUI', '0')
+    env.setdefault('AI_PM_OPEN_REPORT', '0')
+    return env
+
+
+def _safe_load_json(path: Path):
+    try:
+        if path.exists():
+            return json.loads(path.read_text(encoding='utf-8'))
+    except Exception:
+        return {}
+    return {}
+
+
+def _safe_write_json(path: Path, payload):
+    try:
+        path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding='utf-8')
+        return True
+    except Exception:
+        return False
+
+
+def _keyword_refresh_settings():
+    config = _safe_load_json(CONFIG_FILE)
+    settings = config.get('keyword_settings') or {}
+    try:
+        refresh_day = max(1, min(28, int(settings.get('refresh_day', 1))))
+    except Exception:
+        refresh_day = 1
+    try:
+        retry_hours = max(1, int(settings.get('refresh_retry_hours', 6)))
+    except Exception:
+        retry_hours = 6
+    return {
+        'refresh_day': refresh_day,
+        'retry_hours': retry_hours,
+        'last_refreshed_month': str(settings.get('last_refreshed_month') or ''),
+    }
+
+
+def maybe_refresh_keyword_library(round_num):
+    now = datetime.now()
+    current_month = now.strftime('%Y-%m')
+    settings = _keyword_refresh_settings()
+    if now.day < settings['refresh_day']:
+        return True, 'not_due'
+
+    state = _safe_load_json(KEYWORD_REFRESH_STATE_FILE)
+    if settings['last_refreshed_month'] == current_month or str(state.get('last_success_month') or '') == current_month:
+        return True, 'already_refreshed'
+
+    last_attempt_at = str(state.get('last_attempt_at') or '')
+    if last_attempt_at:
+        try:
+            last_attempt = datetime.strptime(last_attempt_at, '%Y-%m-%d %H:%M:%S')
+            if (now - last_attempt).total_seconds() < settings['retry_hours'] * 3600:
+                return True, 'retry_later'
+        except Exception:
+            pass
+
+    attempt = {
+        'last_attempt_at': now.strftime('%Y-%m-%d %H:%M:%S'),
+        'last_attempt_month': current_month,
+        'last_status': 'running',
+    }
+    _safe_write_json(KEYWORD_REFRESH_STATE_FILE, attempt)
+    logger.info('🗂️ 开始刷新月度关键词词库...')
+    _write_runtime_state(round_num, 'keyword_refresh', '正在从 BOSS 刷新关键词词库')
+
+    try:
+        from spiders.boss_dp import refresh_keyword_library_from_boss
+        result = refresh_keyword_library_from_boss()
+    except Exception as e:
+        result = {'ok': False, 'error': str(e)}
+
+    if result.get('ok'):
+        attempt.update({
+            'last_status': 'success',
+            'last_success_at': str(result.get('refreshed_at') or now.strftime('%Y-%m-%d %H:%M:%S')),
+            'last_success_month': current_month,
+            'counts': {
+                'suggestions': int(result.get('suggestions', 0) or 0),
+                'titles': int(result.get('titles', 0) or 0),
+                'final_keywords': int(result.get('final_keywords', 0) or 0),
+            },
+        })
+        _safe_write_json(KEYWORD_REFRESH_STATE_FILE, attempt)
+        logger.info(
+            f'🗂️ 关键词词库刷新完成: {attempt["counts"]["final_keywords"]} 个词 '
+            f'(联想{attempt["counts"]["suggestions"]}/标题{attempt["counts"]["titles"]})'
+        )
+        return True, ''
+
+    error = str(result.get('error') or 'unknown error')
+    attempt.update({
+        'last_status': 'failed',
+        'last_error': error,
+    })
+    _safe_write_json(KEYWORD_REFRESH_STATE_FILE, attempt)
+    logger.warning(f'🗂️ 关键词词库刷新失败，继续使用旧词库: {error}')
+    return False, error
+
+
+def _write_runtime_state(round_num, phase, detail='', next_run_at=''):
+    payload = {
+        'pid': os.getpid(),
+        'round': round_num,
+        'phase': phase,
+        'detail': detail,
+        'updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+    }
+    if next_run_at:
+        payload['next_run_at'] = next_run_at
+    try:
+        RUNTIME_STATE_FILE.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding='utf-8')
+    except Exception:
+        pass
+
+
+def _pid_is_running(pid):
+    if not pid:
+        return False
+    try:
+        pid = int(pid)
+    except Exception:
+        return False
+    if pid == os.getpid():
+        return True
+    try:
+        os.kill(pid, 0)
+    except OSError:
+        return False
+    return True
+
+
+def _acquire_lock():
+    existing = _safe_load_json(LOCK_FILE)
+    pid = existing.get('pid')
+    if pid and _pid_is_running(pid):
+        return False, existing
+    try:
+        if LOCK_FILE.exists():
+            LOCK_FILE.unlink()
+    except Exception:
+        pass
+    payload = {
+        'pid': os.getpid(),
+        'started_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+    }
+    LOCK_FILE.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding='utf-8')
+    return True, payload
+
+
+def _release_lock():
+    try:
+        existing = _safe_load_json(LOCK_FILE)
+        if existing.get('pid') in (None, os.getpid()) and LOCK_FILE.exists():
+            LOCK_FILE.unlink()
+    except Exception:
+        pass
+
+
+def _tracked_mtime(path: Path):
+    try:
+        return path.stat().st_mtime if path.exists() else 0
+    except Exception:
+        return 0
+
+
+def _sleep_with_state(seconds, round_num, phase, detail=''):
+    end = time.time() + max(0, int(seconds))
+    while True:
+        remaining = round(end - time.time())
+        if remaining <= 0:
+            _write_runtime_state(round_num, phase, detail + ' [结束]')
+            return
+        next_run_at = (datetime.now() + timedelta(seconds=remaining)).strftime('%Y-%m-%d %H:%M:%S')
+        _write_runtime_state(round_num, phase, detail, next_run_at=next_run_at)
+        time.sleep(min(60, remaining))
+
+
 def _run_one_round(round_num):
-    """执行一轮完整的爬取流程，返回 (成功, 错误信息)"""
+    """执行一轮完整的爬取流程，返回 (成功, 错误信息, 建议等待秒数)"""
     t0 = time.time()
     mode = 'full'
     mode_label = '全量'
+    suggested_wait_sec = 0
 
     # ① 登录检查
-    run_login_check()
+    _write_runtime_state(round_num, 'login_check', '正在检查登录状态')
+    login_ok, login_state = run_login_check()
+    if not login_ok:
+        suggested_wait_sec = max(int(login_state.get('retry_after_sec') or 600), 300)
+        success = False
+        error_msg = f'登录未就绪[{login_state.get("status", "unknown")}]: {login_state.get("detail", "")}'
+    else:
+        maybe_refresh_keyword_library(round_num)
+        # ② 清洗日检查（每月 1/15）
+        if is_cleanup_day():
+            logger.info('📅 今天是清洗日，先执行老数据清洗')
+            notify('AI 岗位爬取', '清洗日：先执行老数据清洗')
+            _write_runtime_state(round_num, 'stale_cleanup', '正在执行老数据清洗')
+            run_stale_cleanup()
 
-    # ② 清洗日检查（每月 1/15）
-    if is_cleanup_day():
-        logger.info('📅 今天是清洗日，先执行老数据清洗')
-        notify('AI 岗位爬取', '清洗日：先执行老数据清洗')
-        run_stale_cleanup()
-
-    # ③ 全量爬取
-    success = False
-    error_msg = ''
-    try:
-        success, error_msg = run_daily_update(quick=False)
-    except Exception as e:
-        error_msg = traceback.format_exc()
-        logger.error(f'❌ 执行异常: {e}')
+        # ③ 全量爬取
+        success = False
+        error_msg = ''
+        _write_runtime_state(round_num, 'daily_update', '正在执行抓取/清洗/上传')
+        try:
+            success, error_msg = run_daily_update(quick=False)
+        except Exception as e:
+            error_msg = traceback.format_exc()
+            logger.error(f'❌ 执行异常: {e}')
 
     duration = round(time.time() - t0)
     mins = duration // 60
@@ -369,9 +672,15 @@ def _run_one_round(round_num):
         logger.info(msg)
         notify('AI 岗位爬取 — 自动完成', msg)
     else:
-        msg = f'❌ 第{round_num}轮 [{mode_label}] 失败 | 耗时 {mins}分{secs}秒 | {error_msg[:80]}'
-        logger.error(msg)
-        notify('AI 岗位爬取 — 失败', msg[:100])
+        if error_msg.startswith('登录未就绪['):
+            retry_min = max(1, int((suggested_wait_sec + 59) // 60))
+            msg = f'⚠️ 第{round_num}轮 [{mode_label}] 登录未就绪 | {retry_min} 分钟后重试 | {error_msg[:80]}'
+            logger.warning(msg)
+            notify('AI 岗位爬取 — 等待重试', msg[:100])
+        else:
+            msg = f'❌ 第{round_num}轮 [{mode_label}] 失败 | 耗时 {mins}分{secs}秒 | {error_msg[:80]}'
+            logger.error(msg)
+            notify('AI 岗位爬取 — 失败', msg[:100])
 
     # ⑤ 写入执行记录
     record = {
@@ -381,6 +690,7 @@ def _run_one_round(round_num):
         'success': success,
         'duration_sec': duration,
         'error': error_msg if not success else '',
+        'retry_after_sec': suggested_wait_sec,
     }
     record_file = LOG_DIR / 'auto_daily_record.json'
     try:
@@ -394,11 +704,21 @@ def _run_one_round(round_num):
     except Exception:
         pass
 
-    return success, error_msg
+    return success, error_msg, suggested_wait_sec
 
 
 def main():
     """全天候不间断循环主入口"""
+    os.environ.setdefault('AI_PM_UNATTENDED', '1')
+    os.environ.setdefault('AI_PM_SHOW_PROGRESS_GUI', '0')
+    os.environ.setdefault('AI_PM_OPEN_REPORT', '0')
+
+    locked, lock_data = _acquire_lock()
+    if not locked:
+        logger.error(f'检测到已有 auto_daily 实例运行中（PID={lock_data.get("pid")}），当前进程退出')
+        notify('AI 岗位爬取', f'已有 auto_daily 在运行（PID={lock_data.get("pid")})')
+        return
+
     logger.info('=' * 60)
     logger.info(f'🚀 全天候爬取流程启动 {datetime.now().strftime("%Y-%m-%d %H:%M")}')
     logger.info('=' * 60)
@@ -418,21 +738,23 @@ def main():
     try:
         while True:
             round_num += 1
+            _write_runtime_state(round_num, 'round_start', '新一轮开始')
             logger.info('')
             logger.info(f'{"=" * 40} 第 {round_num} 轮 {"=" * 40}')
             logger.info(f'⏰ 开始时间: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}')
 
             # ① 环境预检
+            _write_runtime_state(round_num, 'preflight', '正在运行环境预检')
             logger.info('🔍 运行环境预检...')
             passed, errors = preflight_check()
             if not passed:
                 logger.error(f'❌ 环境预检失败（{len(errors)} 个问题），等待 5 分钟后重试...')
                 notify('AI 岗位爬取 — 预检失败', f'{len(errors)} 个问题: {"; ".join(errors[:3])}')
-                time.sleep(300)
+                _sleep_with_state(300, round_num, 'preflight_backoff', f'预检失败: {"; ".join(errors[:3])}')
                 continue
 
             # ② 执行一轮爬取
-            success, error_msg = _run_one_round(round_num)
+            success, error_msg, suggested_wait_sec = _run_one_round(round_num)
 
             if success:
                 consecutive_failures = 0
@@ -440,7 +762,9 @@ def main():
                 consecutive_failures += 1
 
             # ③ 冷却休息
-            if consecutive_failures >= MAX_CONSECUTIVE_FAILURES:
+            if suggested_wait_sec:
+                cool_min = max(1, int((suggested_wait_sec + 59) // 60))
+            elif consecutive_failures >= MAX_CONSECUTIVE_FAILURES:
                 cool_min = interval_min * 3  # 连续失败加长冷却
                 logger.warning(f'⚠️ 连续失败 {consecutive_failures} 次，延长冷却到 {cool_min} 分钟')
                 notify('AI 岗位爬取 — 异常', f'连续失败 {consecutive_failures} 次，冷却 {cool_min} 分钟')
@@ -450,7 +774,7 @@ def main():
             logger.info(f'💤 第 {round_num} 轮结束，冷却 {cool_min} 分钟后开始下一轮...')
             logger.info(f'   预计下一轮: {(datetime.now() + timedelta(minutes=cool_min)).strftime("%H:%M:%S")}')
 
-            time.sleep(cool_min * 60)
+            _sleep_with_state(cool_min * 60, round_num, 'cooldown', f'上一轮{"成功" if success else "失败"}: {error_msg[:120]}')
 
     except KeyboardInterrupt:
         logger.info('🛑 用户中断（Ctrl+C），停止全天候爬取')
@@ -459,6 +783,8 @@ def main():
         logger.error(f'💥 致命错误: {e}', exc_info=True)
         notify('AI 岗位爬取 — 致命错误', str(e)[:100])
     finally:
+        _write_runtime_state(round_num, 'stopped', '全天候爬取已停止')
+        _release_lock()
         stop_caffeinate()
         logger.info(f'🏁 全天候爬取已停止，共完成 {round_num} 轮')
         logger.info('=' * 60)

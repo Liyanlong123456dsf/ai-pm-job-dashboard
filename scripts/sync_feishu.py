@@ -52,6 +52,58 @@ DOC_BATCH_DELETE_URL = lambda doc_id, block_id: f'{FEISHU_HOST}/open-apis/docx/v
 # 飞书文档每次创建子块数量限制
 BATCH_SIZE = 50
 
+MAX_REQUEST_RETRIES = 5
+RETRY_BACKOFF_SEC = 2
+
+
+def _truncate_text(value, limit=200):
+    text = str(value or '')
+    return text if len(text) <= limit else text[:limit]
+
+
+def _is_retryable_feishu_error(data):
+    if not isinstance(data, dict):
+        return False
+    if data.get('code') == 99991400:
+        return True
+    payload = json.dumps(data, ensure_ascii=False).lower()
+    return any(token in payload for token in ['rate', 'limit', 'frequency', 'internal', 'busy', 'timeout', 'tempor'])
+
+
+def _request_with_retry(method, url, *, timeout, action='', **kwargs):
+    action = action or f'{method.upper()} {url}'
+    last_error = None
+    for attempt in range(1, MAX_REQUEST_RETRIES + 1):
+        try:
+            resp = requests.request(method, url, timeout=timeout, **kwargs)
+            if resp.status_code == 429 or resp.status_code >= 500:
+                raise requests.HTTPError(f'HTTP {resp.status_code}: {_truncate_text(resp.text)}', response=resp)
+
+            data = None
+            try:
+                data = resp.json()
+            except Exception:
+                data = None
+
+            if isinstance(data, dict) and data.get('code') not in (None, 0):
+                if attempt < MAX_REQUEST_RETRIES and _is_retryable_feishu_error(data):
+                    wait_sec = min(30, RETRY_BACKOFF_SEC * attempt)
+                    logger.warning(f'{action} 第{attempt}次命中可重试错误，{wait_sec} 秒后重试: {_truncate_text(data)}')
+                    time.sleep(wait_sec)
+                    continue
+                raise ValueError(f'{action} 失败: {data}')
+
+            resp.raise_for_status()
+            return resp
+        except (requests.RequestException, ValueError) as e:
+            last_error = e
+            if attempt >= MAX_REQUEST_RETRIES:
+                break
+            wait_sec = min(30, RETRY_BACKOFF_SEC * attempt)
+            logger.warning(f'{action} 第{attempt}次失败，{wait_sec} 秒后重试: {_truncate_text(e)}')
+            time.sleep(wait_sec)
+    raise last_error
+
 
 def get_credentials():
     """获取飞书凭证（优先环境变量，其次 .env 文件）"""
@@ -79,14 +131,11 @@ def get_credentials():
 
 def get_tenant_token(app_id, app_secret):
     """获取 tenant_access_token"""
-    resp = requests.post(TENANT_TOKEN_URL, json={
+    resp = _request_with_retry('post', TENANT_TOKEN_URL, action='获取 tenant_access_token', json={
         'app_id': app_id,
         'app_secret': app_secret,
     }, timeout=10)
-    resp.raise_for_status()
     data = resp.json()
-    if data.get('code') != 0:
-        raise ValueError(f'获取 tenant_token 失败: {data}')
     token = data['tenant_access_token']
     logger.info(f'✅ 获取 tenant_access_token 成功（有效期 {data.get("expire", 0)}s）')
     return token
@@ -95,20 +144,19 @@ def get_tenant_token(app_id, app_secret):
 def create_document(token, title):
     """创建新的飞书文档，返回 document_id"""
     headers = {'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}
-    resp = requests.post(CREATE_DOC_URL, headers=headers, json={
+    resp = _request_with_retry('post', CREATE_DOC_URL, action='创建飞书文档', headers=headers, json={
         'title': title,
     }, timeout=15)
-    resp.raise_for_status()
     data = resp.json()
-    if data.get('code') != 0:
-        raise ValueError(f'创建文档失败: {data}')
     doc = data['data']['document']
     doc_id = doc['document_id']
     logger.info(f'✅ 飞书文档已创建: {doc_id}')
     # 自动开放文档权限：任何人可编辑
     try:
-        perm_resp = requests.patch(
+        perm_resp = _request_with_retry(
+            'patch',
             f'{FEISHU_HOST}/open-apis/drive/v2/permissions/{doc_id}/public?type=docx',
+            action='设置文档公开权限',
             headers=headers,
             json={
                 'external_access_entity': 'open',
@@ -119,8 +167,6 @@ def create_document(token, title):
         )
         if perm_resp.json().get('code') == 0:
             logger.info('✅ 文档已设置为任何人可编辑')
-        else:
-            logger.warning(f'⚠️ 权限设置失败: {perm_resp.text[:200]}')
     except Exception as e:
         logger.warning(f'⚠️ 权限设置异常: {e}')
     return doc_id
@@ -135,11 +181,8 @@ def get_document_blocks(token, doc_id):
         params = {'page_size': 500}
         if page_token:
             params['page_token'] = page_token
-        resp = requests.get(DOC_BLOCKS_URL(doc_id), headers=headers, params=params, timeout=15)
-        resp.raise_for_status()
+        resp = _request_with_retry('get', DOC_BLOCKS_URL(doc_id), action='获取文档顶层块', headers=headers, params=params, timeout=15)
         data = resp.json()
-        if data.get('code') != 0:
-            raise ValueError(f'获取文档块失败: {data}')
         items = data.get('data', {}).get('items', [])
         blocks.extend(items)
         page_token = data.get('data', {}).get('page_token')
@@ -157,11 +200,8 @@ def get_block_children(token, doc_id, block_id):
         params = {'page_size': 500}
         if page_token:
             params['page_token'] = page_token
-        resp = requests.get(DOC_BLOCK_CHILDREN_URL(doc_id, block_id), headers=headers, params=params, timeout=15)
-        resp.raise_for_status()
+        resp = _request_with_retry('get', DOC_BLOCK_CHILDREN_URL(doc_id, block_id), action='获取文档子块', headers=headers, params=params, timeout=15)
         data = resp.json()
-        if data.get('code') != 0:
-            raise ValueError(f'获取子块失败: {data}')
         items = data.get('data', {}).get('items', [])
         children.extend(items)
         page_token = data.get('data', {}).get('page_token')
@@ -183,13 +223,15 @@ def clear_document(token, doc_id):
     while remaining > 0:
         # 每次删除前 50 个（删除后后面的块自动前移）
         count = min(remaining, BATCH_SIZE)
-        resp = requests.delete(
+        resp = _request_with_retry(
+            'delete',
             DOC_BATCH_DELETE_URL(doc_id, doc_id),
+            action='删除文档块',
             headers=headers,
             json={'start_index': 0, 'end_index': count},
             timeout=15,
         )
-        data = resp.json() if resp.status_code == 200 else {}
+        data = resp.json()
         if data.get('code') == 0:
             total_deleted += count
             remaining -= count
@@ -319,26 +361,20 @@ def create_block_children(token, doc_id, block_id, blocks):
             'children': batch,
             'index': -1,  # 追加到末尾
         }
-        retry = 0
-        while retry < 3:
-            resp = requests.post(
-                DOC_BLOCK_CHILDREN_URL(doc_id, block_id),
-                headers=headers,
-                json=body,
-                timeout=30,
-            )
-            data = resp.json()
-            if data.get('code') == 0:
-                created += len(batch)
-                break
-            elif data.get('code') == 99991400:
-                # 频率限制，等一会儿重试
-                logger.warning(f'频率限制，等待 2 秒后重试...')
-                time.sleep(2)
-                retry += 1
-            else:
-                logger.error(f'创建块失败: {data}')
-                break
+        resp = _request_with_retry(
+            'post',
+            DOC_BLOCK_CHILDREN_URL(doc_id, block_id),
+            action=f'写入文档块[{i + len(batch)}/{total}]',
+            headers=headers,
+            json=body,
+            timeout=30,
+        )
+        data = resp.json()
+        if data.get('code') == 0:
+            created += len(batch)
+        else:
+            logger.error(f'创建块失败: {data}')
+            break
 
         if created % 200 == 0 or created == total:
             logger.info(f'  进度: {created}/{total} 块')

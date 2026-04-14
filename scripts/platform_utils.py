@@ -16,6 +16,25 @@ IS_WINDOWS = platform.system() == 'Windows'
 IS_MAC = platform.system() == 'Darwin'
 
 
+def _env_flag(name: str, default: bool = False) -> bool:
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return str(value).strip().lower() in {'1', 'true', 'yes', 'on'}
+
+
+def is_unattended_mode() -> bool:
+    return _env_flag('AI_PM_UNATTENDED', False)
+
+
+def should_show_progress_gui() -> bool:
+    return _env_flag('AI_PM_SHOW_PROGRESS_GUI', not is_unattended_mode())
+
+
+def should_open_report() -> bool:
+    return _env_flag('AI_PM_OPEN_REPORT', not is_unattended_mode())
+
+
 # ============ 通知（系统托盘 / 右上角横幅） ============
 
 def notify(title: str, message: str):
@@ -104,6 +123,9 @@ def show_dialog(title: str, message: str, buttons='ok', icon='info'):
     icon: 'info' | 'warning' | 'error' | 'question'
     返回: 'ok' | 'cancel' | 'yes' | 'no'
     """
+    if is_unattended_mode():
+        logger.info(f'[无人值守-跳过弹窗] {title}: {message[:120]}')
+        return 'cancel' if buttons == 'okcancel' else ('no' if buttons == 'yesno' else 'ok')
     try:
         if IS_WINDOWS:
             return _dialog_windows(title, message, buttons, icon)
@@ -152,6 +174,9 @@ def show_login_dialog(title: str, message: str):
     登录专用弹窗：两个按钮「取消」/「已登录」
     返回: True=用户点了已登录, False=取消
     """
+    if is_unattended_mode():
+        logger.info(f'[无人值守-跳过登录弹窗] {title}: {message[:120]}')
+        return False
     try:
         if IS_WINDOWS:
             import ctypes
@@ -169,7 +194,8 @@ def show_login_dialog(title: str, message: str):
                 capture_output=True, text=True, timeout=600)
             return result.returncode == 0 and '取消' not in result.stdout
         else:
-            return True
+            logger.info(f'[弹窗] {title}: {message}')
+            return False
     except Exception as e:
         logger.warning(f'登录弹窗失败: {e}')
         return False
@@ -177,6 +203,9 @@ def show_login_dialog(title: str, message: str):
 
 def show_login_status_dialog(title: str, message: str, logged_in: bool):
     """登录检查结果弹窗（带超时自动关闭）"""
+    if is_unattended_mode():
+        logger.info(f'[无人值守-跳过登录状态弹窗] {title}: {message[:120]}')
+        return
     try:
         if IS_WINDOWS:
             import ctypes
@@ -197,6 +226,9 @@ def show_login_recheck_dialog(title: str, message: str):
     未登录时引导用户登录的弹窗
     返回: 'login'=用户点了已登录, 'skip'=跳过
     """
+    if is_unattended_mode():
+        logger.info(f'[无人值守-跳过重新登录弹窗] {title}: {message[:120]}')
+        return 'skip'
     try:
         if IS_WINDOWS:
             import ctypes
@@ -213,8 +245,10 @@ def show_login_recheck_dialog(title: str, message: str):
                 capture_output=True, text=True, timeout=600)
             return 'login' if '已登录' in result.stdout else 'skip'
         else:
+            logger.info(f'[弹窗] {title}: {message}')
             return 'login'
-    except Exception:
+    except Exception as e:
+        logger.warning(f'弹窗失败: {e}')
         return 'skip'
 
 
@@ -272,6 +306,9 @@ def _activate_chrome_windows():
 
 def open_file(path):
     """用系统默认程序打开文件"""
+    if not should_open_report():
+        logger.info(f'已禁用自动打开文件: {path}')
+        return
     try:
         path = str(path)
         if IS_WINDOWS:

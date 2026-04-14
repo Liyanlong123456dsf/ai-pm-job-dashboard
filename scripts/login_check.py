@@ -38,15 +38,18 @@ logging.basicConfig(
 logger = logging.getLogger('login_check')
 
 
-def save_status(logged_in: bool, detail: str = ''):
+def save_status(logged_in: bool, detail: str = '', status: str = '', retry_after_sec: int = 0, needs_user: bool = False):
     """保存登录状态到 JSON"""
     data = {
         'checked_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         'logged_in': logged_in,
+        'status': status or ('logged_in' if logged_in else 'needs_login'),
         'detail': detail,
+        'retry_after_sec': retry_after_sec,
+        'needs_user': needs_user,
     }
     STATUS_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
-    logger.info(f'登录状态已保存: {"✅ 已登录" if logged_in else "❌ 未登录"} — {detail}')
+    logger.info(f'登录状态已保存: {"✅ 已登录" if logged_in else "❌ 未登录"} [{data["status"]}] — {detail}')
 
 
 def notify(title, msg):
@@ -64,6 +67,11 @@ def check_login():
     logger.info('开始登录状态检查')
 
     try:
+        try:
+            from platform_utils import is_unattended_mode
+            unattended = is_unattended_mode()
+        except Exception:
+            unattended = False
         sys.path.insert(0, str(SCRIPT_DIR))
         from spiders.boss_dp import BossDPSpider
 
@@ -78,18 +86,22 @@ def check_login():
 
         # 检测登录
         logged_in = False
+        verify_seen = False
+        last_title = ''
         for attempt in range(6):
             try:
+                title = page.run_js('return document.title || ""')
+                if title:
+                    last_title = str(title)
                 has_jobs = page.run_js(
                     'return document.querySelectorAll("li[class*=job-card]").length > 0'
                 )
                 if has_jobs:
                     logged_in = True
                     break
-                is_verify = page.run_js(
-                    'return document.title.includes("安全") || document.title.includes("验证")'
-                )
+                is_verify = ('安全' in last_title) or ('验证' in last_title)
                 if is_verify:
+                    verify_seen = True
                     logger.info(f'安全验证页面，等待... ({attempt+1}/6)')
             except Exception:
                 pass
@@ -97,7 +109,7 @@ def check_login():
 
         if logged_in:
             # ✅ 已登录
-            save_status(True, '检测到岗位列表，Cookie 有效')
+            save_status(True, '检测到岗位列表，Cookie 有效', status='logged_in')
             notify('AI 岗位爬取 ✅', '登录状态正常，将自动执行每日爬取')
             from platform_utils import show_login_status_dialog
             show_login_status_dialog(
@@ -108,11 +120,23 @@ def check_login():
                 logged_in=True
             )
             logger.info('✅ 登录正常，用户已确认')
+            return 'logged_in'
         else:
             # ❌ 未登录 — 引导用户登录
-            save_status(False, '未检测到岗位列表，需要登录')
+            detail = f'未检测到岗位列表，标题={last_title or "(空)"}'
+            if verify_seen:
+                save_status(False, detail, status='verify_page', retry_after_sec=900, needs_user=False)
+                notify('AI 岗位爬取 ⚠️', '检测到 BOSS 安全验证页，将稍后自动重试')
+                logger.warning('检测到安全验证页面，无人值守下不阻塞，等待下轮重试')
+                if unattended:
+                    return 'verify_page'
+            else:
+                save_status(False, detail, status='needs_login', retry_after_sec=3600, needs_user=True)
             notify('AI 岗位爬取 ⚠️', '需要登录 BOSS 直聘！请在 Chrome 中登录')
             from platform_utils import activate_chrome, show_login_recheck_dialog, show_login_status_dialog
+            if unattended:
+                logger.warning('无人值守模式：跳过登录交互，等待后续轮次重试')
+                return 'needs_login'
             activate_chrome()
             choice = show_login_recheck_dialog(
                 'AI 岗位爬取 — 需要登录',
@@ -135,15 +159,16 @@ def check_login():
                     has_jobs = False
 
                 if has_jobs:
-                    save_status(True, '用户手动登录后验证通过')
+                    save_status(True, '用户手动登录后验证通过', status='logged_in')
                     notify('AI 岗位爬取 ✅', '登录验证通过！将自动执行')
                     show_login_status_dialog(
                         'AI 岗位爬取',
                         '✅ 登录验证通过！\n\n将自动执行每日爬取。',
                         logged_in=True
                     )
+                    return 'logged_in'
                 else:
-                    save_status(False, '用户确认登录但验证未通过')
+                    save_status(False, '用户确认登录但验证未通过', status='recheck_failed', retry_after_sec=1800, needs_user=True)
                     notify('AI 岗位爬取 ❌', '登录验证失败，爬取可能异常')
                     show_login_status_dialog(
                         'AI 岗位爬取',
@@ -152,18 +177,23 @@ def check_login():
                         '自动爬取可能会失败。',
                         logged_in=False
                     )
+                    return 'recheck_failed'
             else:
-                save_status(False, '用户选择跳过登录')
+                save_status(False, '用户选择跳过登录', status='skipped_login', retry_after_sec=3600, needs_user=True)
                 logger.info('用户选择跳过登录')
+                return 'skipped_login'
 
     except Exception as e:
         logger.error(f'登录检查异常: {e}', exc_info=True)
-        save_status(False, f'检查异常: {e}')
+        save_status(False, f'检查异常: {e}', status='error', retry_after_sec=600, needs_user=False)
         notify('AI 岗位爬取 ❌', f'登录检查异常: {str(e)[:50]}')
+        return 'error'
     finally:
         # 不关闭浏览器 — 保持 Profile 活跃，让用户可以手动登录
         logger.info('登录检查完成（浏览器保持打开，Cookie 会自动保存）')
 
 
 if __name__ == '__main__':
-    check_login()
+    result = check_login()
+    exit_code = 0 if result == 'logged_in' else (2 if result in {'needs_login', 'verify_page', 'recheck_failed', 'skipped_login'} else 1)
+    sys.exit(exit_code)
