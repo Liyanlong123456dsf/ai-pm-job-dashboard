@@ -1,79 +1,79 @@
 {
   "date": "2026-04-15",
-  "start_time": "00:38:17",
+  "start_time": "11:09:07",
   "mode": "full",
   "steps": [
     {
       "name": "登录",
       "ok": true,
       "detail": "已登录",
-      "time": "00:38:23"
+      "time": "11:09:13"
     },
     {
-      "name": "爬取+清洗+合并: 智能产品经理",
+      "name": "爬取+清洗+合并: 大模型产品经理",
       "ok": true,
-      "detail": "+4条 (累计+4)",
-      "time": "01:23:30"
+      "detail": "+10条 (累计+10)",
+      "time": "12:24:48"
     },
     {
-      "name": "爬取+清洗+合并: AI交互产品经理",
+      "name": "爬取+清洗+合并: AI中台产品经理",
       "ok": true,
-      "detail": "+11条 (累计+15)",
-      "time": "02:28:38"
+      "detail": "+16条 (累计+26)",
+      "time": "13:25:30"
     },
     {
-      "name": "爬取+清洗+合并: AI解决方案产品经理",
+      "name": "爬取+清洗+合并: AI营销产品经理",
       "ok": true,
-      "detail": "+36条 (累计+51)",
-      "time": "03:11:53"
+      "detail": "+27条 (累计+53)",
+      "time": "14:00:22"
     },
     {
-      "name": "爬取+清洗+合并: AI产品专家",
+      "name": "爬取+清洗+合并: 生成式AI产品经理",
       "ok": true,
-      "detail": "+16条 (累计+67)",
-      "time": "03:52:33"
+      "detail": "+13条 (累计+66)",
+      "time": "14:33:11"
     },
     {
-      "name": "爬取+清洗+合并: 机器学习产品经理",
+      "name": "爬取+清洗+合并: Copilot产品经理",
       "ok": true,
-      "detail": "+22条 (累计+89)",
-      "time": "04:18:11"
+      "detail": "+18条 (累计+84)",
+      "time": "14:58:27"
     },
     {
-      "name": "爬取+清洗+合并: AIGC产品经理",
+      "name": "爬取+清洗+合并: AI教育产品经理",
       "ok": true,
-      "detail": "+0条 (累计+89)",
-      "time": "04:51:54"
+      "detail": "+25条 (累计+109)",
+      "time": "15:20:41"
     },
     {
       "name": "导出总表",
       "ok": true,
       "detail": "",
-      "time": "04:51:56"
+      "time": "15:20:43"
     },
     {
       "name": "生成知识库",
       "ok": true,
       "detail": "",
-      "time": "04:51:56"
+      "time": "15:20:43"
     },
     {
       "name": "飞书同步",
       "ok": true,
       "detail": "",
-      "time": "04:54:03"
+      "time": "15:22:57"
     }
   ],
   "overall": "running",
-  "crawl_raw": 978,
-  "crawl_cleaned": 972,
-  "added": 89,
-  "total": 3136,
+  "crawl_raw": 1025,
+  "crawl_cleaned": 1020,
+  "added": 109,
+  "total": 3245,
   "has_url": 0,
   "has_desc": 0,
   "git_pushed": false,
   "deployed": false,
   "errors": [],
   "duration_sec": 0,
-  "updated": "2026-04-15 04:54:03"
+  "updated": "2026-04-15 15:22:57"
 }
