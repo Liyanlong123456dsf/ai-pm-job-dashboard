@@ -442,6 +442,24 @@ def main():
     # === 8. Git 提交 + 推送 ===
     _write_progress(87, '🔀 Git 推送中...', '', status.get('steps', []))
     try:
+        # 自动检测本地代理并设置 git proxy，解决 GFW 环境下推送失败
+        _proxy_set = False
+        for _pport in [7897, 7890, 7891, 10808, 10809, 1080]:
+            try:
+                import socket
+                with socket.create_connection(('127.0.0.1', _pport), timeout=1):
+                    pass
+                subprocess.run(['git', 'config', '--global', 'http.proxy', f'http://127.0.0.1:{_pport}'],
+                               capture_output=True, timeout=5)
+                subprocess.run(['git', 'config', '--global', 'https.proxy', f'http://127.0.0.1:{_pport}'],
+                               capture_output=True, timeout=5)
+                logger.info(f'检测到本地代理 127.0.0.1:{_pport}，已设置 git proxy')
+                _proxy_set = True
+                break
+            except (OSError, socket.timeout):
+                continue
+        if not _proxy_set:
+            logger.info('未检测到本地代理，git 将直连推送')
         today = datetime.now().strftime('%Y-%m-%d')
         subprocess.run(['git', 'add', '-A'], cwd=str(BASE_DIR), check=True)
         diff_ret = subprocess.run(['git', 'diff', '--cached', '--quiet'], cwd=str(BASE_DIR))
