@@ -1,93 +1,31 @@
 {
-  "date": "2026-04-15",
-  "start_time": "21:29:23",
+  "date": "2026-04-16",
+  "start_time": "22:24:45",
   "mode": "full",
   "steps": [
     {
       "name": "登录",
       "ok": true,
       "detail": "已登录",
-      "time": "21:29:39"
+      "time": "22:24:52"
     },
     {
-      "name": "爬取+清洗+合并: AI办公产品经理",
+      "name": "爬取+清洗+合并: AI策略产品经理",
       "ok": true,
-      "detail": "+20条 (累计+20)",
-      "time": "22:58:44"
-    },
-    {
-      "name": "爬取+清洗+合并: AI工作流产品经理",
-      "ok": true,
-      "detail": "+1条 (累计+21)",
-      "time": "23:36:51"
-    },
-    {
-      "name": "爬取+清洗+合并: AI平台产品经理",
-      "ok": true,
-      "detail": "+44条 (累计+65)",
-      "time": "00:25:50"
-    },
-    {
-      "name": "爬取+清洗+合并: AIGC产品经理",
-      "ok": true,
-      "detail": "+4条 (累计+69)",
-      "time": "01:08:30"
-    },
-    {
-      "name": "爬取+清洗+合并: AI医疗产品经理",
-      "ok": true,
-      "detail": "+56条 (累计+125)",
-      "time": "02:06:05"
-    },
-    {
-      "name": "导出总表",
-      "ok": true,
-      "detail": "",
-      "time": "02:06:06"
-    },
-    {
-      "name": "生成知识库",
-      "ok": true,
-      "detail": "",
-      "time": "02:06:07"
-    },
-    {
-      "name": "飞书同步",
-      "ok": true,
-      "detail": "",
-      "time": "02:08:27"
-    },
-    {
-      "name": "Git 推送",
-      "ok": false,
-      "detail": "Git push 5次均失败: fatal: unable to access 'https://github.com/Liyanlong123456dsf/ai-pm-job-dashboard.git/': Failed to connect to github.com port 443 after 21078 ms: Could not connect to server\n",
-      "time": "02:12:10"
-    },
-    {
-      "name": "云同步",
-      "ok": false,
-      "detail": "Git 推送未成功，数据未同步",
-      "time": "02:12:10"
-    },
-    {
-      "name": "全流程完成",
-      "ok": true,
-      "detail": "总 3370 条，新增 125 条",
-      "time": "02:12:10"
+      "detail": "+6条 (累计+6)",
+      "time": "23:28:54"
     }
   ],
-  "overall": "partial",
-  "crawl_raw": 944,
-  "crawl_cleaned": 939,
-  "added": 125,
-  "total": 3370,
-  "has_url": 3254,
-  "has_desc": 3269,
+  "overall": "running",
+  "crawl_raw": 313,
+  "crawl_cleaned": 312,
+  "added": 6,
+  "total": 3376,
+  "has_url": 0,
+  "has_desc": 0,
   "git_pushed": false,
   "deployed": false,
-  "errors": [
-    "Git 推送失败: Git push 5次均失败: fatal: unable to access 'https://github.com/Liyanlong123456dsf/ai-pm-job-dashboard.git/': Failed to connect to github.com port 443 after 21078 ms: Could not connect to server\n"
-  ],
-  "duration_sec": 16967,
-  "updated": "2026-04-16 02:12:10"
+  "errors": [],
+  "duration_sec": 0,
+  "updated": "2026-04-16 23:28:54"
 }
