@@ -93,7 +93,7 @@
   },
   "schedule": {
     "mode": "continuous",
-    "interval_minutes": 60,
+    "interval_minutes": 10,
     "always_full": true,
     "cleanup_days": [
       1,

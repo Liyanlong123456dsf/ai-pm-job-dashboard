@@ -394,9 +394,12 @@ def main():
     _write_progress(78, '📊 导出总表...', '', status.get('steps', []))
     try:
         subprocess.run([sys.executable, str(SCRIPT_DIR / 'export_total.py')],
-                       cwd=str(BASE_DIR), check=True)
+                       cwd=str(BASE_DIR), check=True, timeout=900)
         logger.info('✅ 统一总表已导出')
         _step('导出总表', True)
+    except subprocess.TimeoutExpired:
+        logger.warning('总表导出超时(15分钟)，已跳过')
+        _step('导出总表', False, '超时 15 分钟')
     except Exception as e:
         logger.warning(f'总表导出失败(非致命): {e}')
         _step('导出总表', False, str(e))
@@ -405,9 +408,12 @@ def main():
     _write_progress(82, '📚 生成知识库...', '', status.get('steps', []))
     try:
         subprocess.run([sys.executable, str(SCRIPT_DIR / 'gen_knowledge.py')],
-                       cwd=str(BASE_DIR), check=True)
+                       cwd=str(BASE_DIR), check=True, timeout=900)
         logger.info('✅ knowledge_base.md + coze_prompt.txt + RAG_GUIDE.md 已重新生成')
         _step('生成知识库', True)
+    except subprocess.TimeoutExpired:
+        logger.warning('知识库生成超时(15分钟)，已跳过')
+        _step('生成知识库', False, '超时 15 分钟')
     except Exception as e:
         logger.warning(f'知识库生成失败(非致命): {e}')
         _step('生成知识库', False, str(e))
@@ -461,8 +467,8 @@ def main():
         if not _proxy_set:
             logger.info('未检测到本地代理，git 将直连推送')
         today = datetime.now().strftime('%Y-%m-%d')
-        subprocess.run(['git', 'add', '-A'], cwd=str(BASE_DIR), check=True)
-        diff_ret = subprocess.run(['git', 'diff', '--cached', '--quiet'], cwd=str(BASE_DIR))
+        subprocess.run(['git', 'add', '-A'], cwd=str(BASE_DIR), check=True, timeout=120)
+        diff_ret = subprocess.run(['git', 'diff', '--cached', '--quiet'], cwd=str(BASE_DIR), timeout=60)
         if diff_ret.returncode == 0:
             logger.info('✅ 无文件变更，跳过 Git 提交与推送')
             status['git_pushed'] = True
@@ -471,15 +477,21 @@ def main():
             commit_ret = subprocess.run(['git', 'commit', '-m',
                               f'daily: {today} 新增{total_added}条 总{status["total"]}条'],
                             cwd=str(BASE_DIR), capture_output=True, text=True,
-                            encoding='utf-8', errors='replace')
+                            encoding='utf-8', errors='replace', timeout=120)
             if commit_ret.returncode != 0:
                 raise RuntimeError(f'Git commit 失败: {(commit_ret.stderr or commit_ret.stdout)[:200]}')
             push_ok = False
             last_push_err = ''
             for _try in range(5):
-                ret = subprocess.run(['git', 'push', 'origin', 'main'],
-                                      cwd=str(BASE_DIR), capture_output=True, text=True,
-                                      encoding='utf-8', errors='replace')
+                try:
+                    ret = subprocess.run(['git', 'push', 'origin', 'main'],
+                                          cwd=str(BASE_DIR), capture_output=True, text=True,
+                                          encoding='utf-8', errors='replace', timeout=180)
+                except subprocess.TimeoutExpired:
+                    last_push_err = 'git push 超时 180s'
+                    logger.warning(f'Git push 第{_try+1}次超时，继续重试')
+                    _time.sleep(5 * (_try + 1))
+                    continue
                 if ret.returncode == 0:
                     push_ok = True
                     break

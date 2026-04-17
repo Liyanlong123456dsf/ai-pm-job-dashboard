@@ -45,6 +45,7 @@ PROGRESS_FILE = LOG_DIR / 'progress.json'
 RUN_STATUS_FILE = BASE_DIR / 'run_status.json'
 JOBS_DATA_FILE = BASE_DIR / 'jobs_data.json'
 STALL_WARN_SEC = 900
+STALL_KILL_SEC = 7200  # 2 小时无任何输出+无文件更新 → 判定僵尸，强制kill
 
 # 日志
 logging.basicConfig(
@@ -322,6 +323,16 @@ def run_daily_update(quick=False):
             elif time.time() - last_idle_log >= 300:
                 logger.info(f'⏳ daily_update 运行中，最近活动距今 {int(idle_sec)} 秒')
                 last_idle_log = time.time()
+
+            # 僵尸进程保护：静默 + 无文件更新 超过 STALL_KILL_SEC 强制终止
+            if STALL_KILL_SEC > 0 and idle_sec >= STALL_KILL_SEC:
+                logger.error(f'💀 daily_update 已静默 {int(idle_sec // 60)} 分钟且无数据更新，判定为僵尸进程，强制终止')
+                try:
+                    proc.kill()
+                    proc.wait(timeout=30)
+                except Exception:
+                    pass
+                return False, f'僵尸进程(静默 {int(idle_sec // 60)} 分钟)'
 
             if MAX_RUNTIME_SEC > 0 and time.time() - start > MAX_RUNTIME_SEC:
                 logger.error(f'⏰ 超时！已运行 {MAX_RUNTIME_SEC // 60} 分钟，强制终止')
@@ -761,7 +772,11 @@ def main():
             else:
                 consecutive_failures += 1
 
-            # ③ 冷却休息
+            # ③ 冷却休息（每轮重新读取配置，支持热修改 interval_minutes）
+            try:
+                interval_min = load_schedule().get('interval_minutes', interval_min)
+            except Exception:
+                pass
             if suggested_wait_sec:
                 cool_min = max(1, int((suggested_wait_sec + 59) // 60))
             elif consecutive_failures >= MAX_CONSECUTIVE_FAILURES:

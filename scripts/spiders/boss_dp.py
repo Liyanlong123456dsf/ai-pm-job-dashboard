@@ -535,6 +535,11 @@ class BossDPSpider:
         self._headless_requested = headless
         co = self._build_options(headless=False)
         self.page = ChromiumPage(addr_or_opts=co)
+        # 设置显式超时，避免页面卡死导致爬虫无限等待
+        try:
+            self.page.set.timeouts(base=30, page_load=30, script=20)
+        except Exception:
+            pass
         # 注入反检测 JS（隐藏 webdriver 特征）
         try:
             self.page.run_js('''
