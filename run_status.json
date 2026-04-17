@@ -1,91 +1,79 @@
 {
-  "date": "2026-04-17",
-  "start_time": "22:13:55",
+  "date": "2026-04-18",
+  "start_time": "03:15:48",
   "mode": "full",
   "steps": [
     {
       "name": "登录",
       "ok": true,
       "detail": "已登录",
-      "time": "22:14:01"
+      "time": "03:15:54"
     },
     {
-      "name": "爬取+清洗+合并: ToB AI产品经理",
+      "name": "爬取+清洗+合并: AIGC产品经理",
       "ok": true,
-      "detail": "+5条 (累计+5)",
-      "time": "23:29:36"
-    },
-    {
-      "name": "爬取+清洗+合并: 智能客服产品经理",
-      "ok": true,
-      "detail": "+1条 (累计+6)",
-      "time": "00:04:44"
-    },
-    {
-      "name": "爬取+清洗+合并: Copilot产品经理",
-      "ok": true,
-      "detail": "+1条 (累计+7)",
-      "time": "00:22:05"
-    },
-    {
-      "name": "爬取+清洗+合并: Agent产品经理",
-      "ok": true,
-      "detail": "+1条 (累计+8)",
-      "time": "00:54:55"
-    },
-    {
-      "name": "爬取+清洗+合并: AI推荐产品经理",
-      "ok": true,
-      "detail": "+25条 (累计+33)",
-      "time": "01:42:50"
+      "detail": "+8条 (累计+8)",
+      "time": "04:40:33"
     },
     {
       "name": "爬取+清洗+合并: AI交互产品经理",
       "ok": true,
-      "detail": "+0条 (累计+33)",
-      "time": "01:52:18"
+      "detail": "+5条 (累计+13)",
+      "time": "05:40:29"
+    },
+    {
+      "name": "爬取+清洗+合并: AI风控产品经理",
+      "ok": true,
+      "detail": "+0条 (累计+13)",
+      "time": "06:04:09"
+    },
+    {
+      "name": "爬取+清洗+合并: AI金融产品经理",
+      "ok": true,
+      "detail": "+8条 (累计+21)",
+      "time": "06:34:34"
+    },
+    {
+      "name": "爬取+清洗+合并: 智能体产品经理",
+      "ok": true,
+      "detail": "+16条 (累计+37)",
+      "time": "07:10:20"
     },
     {
       "name": "爬取+清洗+合并: 大模型产品经理",
       "ok": true,
-      "detail": "+17条 (累计+50)",
-      "time": "02:33:54"
-    },
-    {
-      "name": "爬取+清洗+合并: AI策略产品经理",
-      "ok": true,
-      "detail": "+7条 (累计+57)",
-      "time": "03:03:07"
+      "detail": "+1条 (累计+38)",
+      "time": "07:37:33"
     },
     {
       "name": "导出总表",
       "ok": true,
       "detail": "",
-      "time": "03:03:09"
+      "time": "07:37:35"
     },
     {
       "name": "生成知识库",
       "ok": true,
       "detail": "",
-      "time": "03:03:09"
+      "time": "07:37:35"
     },
     {
       "name": "飞书同步",
       "ok": true,
       "detail": "",
-      "time": "03:05:32"
+      "time": "07:40:01"
     }
   ],
   "overall": "running",
-  "crawl_raw": 1085,
-  "crawl_cleaned": 1078,
-  "added": 57,
-  "total": 3699,
+  "crawl_raw": 1024,
+  "crawl_cleaned": 1017,
+  "added": 38,
+  "total": 3737,
   "has_url": 0,
   "has_desc": 0,
   "git_pushed": false,
   "deployed": false,
   "errors": [],
   "duration_sec": 0,
-  "updated": "2026-04-18 03:05:32"
+  "updated": "2026-04-18 07:40:01"
 }
