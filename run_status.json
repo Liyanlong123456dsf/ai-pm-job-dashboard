@@ -1,91 +1,91 @@
 {
   "date": "2026-04-17",
-  "start_time": "08:56:14",
+  "start_time": "13:41:05",
   "mode": "full",
   "steps": [
     {
       "name": "登录",
       "ok": true,
       "detail": "已登录",
-      "time": "08:56:20"
+      "time": "13:41:11"
     },
     {
-      "name": "爬取+清洗+合并: Copilot产品经理",
+      "name": "爬取+清洗+合并: 智能客服产品经理",
       "ok": true,
-      "detail": "+9条 (累计+9)",
-      "time": "09:54:39"
+      "detail": "+44条 (累计+44)",
+      "time": "14:40:03"
     },
     {
-      "name": "爬取+清洗+合并: AI产品负责人",
+      "name": "爬取+清洗+合并: AI中台产品经理",
       "ok": true,
-      "detail": "+7条 (累计+16)",
-      "time": "11:09:00"
+      "detail": "+6条 (累计+50)",
+      "time": "15:46:24"
     },
     {
-      "name": "爬取+清洗+合并: AI教育产品经理",
+      "name": "爬取+清洗+合并: AI金融产品经理",
       "ok": true,
-      "detail": "+41条 (累计+57)",
-      "time": "11:48:50"
+      "detail": "+3条 (累计+53)",
+      "time": "16:11:27"
     },
     {
-      "name": "爬取+清洗+合并: AI语音产品经理",
+      "name": "爬取+清洗+合并: AI交互产品经理",
       "ok": true,
-      "detail": "+22条 (累计+79)",
-      "time": "12:17:08"
+      "detail": "+1条 (累计+54)",
+      "time": "16:24:08"
     },
     {
-      "name": "爬取+清洗+合并: AI风控产品经理",
+      "name": "爬取+清洗+合并: ToB AI产品经理",
       "ok": true,
-      "detail": "+6条 (累计+85)",
-      "time": "12:40:02"
+      "detail": "+7条 (累计+61)",
+      "time": "16:47:37"
     },
     {
-      "name": "爬取+清洗+合并: 深度学习产品经理",
+      "name": "爬取+清洗+合并: Agent产品经理",
       "ok": true,
-      "detail": "+10条 (累计+95)",
-      "time": "12:54:05"
+      "detail": "+9条 (累计+70)",
+      "time": "17:13:56"
     },
     {
-      "name": "爬取+清洗+合并: AI电商产品经理",
+      "name": "爬取+清洗+合并: 对话产品经理",
       "ok": true,
-      "detail": "+1条 (累计+96)",
-      "time": "13:10:31"
+      "detail": "+13条 (累计+83)",
+      "time": "17:37:45"
     },
     {
-      "name": "爬取+清洗+合并: 机器学习产品经理",
+      "name": "爬取+清洗+合并: AI增长产品经理",
       "ok": true,
-      "detail": "+10条 (累计+106)",
-      "time": "13:28:26"
+      "detail": "+1条 (累计+84)",
+      "time": "17:46:53"
     },
     {
       "name": "导出总表",
       "ok": true,
       "detail": "",
-      "time": "13:28:27"
+      "time": "17:46:55"
     },
     {
       "name": "生成知识库",
       "ok": true,
       "detail": "",
-      "time": "13:28:27"
+      "time": "17:46:55"
     },
     {
       "name": "飞书同步",
       "ok": true,
       "detail": "",
-      "time": "13:30:48"
+      "time": "17:49:28"
     }
   ],
   "overall": "running",
-  "crawl_raw": 989,
-  "crawl_cleaned": 981,
-  "added": 106,
-  "total": 3520,
+  "crawl_raw": 938,
+  "crawl_cleaned": 931,
+  "added": 84,
+  "total": 3604,
   "has_url": 0,
   "has_desc": 0,
   "git_pushed": false,
   "deployed": false,
   "errors": [],
   "duration_sec": 0,
-  "updated": "2026-04-17 13:30:48"
+  "updated": "2026-04-17 17:49:28"
 }

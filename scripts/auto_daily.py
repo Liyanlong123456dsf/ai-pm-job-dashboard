@@ -453,7 +453,7 @@ def preflight_check():
 def _child_env():
     env = os.environ.copy()
     env.setdefault('AI_PM_UNATTENDED', '1')
-    env.setdefault('AI_PM_SHOW_PROGRESS_GUI', '0')
+    env.setdefault('AI_PM_SHOW_PROGRESS_GUI', '1')
     env.setdefault('AI_PM_OPEN_REPORT', '0')
     return env
 
@@ -721,7 +721,7 @@ def _run_one_round(round_num):
 def main():
     """全天候不间断循环主入口"""
     os.environ.setdefault('AI_PM_UNATTENDED', '1')
-    os.environ.setdefault('AI_PM_SHOW_PROGRESS_GUI', '0')
+    os.environ.setdefault('AI_PM_SHOW_PROGRESS_GUI', '1')
     os.environ.setdefault('AI_PM_OPEN_REPORT', '0')
 
     locked, lock_data = _acquire_lock()
