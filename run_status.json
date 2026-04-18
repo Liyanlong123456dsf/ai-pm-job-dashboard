@@ -1,79 +1,85 @@
 {
   "date": "2026-04-18",
-  "start_time": "10:44:29",
+  "start_time": "14:37:21",
   "mode": "full",
   "steps": [
     {
       "name": "登录",
       "ok": true,
       "detail": "已登录",
-      "time": "10:44:35"
+      "time": "14:37:27"
     },
     {
-      "name": "爬取+清洗+合并: ToB AI产品经理",
+      "name": "爬取+清洗+合并: Copilot产品经理",
       "ok": true,
-      "detail": "+2条 (累计+2)",
-      "time": "12:01:19"
+      "detail": "+3条 (累计+3)",
+      "time": "15:32:38"
     },
     {
-      "name": "爬取+清洗+合并: AI工作流产品经理",
+      "name": "爬取+清洗+合并: 大模型产品经理",
       "ok": true,
-      "detail": "+16条 (累计+18)",
-      "time": "13:01:41"
+      "detail": "+2条 (累计+5)",
+      "time": "16:28:25"
     },
     {
-      "name": "爬取+清洗+合并: AI视频产品经理",
+      "name": "爬取+清洗+合并: 企业AI产品经理",
       "ok": true,
-      "detail": "+8条 (累计+26)",
-      "time": "13:29:44"
+      "detail": "+8条 (累计+13)",
+      "time": "17:20:53"
     },
     {
-      "name": "爬取+清洗+合并: AI风控产品经理",
+      "name": "爬取+清洗+合并: AI办公产品经理",
       "ok": true,
-      "detail": "+2条 (累计+28)",
-      "time": "13:46:59"
+      "detail": "+4条 (累计+17)",
+      "time": "17:55:55"
     },
     {
-      "name": "爬取+清洗+合并: AI机器人产品经理",
+      "name": "爬取: RAG产品经理",
       "ok": true,
-      "detail": "+0条 (累计+28)",
-      "time": "13:55:51"
+      "detail": "无新数据",
+      "time": "17:58:25"
     },
     {
-      "name": "爬取+清洗+合并: 生成式AI产品经理",
+      "name": "爬取: AI医疗产品经理",
       "ok": true,
-      "detail": "+3条 (累计+31)",
-      "time": "14:24:32"
+      "detail": "无新数据",
+      "time": "18:00:49"
+    },
+    {
+      "name": "爬取: AI交互产品经理",
+      "ok": true,
+      "detail": "无新数据",
+      "time": "18:03:26"
     },
     {
       "name": "导出总表",
       "ok": true,
       "detail": "",
-      "time": "14:24:34"
+      "time": "18:03:28"
     },
     {
       "name": "生成知识库",
       "ok": true,
       "detail": "",
-      "time": "14:24:34"
+      "time": "18:03:28"
     },
     {
       "name": "飞书同步",
       "ok": true,
       "detail": "",
-      "time": "14:27:05"
+      "time": "18:05:58"
     }
   ],
   "overall": "running",
-  "crawl_raw": 865,
-  "crawl_cleaned": 859,
-  "added": 31,
-  "total": 3773,
+  "crawl_raw": 837,
+  "crawl_cleaned": 831,
+  "added": 17,
+  "total": 3790,
   "has_url": 0,
   "has_desc": 0,
   "git_pushed": false,
   "deployed": false,
   "errors": [],
   "duration_sec": 0,
-  "updated": "2026-04-18 14:27:05"
+  "updated": "2026-04-18 18:05:58"
 }
