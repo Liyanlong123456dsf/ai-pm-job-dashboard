@@ -1,73 +1,79 @@
 {
   "date": "2026-04-18",
-  "start_time": "07:50:16",
+  "start_time": "10:44:29",
   "mode": "full",
   "steps": [
     {
       "name": "登录",
       "ok": true,
       "detail": "已登录",
-      "time": "07:50:22"
+      "time": "10:44:35"
     },
     {
-      "name": "爬取+清洗+合并: AI商业化产品经理",
+      "name": "爬取+清洗+合并: ToB AI产品经理",
       "ok": true,
-      "detail": "+4条 (累计+4)",
-      "time": "09:16:31"
+      "detail": "+2条 (累计+2)",
+      "time": "12:01:19"
     },
     {
       "name": "爬取+清洗+合并: AI工作流产品经理",
       "ok": true,
-      "detail": "+1条 (累计+5)",
-      "time": "09:38:51"
+      "detail": "+16条 (累计+18)",
+      "time": "13:01:41"
     },
     {
-      "name": "爬取+清洗+合并: AI电商产品经理",
+      "name": "爬取+清洗+合并: AI视频产品经理",
       "ok": true,
-      "detail": "+0条 (累计+5)",
-      "time": "10:03:55"
+      "detail": "+8条 (累计+26)",
+      "time": "13:29:44"
     },
     {
-      "name": "爬取+清洗+合并: AI工具产品经理",
+      "name": "爬取+清洗+合并: AI风控产品经理",
       "ok": true,
-      "detail": "+0条 (累计+5)",
-      "time": "10:21:29"
+      "detail": "+2条 (累计+28)",
+      "time": "13:46:59"
     },
     {
-      "name": "爬取+清洗+合并: AI增长产品经理",
+      "name": "爬取+清洗+合并: AI机器人产品经理",
       "ok": true,
-      "detail": "+0条 (累计+5)",
-      "time": "10:31:46"
+      "detail": "+0条 (累计+28)",
+      "time": "13:55:51"
+    },
+    {
+      "name": "爬取+清洗+合并: 生成式AI产品经理",
+      "ok": true,
+      "detail": "+3条 (累计+31)",
+      "time": "14:24:32"
     },
     {
       "name": "导出总表",
       "ok": true,
       "detail": "",
-      "time": "10:31:48"
+      "time": "14:24:34"
     },
     {
       "name": "生成知识库",
       "ok": true,
       "detail": "",
-      "time": "10:31:48"
+      "time": "14:24:34"
     },
     {
       "name": "飞书同步",
       "ok": true,
       "detail": "",
-      "time": "10:34:14"
+      "time": "14:27:05"
     }
   ],
   "overall": "running",
-  "crawl_raw": 603,
-  "crawl_cleaned": 600,
-  "added": 5,
-  "total": 3742,
+  "crawl_raw": 865,
+  "crawl_cleaned": 859,
+  "added": 31,
+  "total": 3773,
   "has_url": 0,
   "has_desc": 0,
   "git_pushed": false,
   "deployed": false,
   "errors": [],
   "duration_sec": 0,
-  "updated": "2026-04-18 10:34:14"
+  "updated": "2026-04-18 14:27:05"
 }
