@@ -1,0 +1,105 @@
+{
+  "name": "ai-pm-job-dashboard",
+  "version": "1.0.0",
+  "description": "AI 产品经理岗位抓取 · 数据看板 · 一体化桌面应用（Windows + macOS）",
+  "author": "Liyanlong",
+  "license": "MIT",
+  "main": "electron/main.js",
+  "homepage": "./",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "pack:win": "electron-builder --win --x64",
+    "pack:mac": "electron-builder --mac --arm64 --x64",
+    "pack:all": "electron-builder -mw",
+    "portable:win": "electron-packager . \"AI-PM-Job-Dashboard\" --platform=win32 --arch=x64 --out=release --overwrite --asar --ignore=\"^/(release|\\.chrome_profile|\\.git|dist|netlify|logs|history|__MACOSX|node_modules/(\\.cache|\\.bin)|.*\\.csv|full_greedy\\.log|README\\.old\\.md|SESSION_HANDOFF\\.md|knowledge_base\\.md|coze_prompt\\.txt|RAG_GUIDE\\.md|index\\.html|job_dashboard\\.html|netlify\\.toml|AIPM.*\\.csv|工作集合表|\\.netlify|\\.DS_Store)\"",
+    "portable:mac": "electron-packager . \"AI PM Job Dashboard\" --platform=darwin --arch=arm64,x64 --out=release --overwrite --asar",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "build": {
+    "appId": "com.liyanlong.aipmjobdashboard",
+    "productName": "AI PM Job Dashboard",
+    "copyright": "Copyright © 2026 Liyanlong",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "electron/**/*",
+      "app/**/*",
+      "scripts/**/*",
+      "config/**/*",
+      "jobs_data.json",
+      "run_status.json",
+      "!**/__pycache__",
+      "!**/*.pyc",
+      "!.chrome_profile",
+      "!logs/**/*",
+      "!history/**/*",
+      "!release/**/*",
+      "!**/*.csv"
+    ],
+    "extraResources": [
+      {
+        "from": "scripts",
+        "to": "scripts",
+        "filter": [
+          "**/*.py"
+        ]
+      },
+      {
+        "from": "config",
+        "to": "config"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "${productName}-${version}-Windows-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "AI PM Job Dashboard"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "category": "public.app-category.developer-tools",
+      "artifactName": "${productName}-${version}-macOS-${arch}.${ext}",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
+    },
+    "dmg": {
+      "title": "AI PM Job Dashboard ${version}"
+    }
+  },
+  "devDependencies": {
+    "@electron/packager": "^19.1.0",
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.5"
+  },
+  "dependencies": {
+    "electron-store": "^10.0.0"
+  }
+}

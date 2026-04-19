@@ -1,16 +1,60 @@
-# 持久化登录（含Cookie，不能公开）
+# ===== 持久化登录（含 Cookie，不能公开） =====
 .chrome_profile/
 
-# 运行产物
-logs/
-history/
+# ===== Node.js =====
+node_modules/
+release/
+dist/
+.cache/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ===== Python =====
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+.Python
+*.egg-info/
+.pytest_cache/
 
-# 系统文件
+# ===== 运行产物 =====
+logs/
+history/
+*.lock
+
+# ===== 旧 CSV 历史文件（保留最新一个） =====
+AIPM总表_统一格式_*.csv
+full_greedy.log
+
+# ===== 环境变量 / 敏感配置 =====
+.env
+.env.local
+config/cookies.json
+
+# ===== 系统 =====
 .DS_Store
 Thumbs.db
 desktop.ini
-.env
 __MACOSX/
+
+# ===== IDE =====
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ===== 压缩包 / 临时目录 =====
 工作集合表/
+*.zip
+*.tar.gz
+
+# ===== Electron 构建产物 =====
+release/
+out/

@@ -1,31 +1,25 @@
 {
   "date": "2026-04-19",
-  "start_time": "12:18:38",
+  "start_time": "14:07:39",
   "mode": "full",
   "steps": [
     {
       "name": "登录",
       "ok": true,
       "detail": "已登录",
-      "time": "12:18:44"
-    },
-    {
-      "name": "爬取+清洗+合并: AI搜索产品经理",
-      "ok": true,
-      "detail": "+8条 (累计+8)",
-      "time": "13:43:33"
+      "time": "14:07:45"
     }
   ],
   "overall": "running",
-  "crawl_raw": 421,
-  "crawl_cleaned": 420,
-  "added": 8,
-  "total": 3926,
+  "crawl_raw": 0,
+  "crawl_cleaned": 0,
+  "added": 0,
+  "total": 0,
   "has_url": 0,
   "has_desc": 0,
   "git_pushed": false,
   "deployed": false,
   "errors": [],
   "duration_sec": 0,
-  "updated": "2026-04-19 13:43:33"
+  "updated": "2026-04-19 14:07:45"
 }
