@@ -1,0 +1,2921 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>AI 岗位全景分析</title>
+<script>
+window.location.replace('app/dashboard.html?v=' + Date.now() + (location.hash || ''));
+</script>
+<meta http-equiv="refresh" content="0;url=app/dashboard.html">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+:root {
+  --black:#000;--near-black:#1d1d1f;--light-bg:#f5f5f7;--white:#fff;
+  --blue:#0071e3;--link-blue:#0066cc;--bright-blue:#2997ff;
+  --text80:rgba(0,0,0,.8);--text48:rgba(0,0,0,.48);
+  --ds:#272729;--shadow:rgba(0,0,0,.18) 0 8px 32px;
+  --nav-bg:rgba(0,0,0,.82);--glass:saturate(180%) blur(20px);
+  --ease:cubic-bezier(.22,1,.36,1);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth}
+body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;background:var(--black);color:var(--white);-webkit-font-smoothing:antialiased;line-height:1.47;letter-spacing:-.374px}
+
+/* ===== NAV ===== */
+nav{position:fixed;top:0;left:0;right:0;z-index:1000;height:52px;background:var(--nav-bg);backdrop-filter:var(--glass);-webkit-backdrop-filter:var(--glass);display:flex;align-items:center;justify-content:center;gap:28px;border-bottom:1px solid rgba(255,255,255,.08)}
+nav a{color:rgba(255,255,255,.7);text-decoration:none;font-size:13px;font-weight:400;letter-spacing:-.08px;transition:color .2s;cursor:pointer;padding:4px 0;position:relative}
+nav a:hover{color:#fff}
+nav a.active{color:#fff}
+nav a.active::after{content:'';position:absolute;bottom:-2px;left:0;right:0;height:2px;background:var(--bright-blue);border-radius:1px}
+.nav-logo{font-size:20px;font-weight:700;letter-spacing:-.8px;color:#fff;margin-right:16px;background:linear-gradient(135deg,var(--bright-blue),#64d2ff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+/* ===== HERO ===== */
+.hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--black);padding:120px 24px 60px;text-align:center;position:relative;overflow:hidden}
+#heroGraph{position:absolute;inset:0;z-index:0;opacity:.45;pointer-events:none}
+.hero-vignette{position:absolute;inset:0;z-index:1;pointer-events:none;background:radial-gradient(ellipse 50% 55% at center,rgba(0,0,0,.85) 0%,rgba(0,0,0,.4) 55%,transparent 100%)}
+.hero>*:not(canvas):not(.hero-vignette){position:relative;z-index:2}
+.hero-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 16px;border-radius:980px;font-size:11px;font-weight:500;letter-spacing:.5px;text-transform:uppercase;color:var(--bright-blue);border:1px solid rgba(41,151,255,.15);background:rgba(41,151,255,.05);margin-bottom:24px}
+.hero h1{font-size:clamp(36px,7vw,80px);font-weight:700;line-height:1.07;letter-spacing:-2px;margin-bottom:16px}
+.hero h1 span{background:linear-gradient(135deg,var(--bright-blue),#64d2ff,#5ac8fa);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.hero p{font-size:17px;font-weight:300;line-height:1.47;color:rgba(255,255,255,.45);max-width:480px;margin-bottom:56px;letter-spacing:-.2px}
+.kpi-row{display:flex;gap:0;flex-wrap:wrap;justify-content:center;border-radius:16px;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.02);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);overflow:hidden}
+.kpi{text-align:center;cursor:pointer;transition:all .3s var(--ease);padding:28px 36px;position:relative}
+.kpi:not(:last-child)::after{content:'';position:absolute;right:0;top:20%;height:60%;width:1px;background:rgba(255,255,255,.06)}
+.kpi:hover{background:rgba(255,255,255,.03)}
+.kpi .n{font-size:clamp(32px,4vw,48px);font-weight:700;line-height:1;letter-spacing:-1px;background:linear-gradient(135deg,var(--bright-blue),#5ac8fa);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.kpi .l{font-size:12px;color:rgba(255,255,255,.35);margin-top:8px;letter-spacing:.3px}
+.hero-entry{display:inline-flex;align-items:center;gap:8px;margin-top:36px;padding:10px 24px;border-radius:980px;font-size:14px;font-weight:500;color:rgba(255,255,255,.55);border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);text-decoration:none;transition:all .3s;letter-spacing:-.1px}
+.hero-entry:hover{color:#fff;border-color:rgba(41,151,255,.4);background:rgba(41,151,255,.08)}
+
+/* ===== SECTIONS ===== */
+section{padding:80px 20px;scroll-margin-top:52px}
+.dark{background:var(--black)}.gray{background:#0d0d0d}.light{background:var(--light-bg);color:var(--near-black)}.deep{background:#111112}
+.wrap{max-width:1100px;margin:0 auto}
+.sec-h{font-size:clamp(24px,3.5vw,44px);font-weight:700;line-height:1.08;letter-spacing:-.8px;text-align:center;margin-bottom:8px}
+.sec-sub{font-size:15px;font-weight:300;text-align:center;margin-bottom:44px;opacity:.5}
+
+/* ===== PILLS / TABS ===== */
+.pills{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:32px}
+.pill{padding:7px 18px;border-radius:980px;font-size:13px;font-weight:500;cursor:pointer;border:1px solid rgba(255,255,255,.12);background:transparent;color:rgba(255,255,255,.6);transition:all .25s var(--ease);user-select:none}
+.light .pill{border-color:rgba(0,0,0,.1);color:var(--text80)}
+.pill:hover{border-color:var(--bright-blue);color:#fff}
+.light .pill:hover{color:var(--blue);border-color:var(--blue)}
+.pill.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+.pill .cnt{font-size:11px;font-weight:600;opacity:.7;margin-left:4px}
+
+/* ===== DIRECTION CARDS (hero style) ===== */
+.dir-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:40px}
+.dir-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:32px 20px;text-align:center;cursor:pointer;transition:all .35s var(--ease);position:relative;overflow:hidden}
+.dir-card::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 50% 0%,rgba(41,151,255,.08),transparent 70%);opacity:0;transition:opacity .35s}
+.dir-card:hover::before,.dir-card.on::before{opacity:1}
+.dir-card:hover,.dir-card.on{border-color:rgba(41,151,255,.3);transform:translateY(-4px)}
+.dir-card .dc-n{font-size:32px;font-weight:700;letter-spacing:-1px;line-height:1;background:linear-gradient(135deg,var(--bright-blue),#5ac8fa);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.dir-card .dc-l{font-size:13px;font-weight:600;margin-top:6px;color:rgba(255,255,255,.85)}
+.dir-card .dc-s{font-size:12px;color:rgba(255,255,255,.4);margin-top:4px}
+
+/* ===== JOB CARDS ===== */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.card{background:var(--ds);border-radius:14px;padding:20px 22px;transition:all .3s var(--ease);cursor:pointer;border:1px solid rgba(255,255,255,.05);position:relative}
+.card:hover{transform:translateY(-3px);box-shadow:var(--shadow);border-color:rgba(255,255,255,.1)}
+.light .card{background:#fff;border-color:rgba(0,0,0,.05)}
+.light .card:hover{border-color:rgba(0,0,0,.1);box-shadow:0 8px 30px rgba(0,0,0,.08)}
+.c-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px}
+.c-title{font-size:16px;font-weight:600;line-height:1.25;letter-spacing:-.2px}
+.new-badge{font-size:12px;margin-right:4px;vertical-align:middle}
+.c-sal{font-size:14px;font-weight:700;color:var(--bright-blue);white-space:nowrap}
+.light .c-sal{color:var(--blue)}
+.c-co{font-size:13px;opacity:.5;margin-bottom:10px}
+.c-tags{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px}
+.tag{padding:3px 9px;border-radius:980px;font-size:11px;font-weight:500}
+.tag-k{background:rgba(41,151,255,.12);color:var(--bright-blue)}
+.tag-c{background:rgba(255,255,255,.06);color:rgba(255,255,255,.5)}
+.light .tag-k{background:rgba(0,113,227,.08);color:var(--blue)}
+.light .tag-c{background:rgba(0,0,0,.04);color:var(--text48)}
+.c-desc{font-size:12px;line-height:1.5;opacity:.4;display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.c-foot{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.badge{font-size:11px;padding:2px 8px;border-radius:4px;background:rgba(255,255,255,.05);color:rgba(255,255,255,.4)}
+.light .badge{background:rgba(0,0,0,.03);color:var(--text48)}
+
+/* ===== BAR CHART ===== */
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:6px;cursor:pointer;padding:4px 0;border-radius:8px;transition:background .2s}
+.bar-row:hover{background:rgba(0,0,0,.03)}
+.bar-label{font-size:13px;font-weight:600;width:60px;text-align:right;flex-shrink:0;color:var(--near-black)}
+.bar-track{flex:1;height:32px;background:rgba(0,0,0,.04);border-radius:8px;overflow:hidden;position:relative}
+.bar-fill{height:100%;border-radius:8px;background:linear-gradient(90deg,var(--blue),var(--bright-blue));transition:width .8s var(--ease);display:flex;align-items:center;padding-left:12px;font-size:12px;font-weight:700;color:#fff;min-width:40px}
+.bar-info{font-size:12px;color:var(--text48);width:90px;text-align:right;flex-shrink:0;white-space:nowrap}
+
+/* ===== SALARY SCATTER ===== */
+.scatter-wrap{position:relative;height:340px;background:rgba(255,255,255,.03);border-radius:16px;border:1px solid rgba(255,255,255,.06);margin-bottom:32px;overflow:hidden}
+.dot{position:absolute;border-radius:50%;transition:all .2s var(--ease);cursor:pointer;opacity:.7}
+.dot:hover{opacity:1;transform:scale(2.2);z-index:10}
+.scatter-legend{display:flex;gap:14px 20px;justify-content:center;flex-wrap:wrap;margin-bottom:12px}
+.scatter-legend span{font-size:12px;color:rgba(255,255,255,.5);display:flex;align-items:center;gap:6px}
+.scatter-legend i{width:8px;height:8px;border-radius:50%;display:inline-block}
+.axis-label{position:absolute;font-size:10px;color:rgba(255,255,255,.3)}
+.y-labels{position:absolute;left:6px;top:10px;bottom:36px;display:flex;flex-direction:column;justify-content:space-between}
+.y-labels span{font-size:10px;color:rgba(255,255,255,.3);text-align:right;width:38px}
+.x-labels{position:absolute;bottom:6px;left:50px;right:10px;display:flex;justify-content:space-between}
+.x-labels span{font-size:10px;color:rgba(255,255,255,.35);text-align:center;flex:1}
+.x-label{position:absolute;bottom:6px;left:50%;transform:translateX(-50%);font-size:10px;color:rgba(255,255,255,.3)}
+
+/* ===== MODAL ===== */
+.overlay{position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.55);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);display:none;align-items:center;justify-content:center;padding:20px;opacity:0;transition:opacity .3s}
+.overlay.show{display:flex;opacity:1}
+.modal{background:#fff;border-radius:20px;max-width:580px;width:100%;max-height:82vh;overflow-y:auto;padding:36px;box-shadow:0 24px 80px rgba(0,0,0,.35);color:var(--near-black);position:relative;transform:translateY(20px);transition:transform .35s var(--ease)}
+.overlay.show .modal{transform:translateY(0)}
+.m-close{position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:50%;background:rgba(0,0,0,.05);border:none;font-size:15px;cursor:pointer;color:var(--text80);display:flex;align-items:center;justify-content:center;transition:background .2s}
+.m-close:hover{background:rgba(0,0,0,.1)}
+.m-h{font-size:22px;font-weight:700;line-height:1.14;letter-spacing:-.3px;margin-bottom:6px;padding-right:40px}
+.m-sal{font-size:20px;font-weight:700;color:var(--blue);margin-bottom:12px}
+.m-info{font-size:14px;color:var(--text80);margin-bottom:12px;display:flex;gap:6px;align-items:center}
+.m-info .sep{color:var(--text48);font-size:12px}
+.m-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.m-desc{font-size:14px;line-height:1.65;color:var(--text80);margin-top:14px;padding:14px;background:var(--light-bg);border-radius:10px;max-height:240px;overflow-y:auto;white-space:pre-wrap;word-break:break-word}
+.m-link{display:inline-flex;align-items:center;gap:6px;margin-top:14px;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;color:var(--blue);text-decoration:none;background:rgba(0,113,227,.06);border:1px solid rgba(0,113,227,.12);transition:all .2s}
+.m-link:hover{background:rgba(0,113,227,.12);border-color:rgba(0,113,227,.25)}
+.m-related{margin-top:20px}
+.m-related h3{font-size:12px;font-weight:700;color:var(--text48);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px}
+.m-rcard{padding:12px;border-bottom:1px solid rgba(0,0,0,.06);cursor:pointer;border-radius:8px;transition:background .15s}
+.m-rcard:hover{background:var(--light-bg)}
+.m-rcard:last-child{border-bottom:none}
+.m-rcard .rc-t{font-weight:600;font-size:14px}
+.m-rcard .rc-s{font-size:12px;color:var(--text48);margin-top:2px}
+
+/* ===== LOAD MORE ===== */
+.more-btn{display:block;margin:24px auto 0;padding:10px 32px;border-radius:980px;border:1px solid rgba(255,255,255,.12);background:transparent;color:rgba(255,255,255,.6);font-size:14px;font-weight:500;cursor:pointer;transition:all .25s}
+.more-btn:hover{border-color:var(--bright-blue);color:#fff}
+.light .more-btn{border-color:rgba(0,0,0,.1);color:var(--text80)}
+.light .more-btn:hover{border-color:var(--blue);color:var(--blue)}
+.empty{text-align:center;padding:48px;opacity:.35;font-size:15px}
+
+/* ===== TOOLTIP ===== */
+.tip{position:fixed;z-index:3000;background:rgba(30,30,30,.95);color:#fff;padding:10px 14px;border-radius:10px;font-size:12px;line-height:1.5;pointer-events:none;max-width:280px;box-shadow:0 8px 24px rgba(0,0,0,.3);opacity:0;transition:opacity .15s;backdrop-filter:blur(8px);white-space:pre-line}
+.tip.show{opacity:1}
+
+/* ===== FILTER GROUP ===== */
+.filter-group{margin-bottom:20px}
+.filter-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1.2px;color:rgba(255,255,255,.3);margin-bottom:8px;padding-left:4px}
+.light .filter-label{color:var(--text48)}
+
+/* ===== FOOTER ===== */
+.footer{padding:40px 20px;text-align:center;font-size:12px;color:rgba(255,255,255,.2);border-top:1px solid rgba(255,255,255,.06)}
+.footer a{color:var(--bright-blue);text-decoration:none}
+
+/* ===== RESPONSIVE ===== */
+@media(max-width:1024px){
+  .dir-grid{grid-template-columns:repeat(3,1fr)}
+}
+@media(max-width:768px){
+  nav{gap:14px;padding:0 12px}nav a{font-size:11px}
+  .dir-grid{grid-template-columns:repeat(2,1fr)}
+  .grid{grid-template-columns:1fr}
+  .kpi{padding:20px 24px}.kpi .n{font-size:28px}
+  .scatter-wrap{height:240px}
+  .bar-label{width:44px;font-size:12px}
+  .bar-info{width:70px;font-size:11px}
+}
+@media(max-width:480px){
+  .dir-grid{grid-template-columns:repeat(2,1fr)}
+  .hero h1{font-size:28px;letter-spacing:-1px}
+  .hero p{font-size:14px}
+  .hero-badge{font-size:10px;padding:5px 12px}
+  .kpi-row{border-radius:12px}
+  .kpi{padding:16px 20px}.kpi .n{font-size:24px}
+  .kpi:not(:last-child)::after{top:25%;height:50%}
+  section{padding:60px 16px}
+}
+
+/* ===== TAB PANELS ===== */
+.panel{display:none;animation:panelIn .35s var(--ease)}
+.panel.active{display:block}
+@keyframes panelIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+/* Hero panel special: no min-height, just normal padding */
+.panel#hero section.hero{min-height:calc(100vh - 52px);padding-top:60px}
+
+/* ===== GLOBAL FILTER BAR (sticky under nav) ===== */
+.gfilter{position:sticky;top:52px;z-index:900;background:rgba(10,10,10,.88);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,.06);padding:10px 16px;display:none;transition:opacity .2s}
+.gfilter.show{display:block}
+.gf-wrap{max-width:1200px;margin:0 auto;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.gf-item{display:flex;align-items:center;gap:6px;font-size:12px}
+.gf-lbl{color:rgba(255,255,255,.4);font-weight:500;letter-spacing:.3px}
+.gf-item select{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);color:#fff;padding:5px 10px;border-radius:8px;font-size:12px;font-family:inherit;outline:none;cursor:pointer;min-width:100px}
+.gf-item select:focus{border-color:rgba(41,151,255,.5)}
+.gf-item select option{background:#1a1a1a;color:#fff}
+.gf-count{margin-left:auto;font-size:12px;color:var(--bright-blue);font-family:'SF Mono',Menlo,Consolas,monospace;font-weight:600}
+.gf-clear{background:transparent;border:1px solid rgba(255,255,255,.08);color:rgba(255,255,255,.5);padding:5px 12px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;transition:all .15s}
+.gf-clear:hover{border-color:rgba(255,55,95,.4);color:#ff6680}
+.gf-active .gf-item select{border-color:rgba(41,151,255,.4);background:rgba(41,151,255,.08)}
+@media(max-width:768px){.gf-wrap{gap:6px}.gf-item select{min-width:70px;font-size:11px}}
+
+/* ===== OVERVIEW DASHBOARD GRID (Bento 布局) ===== */
+.ov-dashboard{max-width:1200px;margin:0 auto 40px;padding:0 20px;display:grid;grid-template-columns:repeat(3,1fr);gap:14px;min-height:600px}
+.ov-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:20px 22px;transition:all .25s;cursor:pointer;position:relative;overflow:hidden;display:flex;flex-direction:column}
+.ov-card:hover{border-color:rgba(41,151,255,.3);transform:translateY(-2px);background:rgba(41,151,255,.04)}
+.ov-card::before{content:'→';position:absolute;top:16px;right:16px;color:rgba(255,255,255,.15);font-size:14px;transition:all .25s}
+.ov-card:hover::before{color:var(--bright-blue);right:12px}
+.ov-card-wide{grid-column:span 2}
+.ov-card-full{grid-column:span 3}
+.ov-head{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.ov-icon{font-size:18px}
+.ov-title{font-size:13px;font-weight:600;color:rgba(255,255,255,.85);letter-spacing:-.1px}
+.ov-sub{font-size:11px;color:rgba(255,255,255,.35);margin-left:4px}
+.ov-body{display:flex;flex-direction:column;gap:6px}
+.ov-row{display:flex;align-items:center;gap:8px;font-size:12px}
+.ov-row .ov-name{flex:1;color:rgba(255,255,255,.7);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ov-row .ov-bar{flex:2;height:4px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden}
+.ov-row .ov-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--blue),var(--bright-blue));border-radius:2px}
+.ov-row .ov-v{color:rgba(255,255,255,.5);font-family:'SF Mono',Menlo,Consolas,monospace;font-size:11px;min-width:40px;text-align:right}
+.ov-donut{position:relative;width:100%;aspect-ratio:1;max-width:120px;margin:0 auto}
+.ov-donut svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ov-donut .donut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;pointer-events:none}
+.ov-donut .donut-center .dc-n{font-size:22px;font-weight:700;font-family:'SF Mono',Menlo,Consolas,monospace;background:linear-gradient(135deg,var(--bright-blue),#5ac8fa);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-.8px;line-height:1}
+.ov-donut .donut-center .dc-l{font-size:10px;color:rgba(255,255,255,.3);margin-top:4px;letter-spacing:.3px}
+.ov-donut-legend{margin-top:10px;display:flex;flex-direction:column;gap:3px}
+.ov-donut-legend .lg-row{display:flex;align-items:center;gap:6px;font-size:11px;color:rgba(255,255,255,.55)}
+.ov-donut-legend .lg-row i{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.ov-donut-legend .lg-row span:nth-child(2){flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ov-donut-legend .lg-row .lg-v{color:rgba(255,255,255,.4);font-family:'SF Mono',Menlo,Consolas,monospace}
+
+/* ===== KPI MATRIX (核心数据 2x2) ===== */
+.ov-kpi-matrix{display:grid;grid-template-columns:1fr 1fr;gap:10px;flex:1;align-content:center;margin-top:2px}
+.ov-kpi-cell{text-align:center;padding:14px 6px 12px;border-radius:10px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.04);transition:all .25s}
+.ov-kpi-cell:hover{background:rgba(41,151,255,.06);border-color:rgba(41,151,255,.2)}
+.ov-kpi-cell .n{font-size:26px;font-weight:700;letter-spacing:-.8px;background:linear-gradient(135deg,var(--bright-blue),#5ac8fa);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font-family:'SF Mono',Menlo,Consolas,monospace;line-height:1}
+.ov-kpi-cell .s{font-size:13px;font-weight:600;color:#fff;line-height:1.15;min-height:16px;display:flex;align-items:center;justify-content:center;padding:4px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.ov-kpi-cell .l{font-size:10px;color:rgba(255,255,255,.4);margin-top:6px;letter-spacing:.3px}
+
+/* ===== 7 DAY TREND (迷你柱图·px 尺寸) ===== */
+.ov-trend-wrap{display:flex;align-items:flex-end;gap:10px;padding:28px 4px 24px;margin-top:6px}
+.ov-trend-bar{flex:1;background:linear-gradient(180deg,#2997ff 0%,rgba(41,151,255,.25) 100%);border-radius:6px 6px 0 0;position:relative;transition:all .25s var(--ease);cursor:default;min-width:16px;box-shadow:0 0 0 1px rgba(41,151,255,.12) inset}
+.ov-trend-bar:hover{background:linear-gradient(180deg,#5ac8fa 0%,rgba(90,210,250,.55) 100%);transform:translateY(-2px)}
+.ov-trend-bar.is-today{background:linear-gradient(180deg,#30d158 0%,rgba(48,209,88,.3) 100%);box-shadow:0 0 0 1px rgba(48,209,88,.2) inset,0 0 16px rgba(48,209,88,.25)}
+.ov-trend-bar.is-today:hover{background:linear-gradient(180deg,#5ce48d 0%,rgba(92,228,141,.5) 100%)}
+.ov-trend-bar .tb-v{position:absolute;top:-20px;left:50%;transform:translateX(-50%);font-size:10px;color:rgba(255,255,255,.75);font-family:'SF Mono',Menlo,Consolas,monospace;font-weight:600;white-space:nowrap}
+.ov-trend-bar .tb-d{position:absolute;bottom:-22px;left:50%;transform:translateX(-50%);font-size:10px;color:rgba(255,255,255,.35);white-space:nowrap;font-family:'SF Mono',Menlo,Consolas,monospace}
+.ov-trend-empty{color:rgba(255,255,255,.3);font-size:12px;text-align:center;padding:34px 0}
+
+@media(max-width:1024px){
+  .ov-dashboard{grid-template-columns:repeat(2,1fr);min-height:auto}
+  .ov-card-wide,.ov-card-full{grid-column:span 2}
+}
+@media(max-width:560px){
+  .ov-dashboard{grid-template-columns:1fr}
+  .ov-card-wide,.ov-card-full{grid-column:span 1}
+  .ov-kpi-cell .n{font-size:22px}
+}
+
+/* ===== FILTERED HIGHLIGHT (applied when global filter active) ===== */
+.filtered-dim{opacity:.3;transition:opacity .25s}
+.filtered-hl{border-color:rgba(41,151,255,.4) !important;box-shadow:0 0 0 1px rgba(41,151,255,.3)}
+
+/* ===== HEADLINE INSIGHT (自动洞察短句) ===== */
+.headline{max-width:1200px;margin:-20px auto 30px;padding:0 20px}
+.headline-box{background:linear-gradient(135deg,rgba(41,151,255,.06),rgba(100,210,255,.03));border:1px solid rgba(41,151,255,.18);border-radius:14px;padding:16px 22px;display:flex;align-items:center;gap:14px;font-size:14px;color:rgba(255,255,255,.85)}
+.headline-box .hl-icon{font-size:22px;flex-shrink:0}
+.headline-box .hl-text{flex:1;line-height:1.6}
+.headline-box .hl-text b{color:var(--bright-blue);font-weight:600}
+.headline-box .hl-text em{color:#ffd60a;font-style:normal;font-weight:600}
+
+/* ===== SALARY DEEP - Distribution bars ===== */
+.block{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:24px 28px;margin-bottom:20px}
+.block-h{font-size:15px;font-weight:600;letter-spacing:-.2px;margin-bottom:4px;color:#fff}
+.block-sub{font-size:12px;color:rgba(255,255,255,.35);margin-bottom:18px}
+.dist-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.dist-label{font-size:12px;font-weight:600;width:70px;text-align:right;flex-shrink:0;color:rgba(255,255,255,.75)}
+.dist-track{flex:1;height:24px;background:rgba(255,255,255,.04);border-radius:6px;overflow:hidden;position:relative}
+.dist-fill{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--blue),var(--bright-blue));transition:width .8s var(--ease);display:flex;align-items:center;padding-left:10px;font-size:11px;font-weight:600;color:#fff;min-width:32px}
+.dist-fill.amber{background:linear-gradient(90deg,#d97706,#f59e0b,#fbbf24)}
+.dist-fill.purple{background:linear-gradient(90deg,#6d28d9,#8b5cf6,#a78bfa)}
+.dist-info{font-size:11px;color:rgba(255,255,255,.4);width:90px;text-align:right;flex-shrink:0;white-space:nowrap;font-family:'SF Mono',Menlo,Consolas,monospace}
+
+/* ===== SALARY PERCENTILE CARDS ===== */
+.pct-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px}
+.pct-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:16px 12px;text-align:center;transition:all .25s}
+.pct-card:hover{border-color:rgba(41,151,255,.3);transform:translateY(-2px)}
+.pct-label{font-size:11px;color:rgba(255,255,255,.4);letter-spacing:.3px;margin-bottom:6px}
+.pct-val{font-size:22px;font-weight:700;letter-spacing:-.8px;line-height:1;font-family:'SF Mono',Menlo,Consolas,monospace;background:linear-gradient(135deg,var(--bright-blue),#5ac8fa);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.pct-card.group-top .pct-val{background:linear-gradient(135deg,#f59e0b,#fbbf24);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+
+/* ===== CROSS TABLES (exp/edu/city-tier × salary) ===== */
+.cross-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
+.cross-table{width:100%;border-collapse:collapse;font-size:13px}
+.cross-table th{text-align:left;font-weight:500;font-size:11px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.5px;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.08)}
+.cross-table td{padding:9px 10px;border-bottom:1px solid rgba(255,255,255,.04);color:rgba(255,255,255,.82)}
+.cross-table tr:hover td{background:rgba(255,255,255,.02)}
+.cross-table .tag-rank{display:inline-block;padding:2px 8px;border-radius:6px;background:rgba(41,151,255,.15);color:var(--bright-blue);font-size:11px;font-weight:600}
+.cross-table .mono{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:12px}
+.cross-table .muted{color:rgba(255,255,255,.35)}
+
+/* ===== COMPANIES PANEL ===== */
+.co-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.co-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:16px 18px;transition:all .25s;cursor:pointer}
+.co-card:hover{border-color:rgba(41,151,255,.3);transform:translateY(-2px);background:rgba(41,151,255,.04)}
+.co-card.expanded{border-color:rgba(41,151,255,.4)}
+.co-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.co-name{font-size:15px;font-weight:600;letter-spacing:-.2px;color:#fff;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.co-rank{font-size:11px;color:rgba(255,255,255,.3);padding:2px 8px;background:rgba(255,255,255,.04);border-radius:6px;font-weight:600;flex-shrink:0;margin-left:8px}
+.co-meta{display:flex;gap:14px;font-size:12px;color:rgba(255,255,255,.5);margin-bottom:8px}
+.co-meta .k{color:rgba(255,255,255,.3);margin-right:4px}
+.co-meta .v{color:var(--bright-blue);font-weight:600;font-family:'SF Mono',Menlo,Consolas,monospace}
+.co-tags{display:flex;gap:4px;flex-wrap:wrap}
+.co-tags .city-tag{font-size:10px;padding:2px 7px;border-radius:999px;background:rgba(255,255,255,.04);color:rgba(255,255,255,.5)}
+.co-jobs{margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06);display:none}
+.co-card.expanded .co-jobs{display:block}
+.co-job-item{padding:6px 0;font-size:12px;color:rgba(255,255,255,.6);border-bottom:1px solid rgba(255,255,255,.03);cursor:pointer}
+.co-job-item:last-child{border-bottom:none}
+.co-job-item:hover{color:var(--bright-blue)}
+.co-job-item .jt{font-weight:500}
+.co-job-item .js{color:var(--bright-blue);font-family:'SF Mono',Menlo,Consolas,monospace;float:right}
+
+/* ===== DEEP ANALYSIS ===== */
+.deep-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:16px}
+.lc-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.lc-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:18px 12px;text-align:center}
+.lc-val{font-size:26px;font-weight:700;letter-spacing:-.8px;line-height:1;font-family:'SF Mono',Menlo,Consolas,monospace;background:linear-gradient(135deg,#30d158,#5ac8fa);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.lc-card.expired .lc-val{background:linear-gradient(135deg,#ff375f,#ff6482);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.lc-label{font-size:11px;color:rgba(255,255,255,.4);margin-top:8px;letter-spacing:.3px}
+.ring-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.ring-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px}
+.ring-item:last-child{border-bottom:none}
+.ring-item .ri-name{flex:1;color:rgba(255,255,255,.75);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ring-item .ri-bar{flex:2;height:6px;background:rgba(255,255,255,.05);border-radius:3px;overflow:hidden;position:relative}
+.ring-item .ri-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--bright-blue));border-radius:3px}
+.ring-item .ri-cnt{color:rgba(255,255,255,.5);font-family:'SF Mono',Menlo,Consolas,monospace;min-width:60px;text-align:right}
+
+/* Keyword cloud */
+.kw-cloud{display:flex;flex-wrap:wrap;gap:6px}
+.kw-chip{padding:5px 12px;border-radius:999px;background:rgba(41,151,255,.08);color:var(--bright-blue);border:1px solid rgba(41,151,255,.15);font-size:12px;font-weight:500;transition:all .2s;cursor:pointer}
+.kw-chip:hover{background:rgba(41,151,255,.18);border-color:rgba(41,151,255,.35);transform:translateY(-1px)}
+.kw-chip .kw-n{font-size:10px;opacity:.6;margin-left:4px}
+
+/* Daily calendar heatmap */
+.cal-grid{display:grid;grid-template-columns:repeat(30,1fr);gap:3px}
+.cal-cell{aspect-ratio:1;border-radius:3px;background:rgba(255,255,255,.03);cursor:pointer;transition:all .15s}
+.cal-cell:hover{transform:scale(1.25);z-index:5;position:relative}
+.cal-cell[data-n="0"]{background:rgba(255,255,255,.02)}
+.cal-cell[data-n="1"]{background:rgba(41,151,255,.15)}
+.cal-cell[data-n="2"]{background:rgba(41,151,255,.35)}
+.cal-cell[data-n="3"]{background:rgba(41,151,255,.55)}
+.cal-cell[data-n="4"]{background:rgba(41,151,255,.8)}
+.cal-legend{display:flex;align-items:center;gap:6px;margin-top:10px;font-size:11px;color:rgba(255,255,255,.35);justify-content:flex-end}
+.cal-legend i{width:10px;height:10px;border-radius:2px;display:inline-block}
+
+/* ===== SEARCH BAR (explore) ===== */
+.search-wrap{position:relative;max-width:480px;margin:0 auto 20px}
+.search-input{width:100%;padding:10px 14px 10px 38px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;color:#fff;font-size:14px;font-family:inherit;outline:none;transition:all .2s}
+.search-input:focus{border-color:rgba(41,151,255,.4);background:rgba(255,255,255,.06)}
+.search-input::placeholder{color:rgba(255,255,255,.3)}
+.search-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,.3);font-size:14px}
+.sort-select{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#fff;padding:8px 12px;border-radius:10px;font-size:13px;font-family:inherit;outline:none;cursor:pointer}
+
+/* ===== HEATMAP MATRIX (方向 × 城市) ===== */
+.heatmap-wrap{overflow-x:auto;padding-bottom:8px}
+.heatmap{border-collapse:separate;border-spacing:2px;font-size:12px;min-width:600px}
+.heatmap th{padding:6px 8px;color:rgba(255,255,255,.45);font-weight:500;font-size:11px;text-align:center;white-space:nowrap}
+.heatmap th.row-head{text-align:right;padding-right:10px;min-width:120px;color:rgba(255,255,255,.7)}
+.heatmap td{padding:0;text-align:center;color:#fff;font-weight:600;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:11px;cursor:pointer;transition:all .2s;border-radius:4px;min-width:52px;height:32px}
+.heatmap td:hover{transform:scale(1.1);z-index:5;position:relative;outline:2px solid rgba(255,255,255,.3)}
+.heatmap td[data-v="0"]{color:rgba(255,255,255,.15);background:rgba(255,255,255,.02)}
+.heatmap-legend{display:flex;align-items:center;gap:8px;font-size:11px;color:rgba(255,255,255,.4);margin-top:10px;justify-content:flex-end}
+.heatmap-legend i{width:18px;height:10px;border-radius:2px;display:inline-block}
+
+/* ===== LEVEL × SALARY cards ===== */
+.level-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.level-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:16px 18px;transition:all .2s}
+.level-card:hover{border-color:rgba(41,151,255,.3)}
+.level-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.level-title{font-size:14px;font-weight:600;color:#fff;letter-spacing:-.2px}
+.level-count{font-size:11px;color:rgba(255,255,255,.4);font-family:'SF Mono',Menlo,Consolas,monospace}
+.level-avg{font-size:24px;font-weight:700;font-family:'SF Mono',Menlo,Consolas,monospace;letter-spacing:-.8px;background:linear-gradient(135deg,var(--bright-blue),#5ac8fa);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;line-height:1}
+.level-range{font-size:11px;color:rgba(255,255,255,.4);margin-top:4px;font-family:'SF Mono',Menlo,Consolas,monospace}
+.level-bar{margin-top:10px;height:4px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden;position:relative}
+.level-bar .pbox{position:absolute;top:0;bottom:0;background:linear-gradient(90deg,var(--blue),var(--bright-blue));border-radius:2px;opacity:.7}
+.level-bar .pmed{position:absolute;top:-2px;bottom:-2px;width:2px;background:#fff}
+
+/* ===== TECH STACK chips (with count) ===== */
+.tech-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.tech-item{display:flex;align-items:center;gap:8px;padding:10px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:10px;transition:all .2s}
+.tech-item:hover{border-color:rgba(41,151,255,.3);background:rgba(41,151,255,.04)}
+.tech-icon{width:28px;height:28px;border-radius:6px;background:rgba(41,151,255,.12);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;color:var(--bright-blue)}
+.tech-body{flex:1;min-width:0}
+.tech-name{font-size:13px;font-weight:600;color:#fff;letter-spacing:-.2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tech-count{font-size:11px;color:rgba(255,255,255,.4);font-family:'SF Mono',Menlo,Consolas,monospace;margin-top:2px}
+.tech-bar{flex-shrink:0;width:40px;height:4px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden}
+.tech-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--blue),var(--bright-blue));border-radius:2px}
+
+/* ===== SCENE pill row (B端/C端/出海) ===== */
+.scene-row{display:flex;flex-wrap:wrap;gap:8px}
+.scene-chip{padding:8px 16px;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);font-size:13px;display:flex;align-items:center;gap:8px;transition:all .2s}
+.scene-chip:hover{border-color:rgba(41,151,255,.3)}
+.scene-chip .sc-name{color:rgba(255,255,255,.8);font-weight:600}
+.scene-chip .sc-count{color:var(--bright-blue);font-family:'SF Mono',Menlo,Consolas,monospace;font-weight:600;font-size:12px}
+.scene-chip .sc-pct{color:rgba(255,255,255,.35);font-size:11px;font-family:'SF Mono',Menlo,Consolas,monospace}
+
+/* ===== MONTHS breakdown (N薪分布) ===== */
+.months-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:16px}
+.month-card{text-align:center;padding:14px 10px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);transition:all .2s}
+.month-card:hover{border-color:rgba(41,151,255,.3);transform:translateY(-2px)}
+.month-card.highlight{background:linear-gradient(180deg,rgba(245,158,11,.06),rgba(255,255,255,.02));border-color:rgba(245,158,11,.25)}
+.month-n{font-size:22px;font-weight:700;font-family:'SF Mono',Menlo,Consolas,monospace;background:linear-gradient(135deg,var(--bright-blue),#5ac8fa);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.month-card.highlight .month-n{background:linear-gradient(135deg,#f59e0b,#fbbf24);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.month-l{font-size:11px;color:rgba(255,255,255,.4);margin-top:4px;letter-spacing:.3px}
+.month-pct{font-size:11px;color:rgba(255,255,255,.5);margin-top:2px;font-family:'SF Mono',Menlo,Consolas,monospace}
+
+/* ===== RESPONSIVE tweaks for new blocks ===== */
+@media(max-width:768px){
+  .lc-cards{grid-template-columns:repeat(2,1fr)}
+  .cross-grid{grid-template-columns:1fr}
+  .deep-grid{grid-template-columns:1fr}
+  .cal-grid{grid-template-columns:repeat(15,1fr)}
+  .heatmap{min-width:420px;font-size:10px}
+  .heatmap td{min-width:36px;height:26px;font-size:10px}
+}
+
+/* ===== RUN STATUS (compact) ===== */
+.status-empty{text-align:center;padding:24px;opacity:.35;font-size:13px}
+.rs-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center;padding:16px 20px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:14px;margin-bottom:12px}
+.rs-chip{font-size:12px;color:rgba(255,255,255,.5);display:flex;align-items:center;gap:5px}
+.rs-chip b{color:rgba(255,255,255,.85);font-weight:600}
+.rs-chip .dot{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.15);flex-shrink:0}
+.rs-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:980px;font-size:12px;font-weight:600}
+.rs-badge.success{background:rgba(48,209,88,.12);color:#30d158;border:1px solid rgba(48,209,88,.2)}
+.rs-badge.partial{background:rgba(255,159,10,.12);color:#ff9f0a;border:1px solid rgba(255,159,10,.2)}
+.rs-badge.failed{background:rgba(255,55,95,.12);color:#ff375f;border:1px solid rgba(255,55,95,.2)}
+.rs-badge.running{background:rgba(41,151,255,.12);color:var(--bright-blue);border:1px solid rgba(41,151,255,.2)}
+.rs-toggle{background:none;border:1px solid rgba(255,255,255,.08);color:rgba(255,255,255,.35);font-size:12px;padding:6px 14px;border-radius:8px;cursor:pointer;transition:all .2s;margin:0 auto;display:block}
+.rs-toggle:hover{color:rgba(255,255,255,.6);border-color:rgba(255,255,255,.15)}
+.rs-detail{max-height:0;overflow:hidden;transition:max-height .35s ease}
+.rs-detail.open{max-height:600px}
+.rs-timeline{position:relative;padding:12px 0 0 24px}
+.rs-step{position:relative;padding-bottom:14px;font-size:12px}
+.rs-step:last-child{padding-bottom:0}
+.rs-step::before{content:'';position:absolute;left:-17px;top:5px;width:8px;height:8px;border-radius:50%;border:2px solid rgba(255,255,255,.12);background:var(--black)}
+.rs-step.ok::before{background:#30d158;border-color:#30d158}
+.rs-step.fail::before{background:#ff375f;border-color:#ff375f}
+.rs-step::after{content:'';position:absolute;left:-14px;top:16px;bottom:-2px;width:1.5px;background:rgba(255,255,255,.05)}
+.rs-step:last-child::after{display:none}
+.rs-step-head{display:flex;align-items:center;gap:8px}
+.rs-step-name{font-weight:600;color:rgba(255,255,255,.7)}
+.rs-step-time{font-size:10px;color:rgba(255,255,255,.2)}
+.rs-step-detail{font-size:11px;color:rgba(255,255,255,.3);margin-top:2px}
+.rs-errors{margin-top:12px;padding:10px;background:rgba(255,55,95,.06);border:1px solid rgba(255,55,95,.12);border-radius:8px;font-size:12px}
+.rs-errors h4{font-size:12px;font-weight:600;color:#ff375f;margin-bottom:4px}
+.rs-errors li{font-size:11px;color:rgba(255,255,255,.4);margin-bottom:2px;list-style:disc inside}
+.rs-meta{text-align:center;font-size:10px;color:rgba(255,255,255,.15);margin-top:8px}
+
+/* ===== NAV REFRESH BUTTON ===== */
+.nav-refresh{margin-left:auto;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);color:rgba(255,255,255,.6);cursor:pointer;transition:all .25s var(--ease);padding:0;flex-shrink:0}
+.nav-refresh:hover{color:#fff;background:rgba(41,151,255,.15);border-color:rgba(41,151,255,.4)}
+.nav-refresh.spin svg{animation:nav-spin .85s linear infinite}
+.nav-refresh .r-dot{position:absolute;top:-1px;right:-1px;width:8px;height:8px;border-radius:50%;background:#30d158;border:2px solid var(--nav-bg);opacity:0;transform:scale(.4);transition:all .3s var(--ease)}
+.nav-refresh.has-new .r-dot{opacity:1;transform:scale(1)}
+@keyframes nav-spin{to{transform:rotate(360deg)}}
+
+/* ===== TOAST ===== */
+.toast{position:fixed;bottom:24px;right:24px;z-index:3000;background:rgba(20,20,22,.92);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(41,151,255,.3);border-radius:12px;padding:11px 18px;font-size:13px;font-weight:500;color:#fff;box-shadow:0 10px 30px rgba(0,0,0,.5);opacity:0;transform:translateY(12px);transition:opacity .3s var(--ease),transform .3s var(--ease);pointer-events:none;max-width:320px}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.ok{border-color:rgba(48,209,88,.4)}
+.toast.err{border-color:rgba(255,55,95,.4)}
+</style>
+</head>
+<body>
+
+<nav>
+  <span class="nav-logo">AI Jobs</span>
+  <a href="#hero" class="active" data-tab="hero">总览</a>
+  <a href="#salary" data-tab="salary">薪资</a>
+  <a href="#map" data-tab="map">方向 · 城市</a>
+  <a href="#jobs" data-tab="jobs">岗位 · 公司</a>
+  <a href="#insights" data-tab="insights">深度洞察</a>
+  <button class="nav-refresh" id="navRefresh" title="刷新数据（每 5 分钟自动刷新，切回页面时也会重拉）" onclick="reloadData(true)" style="position:relative">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+    <span class="r-dot"></span>
+  </button>
+</nav>
+
+<div id="toast" class="toast"></div>
+
+<!-- 全局筛选条 (sticky，总览 tab 隐藏) -->
+<div class="gfilter" id="gfilter">
+  <div class="gf-wrap">
+    <div class="gf-item"><span class="gf-lbl">方向</span><select id="gfDir"></select></div>
+    <div class="gf-item"><span class="gf-lbl">城市</span><select id="gfCity"></select></div>
+    <div class="gf-item"><span class="gf-lbl">薪资</span><select id="gfTier"></select></div>
+    <div class="gf-item"><span class="gf-lbl">经验</span><select id="gfExp"></select></div>
+    <div class="gf-count" id="gfCount">—</div>
+    <button class="gf-clear" id="gfClear">✕ 清空</button>
+  </div>
+</div>
+
+<section class="dark panel active" id="hero" data-tab="hero">
+  <div class="hero">
+    <canvas id="heroGraph"></canvas>
+    <div class="hero-vignette"></div>
+    <div class="hero-badge">🔍 AI 岗位智能分析平台</div>
+    <h1>AI 岗位<span>全景洞察</span></h1>
+    <p id="heroSub">覆盖多个 AI 方向与热门城市，数据每日自动更新</p>
+    <div class="kpi-row" id="kpis"></div>
+    <p id="heroUpdate" style="font-size:12px;color:rgba(255,255,255,.25);margin-top:16px;min-height:18px"></p>
+    <a class="hero-entry" href="https://liyanlong123456dsf.github.io/ai-pm-qieman-academy/" target="_blank">
+      🎓 产品经理学习入口 <span style="opacity:.4">→</span>
+    </a>
+  </div>
+</section>
+
+<!-- Headline 自动洞察 (only on hero tab) -->
+<section class="dark panel active" id="headline-section" data-tab="hero" style="padding:0;background:#000">
+  <div class="headline"><div class="headline-box" id="headlineBox">数据加载中...</div></div>
+</section>
+
+<!-- Overview dashboard grid (4 mini panels, clickable) -->
+<section class="dark panel active" id="overview-dashboard" data-tab="hero" style="padding:0 0 60px;background:#000">
+  <div class="ov-dashboard" id="ovDashboard"></div>
+</section>
+
+<!-- MAP TAB: heatmap first (highlight), then directions, then cities -->
+<section class="deep panel" id="map-heatmap" data-tab="map">
+  <div class="wrap">
+    <h2 class="sec-h">方向 × 城市 热力图</h2>
+    <p class="sec-sub">点击任一格子，下方自动定位到对应岗位列表</p>
+    <div class="block">
+      <div class="heatmap-wrap">
+        <table class="heatmap" id="heatmap"></table>
+      </div>
+      <div class="heatmap-legend">
+        少
+        <i style="background:rgba(41,151,255,.08)"></i>
+        <i style="background:rgba(41,151,255,.25)"></i>
+        <i style="background:rgba(41,151,255,.45)"></i>
+        <i style="background:rgba(41,151,255,.7)"></i>
+        <i style="background:rgba(41,151,255,.95)"></i>
+        多
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="gray panel" id="directions" data-tab="map">
+  <div class="wrap">
+    <h2 class="sec-h">十大方向</h2>
+    <p class="sec-sub">点击方向卡片切换视角，再用关键词深入筛选</p>
+    <div class="dir-grid" id="dirGrid"></div>
+    <div class="pills" id="dirPills"></div>
+    <div class="grid" id="dirCards"></div>
+    <button class="more-btn" id="dirMore" style="display:none">加载更多</button>
+  </div>
+</section>
+
+<section class="deep panel" id="salary" data-tab="salary">
+  <div class="wrap">
+    <h2 class="sec-h">薪资全景</h2>
+    <p class="sec-sub">分布 · 百分位 · 经验/学历/城市等级 × 薪资</p>
+
+    <!-- 薪资区间分布 -->
+    <div class="block">
+      <div class="block-h">薪资区间分布</div>
+      <div class="block-sub">按等效月薪分档（K/月）</div>
+      <div id="tierBars"></div>
+    </div>
+
+    <!-- 薪资百分位 -->
+    <div class="block">
+      <div class="block-h">薪资百分位（月薪 K）</div>
+      <div class="block-sub">基于 <span id="pctN">—</span> 条有效薪资数据</div>
+      <div class="pct-grid" id="pctCards"></div>
+    </div>
+
+    <!-- 经验/学历/城市等级 × 薪资 -->
+    <div class="cross-grid">
+      <div class="block">
+        <div class="block-h">经验 × 平均薪资</div>
+        <table class="cross-table">
+          <thead><tr><th>经验要求</th><th>岗位数</th><th>平均薪资</th><th>中位薪资</th></tr></thead>
+          <tbody id="expTable"></tbody>
+        </table>
+      </div>
+      <div class="block">
+        <div class="block-h">学历 × 平均薪资</div>
+        <table class="cross-table">
+          <thead><tr><th>学历</th><th>岗位数</th><th>平均薪资</th><th>中位薪资</th></tr></thead>
+          <tbody id="eduTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="block">
+      <div class="block-h">城市等级 × 薪资</div>
+      <div class="block-sub">一线：京沪广深 · 新一线：杭蓉宁西 · 二线：厦郑</div>
+      <table class="cross-table">
+        <thead><tr><th>城市等级</th><th>岗位数</th><th>平均薪资</th><th>最高薪资</th><th>覆盖城市</th></tr></thead>
+        <tbody id="tierCityTable"></tbody>
+      </table>
+    </div>
+
+    <!-- 职级 × 薪资 -->
+    <div class="block">
+      <div class="block-h">职级 × 薪资区间</div>
+      <div class="block-sub">从岗位标题智能识别职级（专员 · 产品经理 · 高级 · 资深 · 专家 · 总监 · 负责人）</div>
+      <div class="level-grid" id="levelGrid"></div>
+    </div>
+
+    <!-- 薪资月数 -->
+    <div class="block">
+      <div class="block-h">薪资月数分布（年包倍数）</div>
+      <div class="block-sub">薪资描述中的 14 / 15 / 16 / 18 / 20 薪统计</div>
+      <div class="months-grid" id="monthsGrid"></div>
+      <div id="monthsDetail" style="font-size:12px;color:rgba(255,255,255,.4);text-align:center"></div>
+    </div>
+
+    <!-- 散点图 -->
+    <div class="block">
+      <div class="block-h">薪资散点图</div>
+      <div class="block-sub">横轴城市 · 纵轴月薪 · 颜色方向（点击气泡查看详情）</div>
+      <div class="scatter-legend" id="scLegend"></div>
+      <div class="scatter-wrap" id="scatter">
+        <div class="y-labels" id="yLabels"></div>
+        <div class="x-labels" id="xLabels"></div>
+      </div>
+    </div>
+
+    <!-- 按档位筛选的岗位列表 -->
+    <div class="block">
+      <div class="block-h">按档位浏览岗位</div>
+      <div class="pills" id="salPills" style="margin-bottom:16px"></div>
+      <div class="grid" id="salCards"></div>
+      <button class="more-btn" id="salMore" style="display:none">加载更多</button>
+    </div>
+  </div>
+</section>
+
+<section class="gray panel" id="companies" data-tab="jobs">
+  <div class="wrap">
+    <h2 class="sec-h">公司排行</h2>
+    <p class="sec-sub">TOP 30 招聘活跃公司 · 点击展开查看岗位</p>
+    <div class="co-list" id="companyList"></div>
+  </div>
+</section>
+
+<section class="deep panel" id="insights" data-tab="insights">
+  <div class="wrap">
+    <h2 class="sec-h">深度洞察</h2>
+    <p class="sec-sub">技术栈 · 行业场景 · JD 字数 · 生命周期 · 关键词 · 运行状态</p>
+
+    <!-- 技术栈词频 -->
+    <div class="block">
+      <div class="block-h">技术栈词频 TOP 20</div>
+      <div class="block-sub">从 JD 描述提取的核心技术关键词</div>
+      <div class="tech-grid" id="techGrid"></div>
+    </div>
+
+    <!-- 行业场景分布 -->
+    <div class="block">
+      <div class="block-h">行业场景分布</div>
+      <div class="block-sub">B端 / C端 / 出海 / SaaS / 金融 / 教育 / 医疗 / 电商 / 游戏</div>
+      <div class="scene-row" id="sceneRow"></div>
+    </div>
+
+    <!-- 岗位生命周期 -->
+    <div class="block">
+      <div class="block-h">岗位生命周期</div>
+      <div class="block-sub">基于首见日期 <code style="font-size:11px">_date</code> 与最新见到 <code style="font-size:11px">_crawled_at</code></div>
+      <div class="lc-cards" id="lifecycleCards"></div>
+    </div>
+
+    <div class="deep-grid">
+      <!-- JD 字数 -->
+      <div class="block">
+        <div class="block-h">JD 字数分布</div>
+        <div class="block-sub">描述长度区间</div>
+        <div id="jdBars"></div>
+      </div>
+
+      <!-- 每日新增 -->
+      <div class="block">
+        <div class="block-h">每日新增岗位（近 30 天）</div>
+        <div class="block-sub">日历热力图</div>
+        <div class="cal-grid" id="dailyCalendar"></div>
+        <div class="cal-legend">
+          少 <i style="background:rgba(255,255,255,.02)"></i>
+          <i style="background:rgba(41,151,255,.15)"></i>
+          <i style="background:rgba(41,151,255,.35)"></i>
+          <i style="background:rgba(41,151,255,.55)"></i>
+          <i style="background:rgba(41,151,255,.8)"></i> 多
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 热门关键词 -->
+    <div class="block">
+      <div class="block-h">热门关键词 TOP 30</div>
+      <div class="block-sub">出现频次最高的匹配关键词</div>
+      <div class="kw-cloud" id="kwCloud"></div>
+    </div>
+
+    <!-- 运行状态 -->
+    <div class="block">
+      <div class="block-h">运行状态</div>
+      <div class="block-sub">最近一次自动爬取</div>
+      <div id="statusContent" class="status-empty">加载中...</div>
+    </div>
+  </div>
+</section>
+
+<section class="light panel" id="cities" data-tab="map">
+  <div class="wrap">
+    <h2 class="sec-h" style="color:var(--near-black)">城市对比</h2>
+    <p class="sec-sub" style="color:var(--text80)">点击柱条或城市标签，查看该城市岗位</p>
+    <div id="barChart"></div>
+    <div class="pills" id="cityPills" style="margin-top:24px"></div>
+    <div class="grid" id="cityCards"></div>
+    <button class="more-btn" id="cityMore" style="display:none">加载更多</button>
+  </div>
+</section>
+
+<!-- 方向 × 城市 矩阵（独立深色面板，附加在 cities tab 之后仅显示于 deep tab） - 放进 deep 面板 -->
+
+<section class="dark panel" id="explore" data-tab="jobs">
+  <div class="wrap">
+    <h2 class="sec-h">自由探索</h2>
+    <p class="sec-sub">多维筛选：方向 × 城市 × 薪资 × 经验</p>
+    <div class="filter-group"><div class="filter-label">方向</div><div class="pills" id="fDir"></div></div>
+    <div class="filter-group"><div class="filter-label">城市</div><div class="pills" id="fCity"></div></div>
+    <div class="filter-group"><div class="filter-label">薪资</div><div class="pills" id="fTier"></div></div>
+    <div class="filter-group"><div class="filter-label">经验</div><div class="pills" id="fExp"></div></div>
+    <p id="exSummary" style="text-align:center;font-size:13px;color:rgba(255,255,255,.4);margin-bottom:20px"></p>
+    <div class="grid" id="exCards"></div>
+    <button class="more-btn" id="exMore" style="display:none">加载更多</button>
+  </div>
+</section>
+
+<!-- PM 全流程入口 -->
+<section style="padding:40px 20px;text-align:center;background:#000;border-top:1px solid rgba(255,255,255,.04)">
+  <p style="font-size:13px;color:rgba(255,255,255,.3);margin-bottom:12px">想系统学习 AI 产品经理全流程？</p>
+  <a href="https://liyanlong123456dsf.github.io/ai-pm-qieman-academy/" target="_blank"
+     style="display:inline-flex;align-items:center;gap:8px;padding:12px 28px;border-radius:980px;background:#0071e3;color:#fff;text-decoration:none;font-size:15px;font-weight:500;letter-spacing:-.2px;transition:all .25s"
+     onmouseenter="this.style.background='#0077ed'" onmouseleave="this.style.background='#0071e3'">
+    🎓 产品经理学习入口
+    <span style="font-size:18px">→</span>
+  </a>
+  <p style="font-size:11px;color:rgba(255,255,255,.15);margin-top:10px">课程笔记 · 知识图谱 · RAG 专题 · Obsidian 集成</p>
+</section>
+
+<footer class="footer">
+  AI PM 岗位全景分析 · 数据每日自动更新 · <a href="https://github.com/Liyanlong123456dsf/ai-pm-job-dashboard" target="_blank">GitHub</a>
+</footer>
+
+<div class="overlay" id="overlay"><div class="modal" id="modal"></div></div>
+<div class="tip" id="tip"></div>
+
+<script>
+// === SOUND ENGINE (Web Audio API, no external files) ===
+const SFX = (() => {
+  let ctx;
+  const getCtx = () => { if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)(); return ctx; };
+
+  function play(fn) {
+    try { const c = getCtx(); if (c.state === 'suspended') c.resume(); fn(c); } catch(e) {}
+  }
+
+  return {
+    // 轻柔点击 - 卡片、按钮
+    click() {
+      play(c => {
+        const o = c.createOscillator(), g = c.createGain();
+        o.type = 'sine'; o.frequency.setValueAtTime(1200, c.currentTime);
+        o.frequency.exponentialRampToValueAtTime(800, c.currentTime + 0.06);
+        g.gain.setValueAtTime(0.08, c.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.08);
+        o.connect(g); g.connect(c.destination);
+        o.start(); o.stop(c.currentTime + 0.08);
+      });
+    },
+    // 弹窗打开 - 上升音
+    modalOpen() {
+      play(c => {
+        const o = c.createOscillator(), g = c.createGain();
+        o.type = 'sine'; o.frequency.setValueAtTime(400, c.currentTime);
+        o.frequency.exponentialRampToValueAtTime(900, c.currentTime + 0.12);
+        g.gain.setValueAtTime(0.06, c.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.15);
+        o.connect(g); g.connect(c.destination);
+        o.start(); o.stop(c.currentTime + 0.15);
+      });
+    },
+    // 弹窗关闭 - 下降音
+    modalClose() {
+      play(c => {
+        const o = c.createOscillator(), g = c.createGain();
+        o.type = 'sine'; o.frequency.setValueAtTime(800, c.currentTime);
+        o.frequency.exponentialRampToValueAtTime(350, c.currentTime + 0.1);
+        g.gain.setValueAtTime(0.05, c.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.12);
+        o.connect(g); g.connect(c.destination);
+        o.start(); o.stop(c.currentTime + 0.12);
+      });
+    },
+    // 发送消息 - 清脆短促
+    send() {
+      play(c => {
+        const o = c.createOscillator(), g = c.createGain();
+        o.type = 'triangle'; o.frequency.setValueAtTime(880, c.currentTime);
+        o.frequency.exponentialRampToValueAtTime(1320, c.currentTime + 0.06);
+        g.gain.setValueAtTime(0.07, c.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.1);
+        o.connect(g); g.connect(c.destination);
+        o.start(); o.stop(c.currentTime + 0.1);
+      });
+    },
+    // 收到回复 - 双音通知
+    receive() {
+      play(c => {
+        [660, 880].forEach((freq, i) => {
+          const o = c.createOscillator(), g = c.createGain();
+          o.type = 'sine';
+          o.frequency.setValueAtTime(freq, c.currentTime + i * 0.08);
+          g.gain.setValueAtTime(0, c.currentTime);
+          g.gain.linearRampToValueAtTime(0.06, c.currentTime + i * 0.08);
+          g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + i * 0.08 + 0.12);
+          o.connect(g); g.connect(c.destination);
+          o.start(c.currentTime + i * 0.08); o.stop(c.currentTime + i * 0.08 + 0.12);
+        });
+      });
+    },
+    // 切换/筛选 - 轻微滴答
+    toggle() {
+      play(c => {
+        const o = c.createOscillator(), g = c.createGain();
+        o.type = 'sine'; o.frequency.setValueAtTime(1000, c.currentTime);
+        g.gain.setValueAtTime(0.05, c.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.04);
+        o.connect(g); g.connect(c.destination);
+        o.start(); o.stop(c.currentTime + 0.04);
+      });
+    },
+    // 聊天面板开关 - 柔滑滑动
+    slide() {
+      play(c => {
+        const o = c.createOscillator(), g = c.createGain();
+        o.type = 'sine'; o.frequency.setValueAtTime(500, c.currentTime);
+        o.frequency.exponentialRampToValueAtTime(700, c.currentTime + 0.1);
+        g.gain.setValueAtTime(0.04, c.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.15);
+        o.connect(g); g.connect(c.destination);
+        o.start(); o.stop(c.currentTime + 0.15);
+      });
+    }
+  };
+})();
+
+// === LOAD DATA (external JSON) ===
+let DATA = [];
+let DATA_META = {};
+const IS_ELECTRON = navigator.userAgent.toLowerCase().includes('electron');
+const DATA_URL = IS_ELECTRON
+  ? '../jobs_data.json?t=' + Date.now()
+  : 'https://raw.githubusercontent.com/Liyanlong123456dsf/ai-pm-job-dashboard/main/jobs_data.json?t=' + Date.now();
+const STATUS_URL = IS_ELECTRON
+  ? '../run_status.json?t=' + Date.now()
+  : 'https://raw.githubusercontent.com/Liyanlong123456dsf/ai-pm-job-dashboard/main/run_status.json?t=' + Date.now();
+async function boot() {
+  try {
+    const resp = await fetch(DATA_URL);
+    const json = await resp.json();
+    DATA = json.jobs || json;
+    DATA_META = json.meta || {};
+    initAll();
+  } catch(e) {
+    document.getElementById('kpis').innerHTML = '<div class="empty">数据加载失败，请确认 jobs_data.json 存在</div>';
+    console.error('Data load error:', e);
+  }
+}
+const norm = c => c.replace(/·.*/,'');
+const avgS = a => { const v=a.filter(d=>d.avg>0); return v.length? Math.round(v.reduce((s,d)=>s+d.avg,0)/v.length*10)/10 : 0; };
+const countBy = (a,fn) => { const m={}; a.forEach(d=>{const k=fn(d);m[k]=(m[k]||0)+1}); return Object.entries(m).sort((a,b)=>b[1]-a[1]); };
+
+// === CARD HTML ===
+function cardH(j){
+  const i=DATA.indexOf(j);
+  return `<div class="card" data-i="${i}">
+    <div class="c-top"><div class="c-title">${j.is_new?'<span class="new-badge">🆕</span>':''}${j.title}</div><div class="c-sal">${j.salary}</div></div>
+    <div class="c-co">${j.company} · ${j.city}</div>
+    <div class="c-tags">${j.cats.map(c=>`<span class="tag tag-c">${c}</span>`).join('')}${j.kw.slice(0,3).map(k=>`<span class="tag tag-k">${k}</span>`).join('')}</div>
+    <div class="c-desc">${j.desc||'暂无描述'}</div>
+    <div class="c-foot">${j.exp?`<span class="badge">${j.exp}</span>`:''}${j.edu?`<span class="badge">${j.edu}</span>`:''}${j.avg?`<span class="badge">≈${j.avg}K/月</span>`:''}</div>
+  </div>`;
+}
+
+// === RENDER HELPERS ===
+function renderGrid(containerId, items, moreId, limit=12){
+  const el=document.getElementById(containerId);
+  const btn=document.getElementById(moreId);
+  el._allItems=items; el._shown=limit;
+  el.innerHTML=items.slice(0,limit).map(cardH).join('')||'<div class="empty">暂无匹配岗位</div>';
+  if(btn){btn.style.display=items.length>limit?'block':'none';btn.onclick=()=>{SFX.click();el._shown+=12;el.innerHTML=items.slice(0,el._shown).map(cardH).join('');btn.style.display=items.length>el._shown?'block':'none';}}
+}
+function renderPills(containerId, items, activeFn, clickFn){
+  document.getElementById(containerId).innerHTML=items.map(([label,cnt])=>`<div class="pill${activeFn(label)?' on':''}" data-v="${label}">${label}<span class="cnt">${cnt}</span></div>`).join('');
+  document.getElementById(containerId).querySelectorAll('.pill').forEach(p=>p.onclick=()=>clickFn(p.dataset.v));
+}
+
+// === 1. HERO KPIs ===
+function renderHero(){
+  const cities=new Set(); DATA.forEach(d=>cities.add(norm(d.city)));
+  const maxA=DATA.length?DATA[0].avg:0;
+  const dirSet=new Set();DATA.forEach(d=>(d.cats||[]).forEach(c=>dirSet.add(c)));
+  const cityArr=[...cities].slice(0,10);
+  const dirShort=[...dirSet].slice(0,6).map(d=>d.replace(/^AI[+＋]/,'').replace(/\/.*$/,''));
+  document.getElementById('heroSub').innerHTML='覆盖'+dirShort.join(' · ')+'等'+dirSet.size+'大方向<br>'+cityArr.join(' · ');
+  const kpis=[{n:DATA.length,l:'相关岗位',sec:'explore'},{n:dirSet.size||10,l:'细分方向',sec:'directions'},{n:cities.size,l:'覆盖城市',sec:'cities'},{n:maxA+'K',l:'最高月薪',sec:'salary'}];
+  document.getElementById('kpis').innerHTML=kpis.map(k=>`<div class="kpi" onclick="SFX.click();document.getElementById('${k.sec}').scrollIntoView({behavior:'smooth'})"><div class="n">${k.n}</div><div class="l">${k.l}</div></div>`).join('');
+  const up=document.getElementById('heroUpdate');
+  if(up) up.textContent=DATA_META.updated?('数据更新于 '+DATA_META.updated):'';
+}
+
+// === 2. DIRECTIONS ===
+let curDir='全部',curKw='';
+function renderDir(){
+  // 动态统计所有方向（排除AI通用，按数量降序）
+  const dirCount={};
+  DATA.forEach(j=>(j.cats||[]).forEach(c=>{if(c!=='AI通用')dirCount[c]=(dirCount[c]||0)+1}));
+  const dirs=Object.entries(dirCount).sort((a,b)=>b[1]-a[1]).map(e=>e[0]);
+  document.getElementById('dirGrid').innerHTML=dirs.map(d=>{
+    const items=DATA.filter(j=>j.cats.includes(d));
+    return `<div class="dir-card${curDir===d?' on':''}" data-d="${d}"><div class="dc-n">${items.length}</div><div class="dc-l">${d}</div><div class="dc-s">均薪 ${avgS(items)}K/月</div></div>`;
+  }).join('');
+  document.querySelectorAll('.dir-card').forEach(c=>c.onclick=()=>{SFX.toggle();curDir=curDir===c.dataset.d?'全部':c.dataset.d;curKw='';renderDir();});
+  let filtered=curDir==='全部'?DATA:DATA.filter(j=>j.cats.includes(curDir));
+  const kws={}; filtered.forEach(j=>j.kw.forEach(k=>kws[k]=(kws[k]||0)+1));
+  const sorted=[['全部',filtered.length],...Object.entries(kws).sort((a,b)=>b[1]-a[1]).slice(0,10)];
+  renderPills('dirPills',sorted,l=>(!curKw&&l==='全部')||l===curKw,v=>{SFX.toggle();curKw=v==='全部'?'':v;renderDir();});
+  if(curKw) filtered=filtered.filter(j=>j.kw.includes(curKw));
+  renderGrid('dirCards',filtered,'dirMore');
+}
+// === 3. SALARY SCATTER + LIST ===
+let curTier='全部';
+// 方向 → 颜色映射
+const CAT_COLORS={'大模型/LLM':'#2997ff','AI Agent/智能体':'#5e5ce6','AIGC/内容创作':'#ff9f0a','多模态/具身智能':'#ff375f','AI+电商/营销':'#30d158','AI+视频/直播':'#64d2ff','智能客服/对话':'#ffd60a','AI+企业服务/SaaS':'#bf5af2','AI+行业应用':'#ac8e68','AI+新媒体':'#ff6482','AI通用':'#98989d'};
+function getCatColor(cats){
+  for(const c of cats||[]){ if(CAT_COLORS[c]) return CAT_COLORS[c]; }
+  return CAT_COLORS['AI通用'];
+}
+function renderSalary(){
+  // 动态图例
+  const usedCats={};
+  DATA.forEach(j=>(j.cats||[]).forEach(c=>{if(CAT_COLORS[c])usedCats[c]=(usedCats[c]||0)+1}));
+  const topCats=Object.entries(usedCats).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  document.getElementById('scLegend').innerHTML=topCats.map(([c])=>`<span><i style="background:${CAT_COLORS[c]}"></i>${c}</span>`).join('');
+
+  // Scatter plot
+  const wrap=document.getElementById('scatter');
+  const cities=countBy(DATA,d=>norm(d.city)).map(e=>e[0]);
+  const maxAvg=Math.max(...DATA.map(d=>d.avg),1);
+  const yMax=maxAvg>120?150:maxAvg>80?125:100;
+  const ySteps=[0,25,50,75,100]; if(yMax>100) ySteps.push(yMax);
+  document.getElementById('yLabels').innerHTML=[...ySteps].reverse().map(v=>`<span>${v}K</span>`).join('');
+  document.getElementById('xLabels').innerHTML=cities.map(c=>`<span>${c}</span>`).join('');
+  wrap.querySelectorAll('.dot').forEach(d=>d.remove());
+  const LEFT=50, TOP=10, W=wrap.offsetWidth-LEFT-10, H=wrap.offsetHeight-TOP-36;
+  const colW=W/cities.length;
+  DATA.forEach((j,idx)=>{
+    if(j.avg<=0) return;
+    const ci=cities.indexOf(norm(j.city));
+    if(ci<0) return;
+    // X: 城市列中心 + 小随机偏移
+    const x=LEFT+ci*colW+colW*0.2+Math.random()*colW*0.6;
+    // Y: 线性映射
+    const y=TOP+(1-j.avg/yMax)*H;
+    const sz=Math.max(5,Math.min(12,j.avg/10));
+    const color=getCatColor(j.cats);
+    const dot=document.createElement('div');
+    dot.className='dot';
+    dot.style.cssText=`left:${x}px;top:${y}px;width:${sz}px;height:${sz}px;background:${color}`;
+    dot.dataset.i=idx;
+    dot.onmouseenter=e=>showTip(e,`${j.title}\n${j.company} · ${j.city}\n${j.salary} (≈${j.avg}K/月)\n${(j.cats||[]).join(' · ')}`);
+    dot.onmouseleave=hideTip;
+    dot.onclick=()=>openModal(idx);
+    wrap.appendChild(dot);
+  });
+  // Pills
+  const tiers=['全部','50K+','30-50K','15-30K','8-15K','<8K'];
+  const tierCounts=tiers.map(t=>[t,t==='全部'?DATA.length:DATA.filter(j=>j.tier===t).length]);
+  renderPills('salPills',tierCounts,l=>l===curTier,v=>{SFX.toggle();curTier=v;renderSalary();});
+  const filtered=curTier==='全部'?DATA:DATA.filter(j=>j.tier===curTier);
+  renderGrid('salCards',filtered,'salMore');
+}
+// === 4. CITIES ===
+let curCity='全部';
+function renderCities(){
+  const cityMap={};
+  DATA.forEach(d=>{const c=norm(d.city);cityMap[c]=cityMap[c]||[];cityMap[c].push(d);});
+  const sorted=Object.entries(cityMap).sort((a,b)=>b[1].length-a[1].length).slice(0,10);
+  const maxN=sorted[0]?sorted[0][1].length:1;
+  document.getElementById('barChart').innerHTML=sorted.map(([city,jobs])=>{
+    const pct=Math.round(jobs.length/maxN*100);
+    const avg=avgS(jobs);
+    return `<div class="bar-row" data-c="${city}"><div class="bar-label">${city}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%">${jobs.length}</div></div><div class="bar-info">均${avg}K</div></div>`;
+  }).join('');
+  document.querySelectorAll('.bar-row').forEach(r=>r.onclick=()=>{SFX.toggle();curCity=curCity===r.dataset.c?'全部':r.dataset.c;renderCities();});
+  const pills=[['全部',DATA.length],...sorted.map(([c,j])=>[c,j.length])];
+  renderPills('cityPills',pills,l=>l===curCity,v=>{SFX.toggle();curCity=v;renderCities();});
+  const filtered=curCity==='全部'?DATA:DATA.filter(j=>norm(j.city)===curCity);
+  renderGrid('cityCards',filtered,'cityMore');
+}
+// === 5. EXPLORE ===
+const F={dir:'全部',city:'全部',tier:'全部',exp:'全部'};
+function renderExplore(){
+  const dirs=['全部',...countBy(DATA,d=>{const c=d.cats&&d.cats[0];return c||'AI通用';}).map(e=>e[0])];
+  const cities=['全部',...countBy(DATA,d=>norm(d.city)).map(e=>e[0])];
+  const tiers=['全部','50K+','30-50K','15-30K','8-15K','<8K'];
+  const exps=['全部',...countBy(DATA,d=>d.exp||'未知').slice(0,6).map(e=>e[0])];
+  const mk=(arr,key,cid)=>{
+    document.getElementById(cid).innerHTML=arr.map(v=>`<div class="pill${F[key]===v?' on':''}" data-v="${v}">${v}</div>`).join('');
+    document.getElementById(cid).querySelectorAll('.pill').forEach(p=>p.onclick=()=>{SFX.toggle();F[key]=p.dataset.v;renderExplore();});
+  };
+  mk(dirs,'dir','fDir');mk(cities,'city','fCity');mk(tiers,'tier','fTier');mk(exps,'exp','fExp');
+  let r=DATA;
+  if(F.dir!=='全部') r=r.filter(j=>j.cats.includes(F.dir));
+  if(F.city!=='全部') r=r.filter(j=>norm(j.city)===F.city);
+  if(F.tier!=='全部') r=r.filter(j=>j.tier===F.tier);
+  if(F.exp!=='全部') r=r.filter(j=>j.exp===F.exp);
+  // 结果汇总
+  const exSummary=document.getElementById('exSummary');
+  if(exSummary) exSummary.textContent=`共 ${r.length} 个岗位${r.length?` · 均薪 ${avgS(r)}K/月`:''}`;
+  renderGrid('exCards',r,'exMore');
+}
+// ============================================================
+// === NEW SECTIONS: Salary deep / Companies / Deep analysis ===
+// ============================================================
+
+// Utility: percentile (sorted numeric array + pct 0..100)
+function pct(arr, p) {
+  if (!arr.length) return 0;
+  const s = [...arr].sort((a,b) => a-b);
+  const idx = (p/100) * (s.length-1);
+  const lo = Math.floor(idx), hi = Math.ceil(idx);
+  if (lo === hi) return s[lo];
+  return s[lo] + (s[hi]-s[lo]) * (idx-lo);
+}
+function median(arr) { return pct(arr, 50); }
+
+// City tier mapping (based on Chinese 新一线城市研究所 standard)
+const CITY_TIER = {
+  '北京':'一线','上海':'一线','广州':'一线','深圳':'一线',
+  '杭州':'新一线','成都':'新一线','南京':'新一线','西安':'新一线',
+  '武汉':'新一线','重庆':'新一线','苏州':'新一线','天津':'新一线',
+  '厦门':'二线','郑州':'二线','长沙':'二线','青岛':'二线','宁波':'二线'
+};
+function cityTier(city) { return CITY_TIER[norm(city)] || '其他'; }
+
+// === 3a. SALARY TIER DISTRIBUTION (horizontal bars) ===
+function renderSalaryTiers() {
+  const tiers = ['50K+', '30-50K', '15-30K', '8-15K', '<8K'];
+  const counts = tiers.map(t => DATA.filter(j => j.tier === t).length);
+  const max = Math.max(...counts, 1);
+  const total = counts.reduce((a,b) => a+b, 0) || 1;
+  const el = document.getElementById('tierBars');
+  if (!el) return;
+  el.innerHTML = tiers.map((t, i) => {
+    const w = counts[i] / max * 100;
+    const pctText = (counts[i] / total * 100).toFixed(1) + '%';
+    const colorCls = i === 0 ? 'amber' : i >= 3 ? 'purple' : '';
+    return `<div class="dist-row">
+      <div class="dist-label">${t}</div>
+      <div class="dist-track"><div class="dist-fill ${colorCls}" style="width:${w}%">${counts[i]}</div></div>
+      <div class="dist-info">${pctText}</div>
+    </div>`;
+  }).join('');
+}
+
+// === 3b. SALARY PERCENTILES ===
+function renderSalaryPercentiles() {
+  const avgs = DATA.map(j => +j.avg || 0).filter(v => v > 0);
+  document.getElementById('pctN').textContent = avgs.length;
+  if (!avgs.length) { document.getElementById('pctCards').innerHTML = '<div class="empty">暂无数据</div>'; return; }
+  const mean = avgs.reduce((a,b) => a+b, 0) / avgs.length;
+  const cards = [
+    { l: 'P25 · 下四分位', v: pct(avgs, 25) },
+    { l: 'P50 · 中位', v: pct(avgs, 50) },
+    { l: 'P75 · 上四分位', v: pct(avgs, 75) },
+    { l: '均值', v: mean, top: true },
+    { l: 'P90', v: pct(avgs, 90), top: true },
+    { l: '最高', v: Math.max(...avgs), top: true },
+  ];
+  document.getElementById('pctCards').innerHTML = cards.map(c => `
+    <div class="pct-card${c.top ? ' group-top' : ''}">
+      <div class="pct-label">${c.l}</div>
+      <div class="pct-val">${c.v >= 100 ? c.v.toFixed(0) : c.v.toFixed(1)}K</div>
+    </div>
+  `).join('');
+}
+
+// === 3c. CROSS TABLES (exp / edu / city-tier × salary) ===
+function renderCross(groupKey, containerId, extraCol) {
+  const map = {};
+  DATA.forEach(j => {
+    const k = j[groupKey] || '未填写';
+    if (!map[k]) map[k] = [];
+    if (+j.avg > 0) map[k].push(j);
+  });
+  const rows = Object.entries(map)
+    .filter(([,arr]) => arr.length > 0)
+    .map(([k, arr]) => {
+      const avgs = arr.map(j => +j.avg);
+      return {
+        k,
+        n: arr.length,
+        avg: avgs.reduce((a,b) => a+b, 0) / avgs.length,
+        med: median(avgs),
+        max: Math.max(...avgs),
+      };
+    })
+    .sort((a,b) => b.avg - a.avg);
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = rows.map((r, i) => `
+    <tr>
+      <td>${i < 3 ? '<span class="tag-rank">#'+(i+1)+'</span> ' : ''}${r.k}</td>
+      <td class="mono">${r.n}</td>
+      <td class="mono">${r.avg.toFixed(1)}K</td>
+      <td class="mono muted">${r.med.toFixed(1)}K</td>
+      ${extraCol ? `<td class="mono">${r.max.toFixed(1)}K</td>` : ''}
+    </tr>
+  `).join('') || '<tr><td colspan="4" style="text-align:center;opacity:.4;padding:20px">暂无数据</td></tr>';
+}
+
+// === 3d. CITY TIER × SALARY ===
+function renderCityTierTable() {
+  const map = {};
+  DATA.forEach(j => {
+    const tier = cityTier(j.city);
+    if (!map[tier]) map[tier] = { jobs: [], cities: new Set() };
+    map[tier].cities.add(norm(j.city));
+    if (+j.avg > 0) map[tier].jobs.push(+j.avg);
+  });
+  const order = ['一线', '新一线', '二线', '其他'];
+  const rows = order
+    .filter(t => map[t] && map[t].jobs.length)
+    .map(t => {
+      const { jobs, cities } = map[t];
+      return {
+        t, n: jobs.length,
+        avg: jobs.reduce((a,b) => a+b, 0) / jobs.length,
+        max: Math.max(...jobs),
+        cities: [...cities].sort().join(' · '),
+      };
+    });
+  const el = document.getElementById('tierCityTable');
+  if (!el) return;
+  el.innerHTML = rows.map(r => `
+    <tr>
+      <td><span class="tag-rank">${r.t}</span></td>
+      <td class="mono">${r.n}</td>
+      <td class="mono">${r.avg.toFixed(1)}K</td>
+      <td class="mono">${r.max.toFixed(1)}K</td>
+      <td class="muted" style="font-size:12px">${r.cities}</td>
+    </tr>
+  `).join('') || '<tr><td colspan="5" style="text-align:center;opacity:.4;padding:20px">暂无数据</td></tr>';
+}
+
+// === 4. COMPANIES PANEL ===
+function renderCompanies() {
+  const map = {};
+  DATA.forEach(j => {
+    const name = (j.company || '').trim();
+    if (!name) return;
+    if (!map[name]) map[name] = { jobs: [], cities: new Set() };
+    map[name].jobs.push(j);
+    map[name].cities.add(norm(j.city));
+  });
+  const rows = Object.entries(map)
+    .map(([name, d]) => {
+      const avgs = d.jobs.map(j => +j.avg || 0).filter(v => v > 0);
+      return {
+        name,
+        n: d.jobs.length,
+        jobs: d.jobs,
+        cities: [...d.cities],
+        avg: avgs.length ? avgs.reduce((a,b) => a+b, 0) / avgs.length : 0,
+        max: avgs.length ? Math.max(...avgs) : 0,
+      };
+    })
+    .sort((a,b) => b.n - a.n || b.avg - a.avg)
+    .slice(0, 30);
+  const el = document.getElementById('companyList');
+  if (!el) return;
+  el.innerHTML = rows.map((r, i) => `
+    <div class="co-card" data-co="${escHtml(r.name)}">
+      <div class="co-top">
+        <div class="co-name" title="${escHtml(r.name)}">${escHtml(r.name)}</div>
+        <div class="co-rank">#${i+1}</div>
+      </div>
+      <div class="co-meta">
+        <span><span class="k">岗位</span><span class="v">${r.n}</span></span>
+        <span><span class="k">均薪</span><span class="v">${r.avg ? r.avg.toFixed(1)+'K' : '—'}</span></span>
+        <span><span class="k">最高</span><span class="v">${r.max ? r.max.toFixed(1)+'K' : '—'}</span></span>
+      </div>
+      <div class="co-tags">${r.cities.slice(0,6).map(c => `<span class="city-tag">${c}</span>`).join('')}${r.cities.length > 6 ? `<span class="city-tag">+${r.cities.length-6}</span>` : ''}</div>
+      <div class="co-jobs">${r.jobs.sort((a,b)=>(+b.avg||0)-(+a.avg||0)).slice(0,12).map(j => {
+        const idx = DATA.indexOf(j);
+        return `<div class="co-job-item" data-i="${idx}"><span class="js">${j.salary||''}</span><span class="jt">${escHtml(j.title||'')}</span><div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:2px">${j.city||''}${j.exp?' · '+j.exp:''}</div></div>`;
+      }).join('')}</div>
+    </div>
+  `).join('') || '<div class="empty">暂无公司数据</div>';
+  // Expand/collapse + inner job click
+  el.querySelectorAll('.co-card').forEach(card => {
+    card.onclick = e => {
+      const inner = e.target.closest('.co-job-item');
+      if (inner) {
+        e.stopPropagation();
+        SFX.click();
+        openModal(+inner.dataset.i);
+        return;
+      }
+      SFX.toggle();
+      card.classList.toggle('expanded');
+    };
+  });
+}
+
+// === 3e. LEVEL × SALARY ===
+// 从 title 提取职级
+const LEVEL_RULES = [
+  { k: '负责人', pat: /负责人|Lead\b|Head\b/i },
+  { k: '总监/VP',  pat: /总监|director|VP|副总|CTO|CPO|CEO/i },
+  { k: '专家',     pat: /专家|首席|principal/i },
+  { k: '资深',     pat: /资深|Senior.*Sr\.?/i },
+  { k: '高级',     pat: /高级|Senior\b|Sr\.?\s/i },
+  { k: '产品经理', pat: /产品经理|Product Manager|PM\b/i },
+  { k: '专员/助理', pat: /专员|助理|Assistant|Associate|实习|intern/i },
+];
+function getLevel(title) {
+  const t = title || '';
+  for (const r of LEVEL_RULES) if (r.pat.test(t)) return r.k;
+  return '其他';
+}
+function renderLevelSalary() {
+  const map = {};
+  DATA.forEach(j => {
+    const lv = getLevel(j.title);
+    if (!map[lv]) map[lv] = [];
+    if (+j.avg > 0) map[lv].push(+j.avg);
+  });
+  const order = ['专员/助理','产品经理','高级','资深','专家','总监/VP','负责人','其他'];
+  const rows = order
+    .filter(k => map[k] && map[k].length)
+    .map(k => {
+      const arr = map[k].sort((a,b) => a-b);
+      return {
+        k, n: arr.length,
+        avg: arr.reduce((a,b) => a+b, 0) / arr.length,
+        med: pct(arr, 50),
+        p25: pct(arr, 25),
+        p75: pct(arr, 75),
+        max: Math.max(...arr),
+        min: Math.min(...arr),
+      };
+    });
+  const globalMax = Math.max(...rows.map(r => r.max), 1);
+  const el = document.getElementById('levelGrid');
+  if (!el) return;
+  el.innerHTML = rows.map(r => {
+    const p25Pct = r.p25 / globalMax * 100;
+    const p75Pct = r.p75 / globalMax * 100;
+    const medPct = r.med / globalMax * 100;
+    return `<div class="level-card">
+      <div class="level-head">
+        <div class="level-title">${r.k}</div>
+        <div class="level-count">${r.n} 条</div>
+      </div>
+      <div class="level-avg">${r.avg.toFixed(1)}K</div>
+      <div class="level-range">${r.min.toFixed(0)}K ~ ${r.max.toFixed(0)}K · 中位 ${r.med.toFixed(1)}K</div>
+      <div class="level-bar" title="P25 ${r.p25.toFixed(1)}K · 中位 ${r.med.toFixed(1)}K · P75 ${r.p75.toFixed(1)}K">
+        <div class="pbox" style="left:${p25Pct}%;width:${p75Pct-p25Pct}%"></div>
+        <div class="pmed" style="left:${medPct}%"></div>
+      </div>
+    </div>`;
+  }).join('') || '<div class="empty">暂无数据</div>';
+}
+
+// === 3f. MONTHS / 薪资结构 ===
+function renderMonths() {
+  // 从 salary 文本解析 N薪
+  const monthMap = { 12:0, 13:0, 14:0, 15:0, 16:0, 17:0, 18:0, 19:0, 20:0 };
+  let withMonth = 0;
+  let total = 0;
+  DATA.forEach(j => {
+    total++;
+    const s = j.salary || '';
+    const m = s.match(/(\d{2})薪/);
+    if (m) {
+      const n = +m[1];
+      if (n in monthMap) { monthMap[n]++; withMonth++; }
+    }
+  });
+  const defaultN = total - withMonth; // 未标注默认按 12 薪
+  const noted = Object.entries(monthMap).filter(([,n]) => n > 0).sort((a,b) => +a[0] - +b[0]);
+  const el = document.getElementById('monthsGrid');
+  if (!el) return;
+  const cards = [
+    { n: defaultN, l: '未标注 (默认12薪)', highlight: false },
+    ...noted.map(([m, n]) => ({ n, l: m + '薪', highlight: +m >= 15 }))
+  ];
+  el.innerHTML = cards.map(c => `
+    <div class="month-card${c.highlight ? ' highlight' : ''}">
+      <div class="month-n">${c.n}</div>
+      <div class="month-l">${c.l}</div>
+      <div class="month-pct">${(c.n/total*100).toFixed(1)}%</div>
+    </div>
+  `).join('');
+  const detail = document.getElementById('monthsDetail');
+  if (detail) detail.textContent = `共 ${total} 条岗位 · 其中 ${withMonth} 条明确标注薪资月数`;
+}
+
+// === 4b. HEATMAP MATRIX 方向 × 城市 ===
+function renderHeatmap() {
+  // 取所有方向（排除 AI通用） and 所有城市 by count
+  const catCount = {};
+  DATA.forEach(j => (j.cats||[]).forEach(c => { if(c!=='AI通用') catCount[c]=(catCount[c]||0)+1; }));
+  const cats = Object.entries(catCount).sort((a,b) => b[1]-a[1]).map(e => e[0]);
+
+  const cityCount = {};
+  DATA.forEach(j => { const c = norm(j.city); cityCount[c] = (cityCount[c]||0)+1; });
+  const cities = Object.entries(cityCount).sort((a,b) => b[1]-a[1]).slice(0, 12).map(e => e[0]);
+
+  // Build matrix[cat][city]
+  const M = {};
+  cats.forEach(c => { M[c] = {}; cities.forEach(ct => M[c][ct] = 0); });
+  DATA.forEach(j => {
+    const ct = norm(j.city);
+    if (!cities.includes(ct)) return;
+    (j.cats||[]).forEach(c => { if (c !== 'AI通用' && M[c]) M[c][ct]++; });
+  });
+  const allVals = cats.flatMap(c => cities.map(ct => M[c][ct]));
+  const vmax = Math.max(...allVals, 1);
+
+  const el = document.getElementById('heatmap');
+  if (!el) return;
+  const levels = [0.08, 0.25, 0.45, 0.7, 0.95];
+  let html = '<thead><tr><th></th>' + cities.map(c => `<th>${c}</th>`).join('') + '</tr></thead><tbody>';
+  cats.forEach(c => {
+    html += `<tr><th class="row-head">${c}</th>`;
+    cities.forEach(ct => {
+      const v = M[c][ct];
+      const ratio = v / vmax;
+      // 选择 alpha
+      const lvl = v === 0 ? 0.02 : levels[Math.min(4, Math.floor(ratio * 5))];
+      html += `<td data-v="${v}" data-cat="${escHtml(c)}" data-city="${escHtml(ct)}" style="background:rgba(41,151,255,${lvl})">${v||'·'}</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody>';
+  el.innerHTML = html;
+  // Click: 跳转到 explore 带预选
+  el.querySelectorAll('td[data-cat]').forEach(td => {
+    td.onclick = () => {
+      const cat = td.dataset.cat;
+      const city = td.dataset.city;
+      if (+td.dataset.v === 0) return;
+      SFX.click();
+      // 同步全局筛选 + 内部 F
+      if (typeof GFILTER === 'object') { GFILTER.dir = cat; GFILTER.city = city; }
+      const dirSel = document.getElementById('gfDir');
+      const citySel = document.getElementById('gfCity');
+      if (dirSel) dirSel.value = cat;
+      if (citySel) citySel.value = city;
+      if (typeof F === 'object' && F) { F.dir = cat; F.city = city; }
+      if (typeof applyGlobalFilter === 'function') applyGlobalFilter();
+      switchTab('jobs');
+    };
+  });
+}
+
+// === 4c. TECH STACK WORD FREQUENCY ===
+const TECH_DICT = [
+  { k: 'LLM', pat: /\b(LLM|大模型|基座模型|语言模型)\b/i, icon: '🧠' },
+  { k: 'GPT/ChatGPT', pat: /\b(GPT|ChatGPT|GPT-?\d)\b/i, icon: '💬' },
+  { k: 'Prompt Engineering', pat: /Prompt.?[工程设计编排]|提示词工程|prompt\s*eng/i, icon: '📝' },
+  { k: 'RAG', pat: /\bRAG\b|检索增强|向量检索|Retriev/i, icon: '🔎' },
+  { k: 'Agent/智能体', pat: /\bAgent\b|智能体|自主规划/i, icon: '🤖' },
+  { k: 'Fine-tuning', pat: /Fine-?tune|微调|SFT|DPO|RLHF|LoRA/i, icon: '🔧' },
+  { k: 'LangChain', pat: /LangChain|LlamaIndex|Haystack/i, icon: '🔗' },
+  { k: '向量数据库', pat: /向量库|向量数据库|Milvus|Pinecone|Weaviate|Chroma|Qdrant/i, icon: '💾' },
+  { k: '多模态', pat: /多模态|MLLM|VLM|图文|视觉语言/i, icon: '🎭' },
+  { k: 'NLP', pat: /\bNLP\b|自然语言处理/i, icon: '📚' },
+  { k: 'CV/视觉', pat: /\bCV\b|计算机视觉|图像识别|OCR|目标检测/i, icon: '👁' },
+  { k: '语音/TTS', pat: /语音|TTS|ASR|speech/i, icon: '🎙' },
+  { k: 'Python', pat: /\bPython\b/, icon: '🐍' },
+  { k: 'SQL/数据', pat: /\bSQL\b|数据仓库|数据分析/i, icon: '📊' },
+  { k: 'Transformer', pat: /Transformer|Attention|BERT/i, icon: '⚛' },
+  { k: '评估/测试', pat: /评估体系|评测|benchmark|效果评估/i, icon: '✅' },
+  { k: 'A/B 实验', pat: /A\/?B\s?(test|实验)|ABtest/i, icon: '🧪' },
+  { k: '推荐系统', pat: /推荐|召回|排序|ranking/i, icon: '🎯' },
+  { k: '搜索', pat: /搜索|检索|search/i, icon: '🔍' },
+  { k: '增长', pat: /增长黑客|用户增长|GMV|漏斗|留存|LTV|ROI/i, icon: '📈' },
+  { k: 'B端/ToB', pat: /\b(ToB|to.?B|B端|企业级)\b/i, icon: '🏢' },
+  { k: 'C端/ToC', pat: /\b(ToC|to.?C|C端|消费者)\b/i, icon: '👤' },
+  { k: 'SaaS', pat: /\bSaaS\b|PaaS|IaaS/i, icon: '☁' },
+  { k: 'API/接口', pat: /\bAPI\b|接口开发|REST|GraphQL/i, icon: '🔌' },
+];
+function renderTechStack() {
+  const map = {};
+  TECH_DICT.forEach(t => map[t.k] = { n: 0, icon: t.icon });
+  DATA.forEach(j => {
+    const text = ((j.title || '') + ' ' + (j.desc || ''));
+    TECH_DICT.forEach(t => { if (t.pat.test(text)) map[t.k].n++; });
+  });
+  const rows = Object.entries(map).filter(([,v]) => v.n > 0).sort((a,b) => b[1].n - a[1].n).slice(0, 20);
+  const gMax = Math.max(...rows.map(r => r[1].n), 1);
+  const el = document.getElementById('techGrid');
+  if (!el) return;
+  el.innerHTML = rows.map(([k, v]) => `
+    <div class="tech-item">
+      <div class="tech-icon">${v.icon}</div>
+      <div class="tech-body">
+        <div class="tech-name">${k}</div>
+        <div class="tech-count">${v.n} 条 · ${(v.n/DATA.length*100).toFixed(1)}%</div>
+      </div>
+      <div class="tech-bar"><i style="width:${v.n/gMax*100}%"></i></div>
+    </div>
+  `).join('') || '<div class="empty">暂无技术栈数据</div>';
+}
+
+// === 4d. INDUSTRY SCENES ===
+const SCENE_DICT = [
+  { k: 'B端/企业', pat: /\b(ToB|to.?B|B端|企业级|企业服务|SaaS)\b/i, color: '#5e5ce6' },
+  { k: 'C端/消费', pat: /\b(ToC|to.?C|C端|消费者|用户侧)\b/i, color: '#30d158' },
+  { k: '出海/跨境', pat: /出海|跨境|海外市场|global|overseas/i, color: '#ff9f0a' },
+  { k: '金融', pat: /金融|银行|证券|基金|保险|风控|信贷/i, color: '#bf5af2' },
+  { k: '教育', pat: /教育|学习|课程|培训|k12/i, color: '#64d2ff' },
+  { k: '医疗/健康', pat: /医疗|医药|健康|医院|诊断/i, color: '#ff375f' },
+  { k: '电商/零售', pat: /电商|零售|新零售|淘宝|京东|拼多多|天猫|Shopee|亚马逊/i, color: '#ffd60a' },
+  { k: '内容/短视频', pat: /视频|短视频|直播|抖音|快手|B站|小红书/i, color: '#ac8e68' },
+  { k: '游戏', pat: /游戏|网游|手游|GameAI/i, color: '#ff6482' },
+  { k: '出行/物流', pat: /出行|物流|打车|货运|地图|导航/i, color: '#34c759' },
+  { k: '办公/效率', pat: /办公|协同|Copilot|飞书|钉钉|企业微信/i, color: '#2997ff' },
+];
+function renderScenes() {
+  const map = {};
+  SCENE_DICT.forEach(s => map[s.k] = { n: 0, color: s.color });
+  DATA.forEach(j => {
+    const text = (j.title || '') + ' ' + (j.company || '') + ' ' + (j.desc || '') + ' ' + (j.cats || []).join(' ');
+    SCENE_DICT.forEach(s => { if (s.pat.test(text)) map[s.k].n++; });
+  });
+  const rows = Object.entries(map).filter(([,v]) => v.n > 0).sort((a,b) => b[1].n - a[1].n);
+  const el = document.getElementById('sceneRow');
+  if (!el) return;
+  el.innerHTML = rows.map(([k, v]) => `
+    <div class="scene-chip" style="border-left:3px solid ${v.color}">
+      <span class="sc-name">${k}</span>
+      <span class="sc-count">${v.n}</span>
+      <span class="sc-pct">${(v.n/DATA.length*100).toFixed(1)}%</span>
+    </div>
+  `).join('') || '<div class="empty">暂无场景数据</div>';
+}
+
+// === 5. DEEP ANALYSIS ===
+function renderDeep() {
+  renderHeatmap();
+  renderTechStack();
+  renderScenes();
+  renderLifecycle();
+  renderJdLength();
+  renderDaily();
+  renderDist('exp', 'expDist');
+  renderDist('edu', 'eduDist');
+  renderKwCloud();
+}
+
+function renderLifecycle() {
+  // Active = job seen in last 3 days; expired = not seen in >30 days from _crawled_at OR _date
+  const now = new Date();
+  const parse = d => {
+    if (!d) return null;
+    const m = String(d).match(/(\d{4})-(\d{2})-(\d{2})/);
+    return m ? new Date(+m[1], +m[2]-1, +m[3]) : null;
+  };
+  const durations = [];
+  let active = 0, expired = 0;
+  DATA.forEach(j => {
+    const first = parse(j._date);
+    const last = parse(j._crawled_at) || first;
+    if (!first) return;
+    const days = Math.max(1, Math.round((last - first) / 86400000) + 1);
+    durations.push(days);
+    const daysSinceLast = Math.round((now - (last || first)) / 86400000);
+    if (daysSinceLast > 30) expired++;
+    else if (daysSinceLast <= 3) active++;
+  });
+  const avg = durations.length ? (durations.reduce((a,b) => a+b, 0) / durations.length) : 0;
+  const minD = durations.length ? Math.min(...durations) : 0;
+  const maxD = durations.length ? Math.max(...durations) : 0;
+  const el = document.getElementById('lifecycleCards');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="lc-card"><div class="lc-val">${avg.toFixed(1)}</div><div class="lc-label">平均存活(天)</div></div>
+    <div class="lc-card"><div class="lc-val">${minD}</div><div class="lc-label">最短存活(天)</div></div>
+    <div class="lc-card"><div class="lc-val">${maxD}</div><div class="lc-label">最长存活(天)</div></div>
+    <div class="lc-card expired"><div class="lc-val">${expired}</div><div class="lc-label">已过期(>30天)</div></div>
+  `;
+}
+
+function renderJdLength() {
+  const buckets = [
+    { l: '<500', range: [0, 500] },
+    { l: '500-1000', range: [500, 1000] },
+    { l: '1000-2000', range: [1000, 2000] },
+    { l: '2000-3000', range: [2000, 3000] },
+    { l: '3000+', range: [3000, Infinity] },
+  ];
+  const counts = buckets.map(b => DATA.filter(j => {
+    const len = (j.desc || '').length;
+    return len >= b.range[0] && len < b.range[1];
+  }).length);
+  const max = Math.max(...counts, 1);
+  const total = counts.reduce((a,b) => a+b, 0) || 1;
+  const el = document.getElementById('jdBars');
+  if (!el) return;
+  el.innerHTML = buckets.map((b, i) => `
+    <div class="dist-row">
+      <div class="dist-label">${b.l}</div>
+      <div class="dist-track"><div class="dist-fill purple" style="width:${counts[i]/max*100}%">${counts[i]}</div></div>
+      <div class="dist-info">${(counts[i]/total*100).toFixed(1)}%</div>
+    </div>
+  `).join('');
+}
+
+function renderDaily() {
+  const now = new Date();
+  const dayMap = {};
+  DATA.forEach(j => {
+    const d = (j._date || '').match(/(\d{4})-(\d{2})-(\d{2})/);
+    if (!d) return;
+    const k = d[0];
+    dayMap[k] = (dayMap[k] || 0) + 1;
+  });
+  // Last 30 days
+  const cells = [];
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(now.getTime() - i * 86400000);
+    const k = d.toISOString().slice(0, 10);
+    cells.push({ k, n: dayMap[k] || 0 });
+  }
+  const max = Math.max(...cells.map(c => c.n), 1);
+  const el = document.getElementById('dailyCalendar');
+  if (!el) return;
+  el.innerHTML = cells.map(c => {
+    const level = c.n === 0 ? 0 : c.n < max/4 ? 1 : c.n < max/2 ? 2 : c.n < max*0.75 ? 3 : 4;
+    return `<div class="cal-cell" data-n="${level}" title="${c.k}: 新增 ${c.n} 条"></div>`;
+  }).join('');
+}
+
+function renderDist(field, containerId) {
+  const map = {};
+  DATA.forEach(j => {
+    const v = j[field] || '未填写';
+    map[v] = (map[v] || 0) + 1;
+  });
+  const rows = Object.entries(map).sort((a,b) => b[1]-a[1]).slice(0, 10);
+  const max = Math.max(...rows.map(r => r[1]), 1);
+  const total = rows.reduce((s,r) => s+r[1], 0) || 1;
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = rows.map(([name, n]) => `
+    <div class="ring-item">
+      <div class="ri-name">${name}</div>
+      <div class="ri-bar"><div class="ri-fill" style="width:${n/max*100}%"></div></div>
+      <div class="ri-cnt">${n} · ${(n/total*100).toFixed(0)}%</div>
+    </div>
+  `).join('') || '<div class="empty">暂无数据</div>';
+}
+
+function renderKwCloud() {
+  const map = {};
+  DATA.forEach(j => (j.kw || []).forEach(k => { map[k] = (map[k] || 0) + 1; }));
+  const rows = Object.entries(map).sort((a,b) => b[1]-a[1]).slice(0, 30);
+  const el = document.getElementById('kwCloud');
+  if (!el) return;
+  el.innerHTML = rows.map(([k, n]) => `<span class="kw-chip">${k}<span class="kw-n">${n}</span></span>`).join('') || '<div class="empty">暂无关键词</div>';
+}
+
+// Extend renderSalary to call new sub-renders
+const _origRenderSalary = renderSalary;
+renderSalary = function() {
+  renderSalaryTiers();
+  renderSalaryPercentiles();
+  renderCross('exp', 'expTable', false);
+  renderCross('edu', 'eduTable', false);
+  renderCityTierTable();
+  renderLevelSalary();
+  renderMonths();
+  _origRenderSalary();
+};
+
+// ============================================================
+// === OVERVIEW DASHBOARD (4 mini panels) ===
+// ============================================================
+const OV_COLORS = ['#2997ff','#5e5ce6','#ff9f0a','#ff375f','#30d158','#64d2ff','#ffd60a','#bf5af2','#ac8e68','#ff6482'];
+
+function renderOverview() {
+  renderHeadline();
+  const el = document.getElementById('ovDashboard');
+  if (!el) return;
+
+  // === 数据准备 ===
+  const catMap = {};
+  DATA.forEach(j => (j.cats||[]).forEach(c => { if(c!=='AI通用') catMap[c]=(catMap[c]||0)+1; }));
+  const cats = Object.entries(catMap).sort((a,b) => b[1]-a[1]).slice(0, 6);
+  const catTotal = cats.reduce((s,[,n]) => s+n, 0) || 1;
+
+  const cityMap = {};
+  DATA.forEach(j => { const c = norm(j.city); cityMap[c] = (cityMap[c]||0)+1; });
+  const topCities = Object.entries(cityMap).sort((a,b) => b[1]-a[1]).slice(0, 7);
+  const cityMax = topCities[0] ? topCities[0][1] : 1;
+
+  const coMap = {};
+  DATA.forEach(j => { const c = (j.company||'').trim(); if(c) coMap[c] = (coMap[c]||0)+1; });
+  const topCos = Object.entries(coMap).sort((a,b) => b[1]-a[1]).slice(0, 7);
+  const coMax = topCos[0] ? topCos[0][1] : 1;
+
+  const tiers = ['50K+','30-50K','15-30K','8-15K','<8K'];
+  const tierCnt = tiers.map(t => DATA.filter(j => j.tier === t).length);
+  const tierMax = Math.max(...tierCnt, 1);
+
+  const avgs = DATA.map(j => +j.avg || 0).filter(v => v > 0);
+  const meanSal = avgs.length ? (avgs.reduce((a,b) => a+b, 0) / avgs.length) : 0;
+  const topCatLabel = cats[0] ? cats[0][0].replace(/^AI[+＋]/, '').replace(/\/.*$/, '') : '—';
+  const topCityLabel = topCities[0] ? topCities[0][0] : '—';
+
+  // 7 日新增（根据 _date 或 _crawled_at）
+  const recent = {};
+  const todayLocal = new Date();
+  const fmtDate = d => d.toISOString().slice(0,10);
+  const todayStr = fmtDate(todayLocal);
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(todayLocal); d.setDate(d.getDate() - i);
+    recent[fmtDate(d)] = 0;
+  }
+  DATA.forEach(j => {
+    const raw = (j._date || j._crawled_at || '').slice(0, 10);
+    if (raw in recent) recent[raw]++;
+  });
+  const trendEntries = Object.entries(recent);
+  const trendMax = Math.max(1, ...trendEntries.map(e => e[1]));
+  const trendTotal = trendEntries.reduce((s, [,n]) => s + n, 0);
+
+  // === Card 1: 方向分布（宽卡 span 2） ===
+  let donut = '', accum = 0;
+  const R = 48, CIRCUM = 2 * Math.PI * R;
+  cats.forEach(([c,n], i) => {
+    const len = (n / catTotal) * CIRCUM;
+    donut += `<circle cx="60" cy="60" r="${R}" fill="none" stroke="${OV_COLORS[i]}" stroke-width="13" stroke-dasharray="${len} ${CIRCUM-len}" stroke-dashoffset="${-accum}" stroke-linecap="butt"/>`;
+    accum += len;
+  });
+  const card1 = `<div class="ov-card ov-card-wide" data-go="map">
+    <div class="ov-head"><span class="ov-icon">🎯</span><span class="ov-title">方向分布</span><span class="ov-sub">TOP ${cats.length}</span></div>
+    <div style="display:flex;gap:20px;align-items:center;flex:1;padding-top:6px">
+      <div class="ov-donut" style="flex-shrink:0;max-width:140px;margin:0">
+        <svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="${R}" fill="none" stroke="rgba(255,255,255,.05)" stroke-width="13"/>${donut}</svg>
+        <div class="donut-center"><div class="dc-n">${cats.length}</div><div class="dc-l">方向</div></div>
+      </div>
+      <div class="ov-donut-legend" style="flex:1;gap:4px">${cats.map(([c,n], i) =>
+        `<div class="lg-row"><i style="background:${OV_COLORS[i]}"></i><span>${c.replace(/^AI[+＋]/,'')}</span><span class="lg-v">${n} · ${(n/catTotal*100).toFixed(0)}%</span></div>`
+      ).join('')}</div>
+    </div>
+  </div>`;
+
+  // === Card 2: 核心数据 2×2 ===
+  const card2 = `<div class="ov-card" data-go="salary">
+    <div class="ov-head"><span class="ov-icon">✨</span><span class="ov-title">核心数据</span></div>
+    <div class="ov-kpi-matrix">
+      <div class="ov-kpi-cell"><div class="n">${DATA.length}</div><div class="l">岗位数</div></div>
+      <div class="ov-kpi-cell"><div class="n">${meanSal.toFixed(1)}K</div><div class="l">平均月薪</div></div>
+      <div class="ov-kpi-cell"><div class="s" title="${escHtml(topCatLabel)}">${escHtml(topCatLabel)}</div><div class="l">最热方向</div></div>
+      <div class="ov-kpi-cell"><div class="s" title="${escHtml(topCityLabel)}">${escHtml(topCityLabel)}</div><div class="l">最热城市</div></div>
+    </div>
+  </div>`;
+
+  // === Card 3: 薪资分布 ===
+  const card3 = `<div class="ov-card" data-go="salary">
+    <div class="ov-head"><span class="ov-icon">💰</span><span class="ov-title">薪资分布</span><span class="ov-sub">K/月</span></div>
+    <div class="ov-body" style="flex:1;justify-content:center">${tiers.map((t,i) => `
+      <div class="ov-row"><span class="ov-name">${t}</span><span class="ov-bar"><i style="width:${tierCnt[i]/tierMax*100}%;background:linear-gradient(90deg,${i===0?'#f59e0b':'#0071e3'},${i===0?'#fbbf24':'#2997ff'})"></i></span><span class="ov-v">${tierCnt[i]}</span></div>
+    `).join('')}</div>
+  </div>`;
+
+  // === Card 4: 城市 TOP ===
+  const card4 = `<div class="ov-card" data-go="map">
+    <div class="ov-head"><span class="ov-icon">🏙</span><span class="ov-title">城市 TOP ${topCities.length}</span></div>
+    <div class="ov-body" style="flex:1">${topCities.map(([c,n]) => `
+      <div class="ov-row"><span class="ov-name">${c}</span><span class="ov-bar"><i style="width:${n/cityMax*100}%"></i></span><span class="ov-v">${n}</span></div>
+    `).join('')}</div>
+  </div>`;
+
+  // === Card 5: 热招公司 TOP ===
+  const card5 = `<div class="ov-card" data-go="jobs">
+    <div class="ov-head"><span class="ov-icon">🏢</span><span class="ov-title">热招公司 TOP ${topCos.length}</span></div>
+    <div class="ov-body" style="flex:1">${topCos.map(([c,n]) => `
+      <div class="ov-row"><span class="ov-name" title="${escHtml(c)}">${escHtml(c.length>14?c.slice(0,13)+'…':c)}</span><span class="ov-bar"><i style="width:${n/coMax*100}%;background:linear-gradient(90deg,#30d158,#5ce48d)"></i></span><span class="ov-v">${n}</span></div>
+    `).join('')}</div>
+  </div>`;
+
+  // === Card 6: 7 日新增趋势（整行·px 高度） ===
+  const hasTrend = trendTotal > 0;
+  const MAX_BAR_PX = 120;
+  const card6 = `<div class="ov-card ov-card-full" data-go="jobs">
+    <div class="ov-head"><span class="ov-icon">📈</span><span class="ov-title">最近 7 天新增</span><span class="ov-sub">基于采集日期·合计 ${trendTotal} 条</span></div>
+    ${hasTrend ? `<div class="ov-trend-wrap">${trendEntries.map(([d,n]) => {
+      const isToday = d === todayStr;
+      const h = n === 0 ? 4 : Math.max(10, Math.round(n / trendMax * MAX_BAR_PX));
+      return `<div class="ov-trend-bar${isToday ? ' is-today' : ''}" style="height:${h}px" title="${d}：${n} 条">
+        ${n > 0 ? `<span class="tb-v">${n}</span>` : ''}
+        <span class="tb-d">${d.slice(5).replace('-','/')}</span>
+      </div>`;
+    }).join('')}</div>` : `<div class="ov-trend-empty">暂无近 7 日采集日期数据，所有岗位均为历史存量</div>`}
+  </div>`;
+
+  el.innerHTML = card1 + card2 + card3 + card4 + card5 + card6;
+  el.querySelectorAll('.ov-card').forEach(card => {
+    card.onclick = () => { SFX.click(); switchTab(card.dataset.go); };
+  });
+}
+
+function renderHeadline() {
+  const el = document.getElementById('headlineBox');
+  if (!el) return;
+  const avgs = DATA.map(j => +j.avg || 0).filter(v => v > 0);
+  const mean = avgs.length ? (avgs.reduce((a,b) => a+b, 0) / avgs.length) : 0;
+  // Top direction × city by salary
+  let bestPair = null, bestPairAvg = 0;
+  const catMap = {};
+  DATA.forEach(j => (j.cats||[]).forEach(c => { if(c!=='AI通用') catMap[c]=(catMap[c]||0)+1; }));
+  const topCats = Object.entries(catMap).sort((a,b) => b[1]-a[1]).slice(0, 5).map(e => e[0]);
+  const cities = new Set(DATA.map(j => norm(j.city)));
+  topCats.forEach(cat => {
+    cities.forEach(city => {
+      const arr = DATA.filter(j => j.cats.includes(cat) && norm(j.city) === city && +j.avg > 0);
+      if (arr.length < 5) return;
+      const a = arr.reduce((s,j) => s+j.avg, 0) / arr.length;
+      if (a > bestPairAvg) { bestPairAvg = a; bestPair = { cat, city, n: arr.length, avg: a }; }
+    });
+  });
+  const lines = [];
+  lines.push(`共 <b>${DATA.length}</b> 条岗位，平均月薪 <b>${mean.toFixed(1)}K</b>`);
+  if (bestPair) lines.push(`<em>${bestPair.city}</em> · ${bestPair.cat} 薪资最高（<b>${bestPair.avg.toFixed(1)}K</b>，${bestPair.n}条）`);
+  if (DATA_META.updated) lines.push(`<span style="color:rgba(255,255,255,.4);font-size:12px">更新于 ${DATA_META.updated}</span>`);
+  el.innerHTML = `<span class="hl-icon">✨</span><span class="hl-text">${lines.join(' · ')}</span>`;
+}
+
+// ============================================================
+// === GLOBAL FILTER (sticky bar) ===
+// ============================================================
+const GFILTER = { dir: '', city: '', tier: '', exp: '' };
+
+function setupGlobalFilter() {
+  const dirs = Array.from(new Set(DATA.flatMap(j => j.cats || []).filter(c => c !== 'AI通用'))).sort();
+  const cities = Array.from(new Set(DATA.map(j => norm(j.city)))).sort();
+  const tiers = ['50K+','30-50K','15-30K','8-15K','<8K'];
+  const exps = Array.from(new Set(DATA.map(j => j.exp).filter(e => e && !e.includes('/周')))).sort();
+
+  const fill = (id, opts, label, key) => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    sel.innerHTML = `<option value="">全部${label}</option>` + opts.map(o => `<option value="${escHtml(o)}">${o}</option>`).join('');
+    sel.onchange = () => { GFILTER[key] = sel.value; applyGlobalFilter(); };
+    // 恢复刷新前用户已选的值，若选项已不存在则清除
+    if (GFILTER[key]) {
+      if (opts.includes(GFILTER[key])) sel.value = GFILTER[key];
+      else GFILTER[key] = '';
+    }
+  };
+  fill('gfDir', dirs, '方向', 'dir');
+  fill('gfCity', cities, '城市', 'city');
+  fill('gfTier', tiers, '薪资', 'tier');
+  fill('gfExp', exps, '经验', 'exp');
+
+  const clearBtn = document.getElementById('gfClear');
+  if (clearBtn) clearBtn.onclick = () => {
+    GFILTER.dir = GFILTER.city = GFILTER.tier = GFILTER.exp = '';
+    ['gfDir','gfCity','gfTier','gfExp'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    applyGlobalFilter();
+  };
+  applyGlobalFilter();
+}
+
+function getFilteredData() {
+  return DATA.filter(j => {
+    if (GFILTER.dir && !(j.cats || []).includes(GFILTER.dir)) return false;
+    if (GFILTER.city && norm(j.city) !== GFILTER.city) return false;
+    if (GFILTER.tier && j.tier !== GFILTER.tier) return false;
+    if (GFILTER.exp && j.exp !== GFILTER.exp) return false;
+    return true;
+  });
+}
+
+function applyGlobalFilter() {
+  const filtered = getFilteredData();
+  const count = filtered.length;
+  const total = DATA.length;
+  const cntEl = document.getElementById('gfCount');
+  if (cntEl) cntEl.textContent = (count === total) ? `${total} 条岗位` : `筛出 ${count} / ${total} 条`;
+  const gf = document.getElementById('gfilter');
+  const hasFilter = !!(GFILTER.dir || GFILTER.city || GFILTER.tier || GFILTER.exp);
+  if (gf) gf.classList.toggle('gf-active', hasFilter);
+
+  // 同步到 explore 面板的 F 筛选器
+  if (typeof F === 'object' && F) {
+    F.dir = GFILTER.dir || '全部';
+    F.city = GFILTER.city || '全部';
+    F.tier = GFILTER.tier || '全部';
+    F.exp = GFILTER.exp || '全部';
+    try { renderExplore(); } catch(e) {}
+  }
+}
+
+function initAll(isRefresh){
+  SYSTEM_PROMPT = buildSystemPrompt();
+  renderHero();
+  renderOverview();
+  renderDir();
+  renderSalary();
+  renderCities();
+  renderCompanies();
+  renderDeep();
+  renderExplore();
+  setupGlobalFilter();
+  if (!isRefresh) setupHeroGraph();
+}
+boot();
+
+// ============================================================
+// === AUTO / MANUAL REFRESH ===
+// ============================================================
+let LAST_LOAD_TS = Date.now();
+let LAST_JOB_COUNT = 0;
+const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+const MIN_VISIBILITY_REFRESH_GAP_MS = 60 * 1000;
+
+function showToast(msg, kind){
+  const el = document.getElementById('toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.remove('ok', 'err');
+  if (kind) el.classList.add(kind);
+  el.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+async function reloadData(manual){
+  const btn = document.getElementById('navRefresh');
+  if (btn) btn.classList.add('spin');
+  try {
+    const url = IS_ELECTRON
+      ? '../jobs_data.json?t=' + Date.now()
+      : 'https://raw.githubusercontent.com/Liyanlong123456dsf/ai-pm-job-dashboard/main/jobs_data.json?t=' + Date.now();
+    const resp = await fetch(url, { cache: 'no-store' });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const json = await resp.json();
+    const oldCount = LAST_JOB_COUNT || DATA.length;
+    DATA = json.jobs || json;
+    DATA_META = json.meta || {};
+    initAll(true);
+    const diff = DATA.length - oldCount;
+    LAST_JOB_COUNT = DATA.length;
+    LAST_LOAD_TS = Date.now();
+    if (manual) {
+      showToast(diff > 0 ? '已更新 +' + diff + '（共 ' + DATA.length + '）' : '已是最新（共 ' + DATA.length + '）', 'ok');
+    } else if (diff > 0) {
+      showToast('发现 ' + diff + ' 条新岗位（共 ' + DATA.length + '）', 'ok');
+      if (btn) { btn.classList.add('has-new'); setTimeout(() => btn.classList.remove('has-new'), 8000); }
+    }
+  } catch(e) {
+    console.warn('reload error:', e);
+    if (manual) showToast('刷新失败：' + (e.message || e), 'err');
+  } finally {
+    setTimeout(() => { if (btn) btn.classList.remove('spin'); }, 600);
+  }
+}
+
+// 初次加载完成后初始化计数
+window.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => { LAST_JOB_COUNT = DATA.length || 0; }, 500);
+});
+
+// 5 分钟轮询（仅在页面可见时）
+setInterval(() => {
+  if (document.visibilityState === 'visible') reloadData(false);
+}, REFRESH_INTERVAL_MS);
+
+// 用户切回 tab 时，若距离上次加载超过 60s，重拉
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && Date.now() - LAST_LOAD_TS > MIN_VISIBILITY_REFRESH_GAP_MS) {
+    reloadData(false);
+  }
+});
+
+// === HERO FORCE GRAPH BACKGROUND (academy-style) ===
+function setupHeroGraph(){
+  const cv=document.getElementById('heroGraph');if(!cv)return;
+  const ctx=cv.getContext('2d');
+  const dpr=window.devicePixelRatio||1;
+  let W=0,H=0,built=false;
+
+  function measure(){
+    W=window.innerWidth;H=window.innerHeight;
+    cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);
+    cv.style.width=W+'px';cv.style.height=H+'px';
+  }
+  window.addEventListener('resize',()=>{measure();build()});
+
+  // Desaturate color toward gray
+  function desat(hex,amt){
+    const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+    const gray=(r+g+b)/3;
+    return '#'+[r,g,b].map(v=>Math.max(0,Math.min(255,Math.round(v+(gray-v)*amt))).toString(16).padStart(2,'0')).join('');
+  }
+
+  // Data
+  const DIRS=[
+    {l:'大模型',c:'#3b82f6',icon:'🧠'},{l:'AI Agent',c:'#8b5cf6',icon:'🤖'},{l:'NLP',c:'#06b6d4',icon:'💬'},
+    {l:'数据分析',c:'#10b981',icon:'📊'},{l:'推荐系统',c:'#f59e0b',icon:'🎯'},{l:'计算机视觉',c:'#ef4444',icon:'👁'},
+    {l:'AIGC',c:'#ec4899',icon:'🎨'},{l:'AI产品',c:'#6366f1',icon:'📱'},{l:'搜索',c:'#14b8a6',icon:'🔍'},
+    {l:'行业应用',c:'#f97316',icon:'🏭'},{l:'企业服务',c:'#84cc16',icon:'🏢'}
+  ];
+  const CITIES=['深圳','上海','杭州','北京','广州','成都','厦门','南京','西安','郑州'];
+  const SKILLS=['Python','Prompt','RAG','LLM','数据','Fine-tune','Langchain','向量DB','评估'];
+
+  let nodes=[],edges=[],simT=0;
+  const getN=id=>nodes.find(n=>n.id===id);
+
+  function build(){
+    nodes=[];edges=[];
+    if(W<100||H<100)return;
+    const cx=W/2,cy=H/2;
+    const rx1=W*.42,ry1=H*.38; // dir ring (main)
+    const rx2=W*.58,ry2=H*.52; // city ring (outer, fills screen)
+    const rx3=W*.24,ry3=H*.22; // skill ring (inner)
+
+    // Direction nodes (main ring)
+    DIRS.forEach((d,i)=>{
+      const a=(i/DIRS.length)*Math.PI*2-Math.PI/2;
+      nodes.push({id:'d-'+i,x:cx+Math.cos(a)*rx1+(Math.random()-.5)*20,y:cy+Math.sin(a)*ry1+(Math.random()-.5)*20,vx:0,vy:0,r:16,l:d.l,c:desat(d.c,.3),icon:d.icon,t:'dir'});
+      // flow edges (ring)
+      if(i>0)edges.push({a:'d-'+(i-1),b:'d-'+i,t:'flow'});
+    });
+    edges.push({a:'d-'+(DIRS.length-1),b:'d-0',t:'flow'});
+
+    // City nodes (outer ring)
+    CITIES.forEach((c,i)=>{
+      const a=(i/CITIES.length)*Math.PI*2+.2;
+      nodes.push({id:'c-'+i,x:cx+Math.cos(a)*rx2+(Math.random()-.5)*40,y:cy+Math.sin(a)*ry2+(Math.random()-.5)*40,vx:0,vy:0,r:5,l:c,c:desat('#5e6ad2',.4),t:'city'});
+      edges.push({a:'d-'+(i%DIRS.length),b:'c-'+i,t:'child'});
+      edges.push({a:'d-'+((i+4)%DIRS.length),b:'c-'+i,t:'child'});
+    });
+
+    // Skill nodes (inner ring)
+    SKILLS.forEach((s,i)=>{
+      const a=(i/SKILLS.length)*Math.PI*2+.5;
+      nodes.push({id:'s-'+i,x:cx+Math.cos(a)*rx3+(Math.random()-.5)*30,y:cy+Math.sin(a)*ry3+(Math.random()-.5)*30,vx:0,vy:0,r:4.5,l:s,c:desat('#7170ff',.5),t:'skill'});
+      edges.push({a:'d-'+(i%DIRS.length),b:'s-'+i,t:'child'});
+    });
+
+    // Cross-links (curved)
+    const crossC=['#22d3ee','#facc15','#f97316','#34d399','#a78bfa','#fb7185'];
+    for(let i=0;i<DIRS.length;i++){
+      edges.push({a:'d-'+i,b:'d-'+((i+3)%DIRS.length),t:'cross',c:desat(crossC[i%crossC.length],.4)});
+      edges.push({a:'d-'+i,b:'d-'+((i+5)%DIRS.length),t:'cross',c:desat(crossC[(i+2)%crossC.length],.4)});
+    }
+    for(let i=0;i<4;i++){
+      edges.push({a:'s-'+i,b:'s-'+((i+3)%SKILLS.length),t:'cross',c:desat('#7170ff',.5)});
+    }
+    built=true;
+  }
+
+  // Physics
+  function sim(){
+    simT++;
+    const damp=.93,dt=.14;
+    for(let iter=0;iter<2;iter++){
+      // Repulsion
+      for(let i=0;i<nodes.length;i++){
+        for(let j=i+1;j<nodes.length;j++){
+          const a=nodes[i],b=nodes[j];
+          let dx=b.x-a.x,dy=b.y-a.y,dist=Math.sqrt(dx*dx+dy*dy)||1;
+          const isDD=a.t==='dir'&&b.t==='dir';
+          const repF=isDD?4000:(a.t==='dir'||b.t==='dir'?700:120);
+          const f=Math.min(repF/(dist*dist),1.2);
+          a.vx-=dx/dist*f;a.vy-=dy/dist*f;
+          b.vx+=dx/dist*f;b.vy+=dy/dist*f;
+        }
+      }
+      // Spring edges
+      edges.forEach(e=>{
+        const a=getN(e.a),b=getN(e.b);if(!a||!b)return;
+        if(e.t==='cross'){const dx=b.x-a.x,dy=b.y-a.y,d=Math.sqrt(dx*dx+dy*dy)||1;if(d>280){const f=Math.min((d-280)*.00012,.25);a.vx+=dx/d*f;a.vy+=dy/d*f;b.vx-=dx/d*f;b.vy-=dy/d*f}return}
+        const dx=b.x-a.x,dy=b.y-a.y,d=Math.sqrt(dx*dx+dy*dy)||1;
+        const td=e.t==='flow'?200:80;
+        const k=e.t==='flow'?.003:.01;
+        const f=Math.min(Math.abs((d-td)*k),.6)*Math.sign(d-td);
+        a.vx+=dx/d*f;a.vy+=dy/d*f;
+        b.vx-=dx/d*f;b.vy-=dy/d*f;
+      });
+      // Center gravity (elliptical)
+      const gcx=W/2,gcy=H/2;
+      nodes.forEach(n=>{
+        const gx=n.t==='dir'?.0003:.0006;
+        const gy=n.t==='dir'?.0006:.001;
+        n.vx+=(gcx-n.x)*gx;n.vy+=(gcy-n.y)*gy;
+      });
+      // Organic drift
+      nodes.forEach(n=>{
+        const j=n.t==='dir'?.04:.07;
+        n.vx+=(Math.random()-.5)*j;n.vy+=(Math.random()-.5)*j;
+        const ph=n.id.length*1.7+n.r*2.3;
+        n.vx+=Math.sin(simT*.006+ph)*.012;
+        n.vy+=Math.cos(simT*.005+ph*1.3)*.01;
+      });
+      // Velocity + boundary
+      const pad=15;
+      nodes.forEach(n=>{
+        n.vx*=damp;n.vy*=damp;
+        const sp=Math.sqrt(n.vx*n.vx+n.vy*n.vy);
+        if(sp>5){n.vx=n.vx/sp*5;n.vy=n.vy/sp*5}
+        n.x+=n.vx*dt;n.y+=n.vy*dt;
+        if(n.x<pad){n.x=pad;n.vx*=-.3}
+        if(n.x>W-pad){n.x=W-pad;n.vx*=-.3}
+        if(n.y<pad){n.y=pad;n.vy*=-.3}
+        if(n.y>H-pad){n.y=H-pad;n.vy*=-.3}
+      });
+    }
+  }
+
+  function crossCtrl(a,b){
+    const mx=(a.x+b.x)/2,my=(a.y+b.y)/2;
+    const dx=b.x-a.x,dy=b.y-a.y,d=Math.sqrt(dx*dx+dy*dy)||1;
+    const off=Math.min(d*.2,50);
+    return{x:mx+(-dy/d)*off,y:my+(dx/d)*off};
+  }
+
+  function draw(){
+    if(!built){measure();if(W>100&&H>100){build()}else{requestAnimationFrame(draw);return}}
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.clearRect(0,0,W,H);
+    if(!nodes.length){requestAnimationFrame(draw);return}
+    const now=performance.now()*.001;
+
+    // Child + flow edges
+    edges.forEach(e=>{
+      if(e.t==='cross')return;
+      const a=getN(e.a),b=getN(e.b);if(!a||!b)return;
+      ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);
+      if(e.t==='flow'){
+        ctx.strokeStyle='rgba(255,255,255,.14)';ctx.lineWidth=1;ctx.setLineDash([4,3]);
+      }else{
+        ctx.strokeStyle='rgba(255,255,255,.04)';ctx.lineWidth=.5;ctx.setLineDash([]);
+      }
+      ctx.stroke();ctx.setLineDash([]);
+    });
+
+    // Flow arrows
+    edges.filter(e=>e.t==='flow').forEach(e=>{
+      const a=getN(e.a),b=getN(e.b);if(!a||!b)return;
+      const dx=b.x-a.x,dy=b.y-a.y,d=Math.sqrt(dx*dx+dy*dy)||1;
+      const mx=a.x+dx*.55,my=a.y+dy*.55;
+      const ang=Math.atan2(dy,dx);const s=3.5;
+      ctx.beginPath();
+      ctx.moveTo(mx+Math.cos(ang)*s,my+Math.sin(ang)*s);
+      ctx.lineTo(mx+Math.cos(ang+2.5)*s,my+Math.sin(ang+2.5)*s);
+      ctx.lineTo(mx+Math.cos(ang-2.5)*s,my+Math.sin(ang-2.5)*s);
+      ctx.closePath();ctx.fillStyle='rgba(255,255,255,.08)';ctx.fill();
+    });
+
+    // Cross-edges (curved + particles)
+    edges.filter(e=>e.t==='cross').forEach(e=>{
+      const a=getN(e.a),b=getN(e.b);if(!a||!b)return;
+      const cp=crossCtrl(a,b);
+      ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.quadraticCurveTo(cp.x,cp.y,b.x,b.y);
+      ctx.strokeStyle=(e.c||'#5e6ad2')+'18';ctx.lineWidth=.6;
+      ctx.setLineDash([3,4]);ctx.stroke();ctx.setLineDash([]);
+      // Animated particle
+      const t=((now*.2+edges.indexOf(e)*.17)%1);
+      const px=(1-t)*(1-t)*a.x+2*(1-t)*t*cp.x+t*t*b.x;
+      const py=(1-t)*(1-t)*a.y+2*(1-t)*t*cp.y+t*t*b.y;
+      ctx.beginPath();ctx.arc(px,py,1.2,0,Math.PI*2);
+      ctx.fillStyle=(e.c||'#5e6ad2')+'40';ctx.fill();
+    });
+
+    // Child nodes (city + skill)
+    nodes.filter(n=>n.t!=='dir').forEach(n=>{
+      ctx.beginPath();ctx.arc(n.x,n.y,n.r,0,Math.PI*2);
+      ctx.fillStyle=n.c+'40';ctx.fill();
+      // Label
+      ctx.font='400 7px Inter,-apple-system,sans-serif';
+      ctx.textAlign='center';ctx.textBaseline='top';
+      ctx.fillStyle='rgba(255,255,255,.15)';
+      ctx.fillText(n.l,n.x,n.y+n.r+2);
+    });
+
+    // Direction nodes (main, academy-style)
+    nodes.filter(n=>n.t==='dir').forEach(n=>{
+      // Glow halo
+      ctx.beginPath();ctx.arc(n.x,n.y,n.r+12,0,Math.PI*2);
+      const gg=ctx.createRadialGradient(n.x,n.y,n.r,n.x,n.y,n.r+12);
+      gg.addColorStop(0,n.c+'18');gg.addColorStop(1,n.c+'00');
+      ctx.fillStyle=gg;ctx.fill();
+      // Radial gradient fill
+      ctx.beginPath();ctx.arc(n.x,n.y,n.r,0,Math.PI*2);
+      const gr=ctx.createRadialGradient(n.x-n.r*.3,n.y-n.r*.3,0,n.x,n.y,n.r);
+      gr.addColorStop(0,n.c+'cc');gr.addColorStop(1,n.c+'70');
+      ctx.fillStyle=gr;ctx.fill();
+      // Icon
+      ctx.font='11px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillStyle='rgba(255,255,255,.75)';ctx.fillText(n.icon,n.x,n.y);
+      // Title below
+      ctx.font='600 8px Inter,-apple-system,sans-serif';ctx.textBaseline='top';
+      ctx.fillStyle='rgba(255,255,255,.3)';
+      ctx.fillText(n.l,n.x,n.y+n.r+4);
+    });
+
+    sim();
+    requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+// === RUN STATUS ===
+async function loadRunStatus() {
+  const el = document.getElementById('statusContent');
+  try {
+    const resp = await fetch(STATUS_URL);
+    if (!resp.ok) throw new Error('not found');
+    const s = await resp.json();
+    const LABELS = {success:'✅ 成功', partial:'⚠️ 部分', failed:'❌ 失败', running:'🔄 运行中'};
+    const cls = s.overall || 'running';
+    const mins = s.duration_sec ? Math.floor(s.duration_sec / 60) : 0;
+    const secs = s.duration_sec ? s.duration_sec % 60 : 0;
+    const dur = s.duration_sec ? (mins > 0 ? mins + '\'' + secs + '"' : secs + '"') : '-';
+
+    // Compact summary bar
+    let html = '<div class="rs-bar">';
+    html += `<span class="rs-badge ${cls}">${LABELS[cls]||cls}</span>`;
+    html += `<span class="rs-chip"><span class="dot"></span>${s.date || '-'} ${s.start_time || ''}</span>`;
+    html += `<span class="rs-chip"><span class="dot"></span>耗时 <b>${dur}</b></span>`;
+    html += `<span class="rs-chip"><span class="dot"></span>新增 <b>${s.added||0}</b></span>`;
+    html += `<span class="rs-chip"><span class="dot"></span>总计 <b>${s.total||0}</b></span>`;
+    html += `<span class="rs-chip"><span class="dot"></span>${s.git_pushed?'✅':'❌'} Git</span>`;
+    html += `<span class="rs-chip"><span class="dot"></span>${s.deployed?'✅':'❌'} Deploy</span>`;
+    html += '</div>';
+
+    // Collapsible detail
+    const hasDetail = (s.steps && s.steps.length) || (s.errors && s.errors.length);
+    if (hasDetail) {
+      html += '<button class="rs-toggle" onclick="this.nextElementSibling.classList.toggle(\'open\');this.textContent=this.nextElementSibling.classList.contains(\'open\')?\'▲ 收起详情\':\'▼ 展开执行时间线\'">▼ 展开执行时间线</button>';
+      html += '<div class="rs-detail">';
+      if (s.steps && s.steps.length) {
+        html += '<div class="rs-timeline">';
+        s.steps.forEach(st => {
+          html += `<div class="rs-step ${st.ok ? 'ok' : 'fail'}">
+            <div class="rs-step-head"><span class="rs-step-name">${st.name}</span><span class="rs-step-time">${st.time||''}</span></div>
+            ${st.detail ? '<div class="rs-step-detail">' + st.detail + '</div>' : ''}
+          </div>`;
+        });
+        html += '</div>';
+      }
+      if (s.errors && s.errors.length) {
+        html += '<div class="rs-errors"><h4>⚠️ 错误</h4><ul>';
+        s.errors.forEach(e => html += '<li>' + e + '</li>');
+        html += '</ul></div>';
+      }
+      html += '</div>';
+    }
+
+    html += `<div class="rs-meta">更新于 ${s.updated || '-'}</div>`;
+    el.innerHTML = html;
+    el.className = '';
+  } catch(e) {
+    el.innerHTML = '<div class="status-empty">暂无运行记录</div>';
+    el.className = '';
+  }
+}
+loadRunStatus();
+
+// === MODAL ===
+function openModal(idx){
+  SFX.modalOpen();
+  const j=DATA[idx];
+  const related=DATA.filter(d=>d!==j&&d.cats.some(c=>j.cats.includes(c))&&norm(d.city)===norm(j.city)).sort((a,b)=>b.avg-a.avg).slice(0,4);
+  document.getElementById('modal').innerHTML=`
+    <button class="m-close" onclick="closeModal()">✕</button>
+    <div class="m-h">${j.title}</div>
+    <div class="m-sal">${j.salary}${j.avg?` (≈${j.avg}K/月)`:''}</div>
+    <div class="m-info">${j.company}<span class="sep">·</span>${j.city}${j.exp?`<span class="sep">·</span>${j.exp}`:''}${j.edu?`<span class="sep">·</span>${j.edu}`:''}</div>
+    <div class="m-row">${j.cats.map(c=>`<span class="tag tag-c">${c}</span>`).join('')}${j.kw.slice(0,5).map(k=>`<span class="tag tag-k">${k}</span>`).join('')}</div>
+    ${j.desc?`<div class="m-desc">${j.desc}</div>`:''}
+    <a class="m-link" href="${j.url||('https://www.zhipin.com/web/geek/job?query='+encodeURIComponent(j.title))}" target="_blank" rel="noopener">🔗 ${j.url?'查看原始招聘页':'在 BOSS 直聘搜索该岗位'} →</a>
+    ${related.length?`<div class="m-related"><h3>同城同方向推荐 →</h3>${related.map(r=>`<div class="m-rcard" data-i="${DATA.indexOf(r)}"><div class="rc-t">${r.title}</div><div class="rc-s">${r.company} · ${r.salary}</div></div>`).join('')}</div>`:''}
+  `;
+  document.querySelectorAll('.m-rcard').forEach(c=>c.onclick=()=>openModal(+c.dataset.i));
+  const o=document.getElementById('overlay');
+  o.classList.add('show');
+}
+function closeModal(){SFX.modalClose();document.getElementById('overlay').classList.remove('show');}
+document.getElementById('overlay').addEventListener('click',e=>{if(e.target.id==='overlay')closeModal();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+
+// === CARD CLICK DELEGATION ===
+document.addEventListener('click',e=>{
+  const card=e.target.closest('.card[data-i]');
+  if(card){ SFX.click(); openModal(+card.dataset.i); }
+});
+
+// === TOOLTIP ===
+const tipEl=document.getElementById('tip');
+function showTip(e,text){
+  tipEl.textContent=text;
+  tipEl.style.left=e.clientX+12+'px';
+  tipEl.style.top=e.clientY-10+'px';
+  tipEl.classList.add('show');
+}
+function hideTip(){tipEl.classList.remove('show');}
+
+// === TAB NAVIGATION ===
+const TABS = ['hero','salary','map','jobs','insights'];
+const navLinks = document.querySelectorAll('nav a[data-tab]');
+function switchTab(id, smoothScroll=true) {
+  if (!TABS.includes(id)) id = 'hero';
+  // 用 data-tab 分组展示：同一 tab 的多个 section 都会显示
+  document.querySelectorAll('section.panel').forEach(s => {
+    s.classList.toggle('active', s.dataset.tab === id);
+  });
+  navLinks.forEach(a => a.classList.toggle('active', a.dataset.tab === id));
+  if (smoothScroll) window.scrollTo({ top: 0, behavior: 'smooth' });
+  if (location.hash.slice(1) !== id) history.replaceState(null, '', '#' + id);
+  // 全局筛选条：除总览外都显示
+  const gf = document.getElementById('gfilter');
+  if (gf) gf.classList.toggle('show', id !== 'hero');
+  // Lazy-trigger renders that depend on container dimensions
+  if (id === 'hero') { try { renderOverview(); } catch(e) {} }
+  if (id === 'salary') { try { renderSalary(); } catch(e) {} }
+  if (id === 'map') { try { renderHeatmap(); renderDir(); renderCities(); } catch(e) {} }
+  if (id === 'jobs') { try { renderCompanies(); renderExplore(); } catch(e) {} }
+  if (id === 'insights') { try { renderDeep(); loadRunStatus(); } catch(e) {} }
+}
+navLinks.forEach(a => a.addEventListener('click', e => {
+  e.preventDefault();
+  SFX.click();
+  switchTab(a.dataset.tab);
+}));
+// Honor URL hash on load
+window.addEventListener('load', () => {
+  const initial = (location.hash || '').slice(1);
+  if (initial && TABS.includes(initial)) switchTab(initial, false);
+});
+// React to browser back/forward
+window.addEventListener('hashchange', () => {
+  const id = (location.hash || '').slice(1);
+  if (TABS.includes(id)) switchTab(id, false);
+});
+</script>
+
+<!-- ========== AI CHAT PANEL ========== -->
+<style>
+/* FAB */
+.chat-fab{position:fixed;bottom:24px;right:24px;z-index:1500;width:56px;height:56px;border-radius:50%;background:var(--blue);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(0,113,227,.4);transition:all .3s var(--ease)}
+.chat-fab:hover{transform:scale(1.08);box-shadow:0 6px 28px rgba(0,113,227,.55)}
+.chat-fab svg{width:26px;height:26px;fill:#fff;transition:transform .3s}
+.chat-fab.open svg{transform:rotate(90deg)}
+
+/* Panel */
+.chat-panel{position:fixed;top:0;right:-440px;bottom:0;width:420px;z-index:1600;background:#1a1a1c;border-left:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;transition:right .35s var(--ease);box-shadow:-8px 0 40px rgba(0,0,0,.4)}
+.chat-panel.open{right:0}
+@media(max-width:520px){.chat-panel{width:100%;right:-100%}}
+
+/* Header */
+.chat-head{padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;backdrop-filter:blur(10px)}
+.chat-head h3{font-size:16px;font-weight:600;letter-spacing:-.3px;display:flex;align-items:center;gap:8px}
+.chat-head h3 .dot-live{width:8px;height:8px;border-radius:50%;background:#30d158;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.chat-head-btns{display:flex;gap:6px}
+.chat-head-btn{width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,.06);border:none;color:rgba(255,255,255,.5);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.chat-head-btn:hover{background:rgba(255,255,255,.12);color:#fff}
+
+/* Messages */
+.chat-body{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:12px;scroll-behavior:smooth}
+.chat-body::-webkit-scrollbar{width:4px}
+.chat-body::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px}
+
+/* Bubble */
+.msg{max-width:88%;animation:msgIn .25s var(--ease)}
+@keyframes msgIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.msg-user{align-self:flex-end}
+.msg-ai{align-self:flex-start}
+.msg-bubble{padding:10px 14px;border-radius:14px;font-size:14px;line-height:1.55;letter-spacing:-.1px}
+.msg-user .msg-bubble{background:var(--blue);color:#fff;border-bottom-right-radius:4px}
+.msg-ai .msg-bubble{background:#2a2a2d;color:rgba(255,255,255,.88);border-bottom-left-radius:4px}
+.msg-ai .msg-bubble p{margin:4px 0}
+.msg-ai .msg-bubble table{border-collapse:collapse;margin:8px 0;font-size:12px;width:100%}
+.msg-ai .msg-bubble th,.msg-ai .msg-bubble td{border:1px solid rgba(255,255,255,.1);padding:4px 8px;text-align:left}
+.msg-ai .msg-bubble th{background:rgba(255,255,255,.05);font-weight:600}
+.msg-ai .msg-bubble ul,.msg-ai .msg-bubble ol{padding-left:18px;margin:4px 0}
+.msg-ai .msg-bubble li{margin:2px 0}
+.msg-ai .msg-bubble strong{color:#fff}
+.msg-ai .msg-bubble code{background:rgba(255,255,255,.08);padding:1px 5px;border-radius:4px;font-size:12px}
+.msg-ai .msg-bubble pre{background:rgba(0,0,0,.3);padding:10px;border-radius:8px;overflow-x:auto;margin:6px 0}
+.msg-ai .msg-bubble pre code{background:none;padding:0}
+.msg-ai .msg-bubble h1,.msg-ai .msg-bubble h2,.msg-ai .msg-bubble h3{margin:8px 0 4px;font-size:14px;font-weight:700}
+
+/* Typing indicator */
+.typing{display:flex;gap:4px;padding:12px 14px}
+.typing span{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.3);animation:blink 1.4s infinite}
+.typing span:nth-child(2){animation-delay:.2s}
+.typing span:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,80%,100%{opacity:.3}40%{opacity:1}}
+
+/* API badge in header */
+.chat-api-badge{padding:3px 10px;border-radius:980px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid rgba(41,151,255,.3);background:rgba(41,151,255,.1);color:var(--bright-blue);transition:all .2s;white-space:nowrap}
+.chat-api-badge:hover{background:rgba(41,151,255,.2);border-color:rgba(41,151,255,.5)}
+
+/* API Tab */
+.api-tab{flex:1;padding:8px 0;border:1px solid rgba(255,255,255,.12);background:transparent;color:rgba(255,255,255,.5);font-size:13px;font-weight:500;cursor:pointer;transition:all .2s}
+.api-tab:first-child{border-radius:8px 0 0 8px}.api-tab:last-child{border-radius:0 8px 8px 0}
+.api-tab.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+
+/* Quick questions */
+.quick-q{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.qq-btn{background:rgba(41,151,255,.08);border:1px solid rgba(41,151,255,.15);color:var(--bright-blue);padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.4;text-align:left;cursor:pointer;transition:all .2s}
+.qq-btn:hover{background:rgba(41,151,255,.15);border-color:rgba(41,151,255,.3)}
+
+/* Input */
+.chat-input{padding:12px 16px 24px;border-top:1px solid rgba(255,255,255,.06);flex-shrink:0;display:flex;gap:8px;align-items:flex-end;background:#1a1a1c;position:relative;z-index:10}
+.chat-input textarea{flex:1;background:#2a2a2d;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px 14px;color:#fff;font-size:14px;line-height:1.4;resize:none;max-height:120px;outline:none;font-family:inherit;transition:border-color .2s}
+.chat-input textarea:focus{border-color:rgba(41,151,255,.4)}
+.chat-input textarea::placeholder{color:rgba(255,255,255,.25)}
+.chat-send{width:36px;height:36px;border-radius:50%;background:var(--blue);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0}
+.chat-send:hover{background:#0077ed}
+.chat-send:disabled{background:rgba(255,255,255,.08);cursor:not-allowed}
+.chat-send svg{width:16px;height:16px;fill:#fff}
+
+/* Settings overlay */
+.chat-settings{position:absolute;inset:0;background:rgba(26,26,28,.97);z-index:10;display:none;flex-direction:column;align-items:center;justify-content:center;padding:40px;gap:16px}
+.chat-settings.show{display:flex}
+.chat-settings h3{font-size:18px;font-weight:600;margin-bottom:4px}
+.chat-settings p{font-size:13px;color:rgba(255,255,255,.4);text-align:center;max-width:300px;margin-bottom:8px}
+.chat-settings input{width:100%;max-width:320px;background:#2a2a2d;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:12px 16px;color:#fff;font-size:14px;outline:none}
+.chat-settings input:focus{border-color:var(--bright-blue)}
+.chat-settings button{padding:10px 28px;border-radius:980px;background:var(--blue);color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer;transition:background .2s}
+.chat-settings button:hover{background:#0077ed}
+.chat-settings .settings-link{font-size:12px;color:var(--bright-blue);text-decoration:none;margin-top:4px}
+</style>
+
+<!-- FAB -->
+<button class="chat-fab" id="chatFab" title="AI 求职顾问">
+  <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/><path d="M7 9h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/></svg>
+</button>
+
+<!-- Panel -->
+<div class="chat-panel" id="chatPanel">
+  <!-- Settings -->
+  <div class="chat-settings" id="chatSettings">
+    <h3>🔑 设置 AI 接口</h3>
+    <div style="display:flex;gap:0;margin-bottom:14px">
+      <button class="api-tab on" data-api="coze" onclick="switchApiTab('coze')">扣子 Coze</button>
+      <button class="api-tab" data-api="kimi" onclick="switchApiTab('kimi')">Kimi</button>
+    </div>
+    <div id="cozeForm">
+      <p style="font-size:12px;opacity:.6;margin-bottom:10px">填写扣子平台的 Token 和 Bot ID</p>
+      <input type="password" id="cozeKeyInput" placeholder="输入新 Token 覆盖当前值">
+      <input type="password" id="cozeBotInput" placeholder="输入新 Bot ID 覆盖当前值" style="margin-top:8px;width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#fff;font-size:14px">
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button onclick="saveKey()" style="flex:1">保存并开始</button>
+        <button onclick="revealKeys()" style="flex:1;background:rgba(255,255,255,.08);color:rgba(255,255,255,.5)">🔒 查看当前 Key</button>
+      </div>
+      <p style="font-size:11px;color:rgba(255,255,255,.25);margin-top:8px">当前 Key 已隐藏 · 输入新值可直接覆盖 · 查看需密码</p>
+      <a class="settings-link" href="https://www.coze.cn/open/api" target="_blank">→ 前往扣子开放平台获取</a>
+    </div>
+    <div id="kimiForm" style="display:none">
+      <p style="font-size:12px;opacity:.6;margin-bottom:10px">支持两种 Key：<b>sk-kimi-</b>（Kimi Code）或 <b>sk-</b>（Moonshot平台）</p>
+      <input type="password" id="kimiKeyInput" placeholder="输入新 Key 覆盖当前值">
+      <div id="kimiKeyNote" style="display:none;font-size:12px;margin-top:6px"></div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button onclick="saveKey()" style="flex:1">保存并开始</button>
+        <button onclick="revealKeys()" style="flex:1;background:rgba(255,255,255,.08);color:rgba(255,255,255,.5)">🔒 查看当前 Key</button>
+      </div>
+      <p style="font-size:11px;color:rgba(255,255,255,.25);margin-top:8px">当前 Key 已隐藏 · 输入新值可直接覆盖 · 查看需密码</p>
+      <a class="settings-link" href="https://platform.kimi.ai/console/api-keys" target="_blank">→ 获取 Kimi API Key</a>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <div class="chat-head">
+    <h3><span class="dot-live"></span>AI 求职顾问</h3>
+    <div class="chat-head-btns">
+      <button class="chat-api-badge" id="apiBadge" onclick="quickSwitchApi()" title="点击切换接口">扣子</button>
+      <button class="chat-head-btn" onclick="clearChat()" title="清空对话">🗑</button>
+      <button class="chat-head-btn" onclick="showSettings()" title="设置">⚙</button>
+      <button class="chat-head-btn" onclick="toggleChat()" title="关闭">✕</button>
+    </div>
+  </div>
+
+  <!-- Body -->
+  <div class="chat-body" id="chatBody"></div>
+
+  <!-- Input -->
+  <div class="chat-input">
+    <textarea id="chatTextarea" placeholder="问任何关于 AI PM 求职的问题..." rows="1"></textarea>
+    <button class="chat-send" id="chatSendBtn" onclick="sendMsg()">
+      <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+    </button>
+  </div>
+</div>
+
+<script>
+// ========== CHAT SYSTEM ==========
+// 动态生成 SYSTEM_PROMPT（基于实际加载的数据，避免硬编码过时）
+function buildSystemPrompt() {
+  const total = DATA.length;
+  // 方向统计
+  const catMap = {};
+  DATA.forEach(j => (j.cats || []).forEach(c => { if (c !== 'AI通用') catMap[c] = (catMap[c] || 0) + 1; }));
+  const catSorted = Object.entries(catMap).sort((a, b) => b[1] - a[1]);
+  // 城市统计
+  const cityMap = {};
+  DATA.forEach(j => { const c = norm(j.city); cityMap[c] = cityMap[c] || []; cityMap[c].push(j); });
+  const citySorted = Object.entries(cityMap).sort((a, b) => b[1].length - a[1].length);
+  // 薪资梯队
+  const tierMap = {};
+  DATA.forEach(j => { if (j.tier) tierMap[j.tier] = (tierMap[j.tier] || 0) + 1; });
+  // 经验分布
+  const expMap = {};
+  DATA.forEach(j => { const e = j.exp || ''; if (e && !e.includes('/周')) expMap[e] = (expMap[e] || 0) + 1; });
+  const expSorted = Object.entries(expMap).sort((a, b) => b[1] - a[1]);
+
+  // 各方向 Top 3 高薪
+  let catDetail = '';
+  catSorted.slice(0, 6).forEach(([cat, cnt]) => {
+    const jobs = DATA.filter(j => j.cats.includes(cat)).sort((a, b) => b.avg - a.avg);
+    const avg = avgS(jobs);
+    catDetail += `\n## ${cat}（${cnt}条，均薪${avg}K/月）\nTop高薪：\n`;
+    jobs.slice(0, 3).forEach(j => {
+      catDetail += `- ${j.title} | ${j.company} | ${j.city} | ${j.salary}(≈${j.avg}K/月)\n`;
+    });
+  });
+
+  // 城市概览
+  const cityLines = citySorted.map(([c, jobs]) => `${c}${jobs.length}条(均薪${avgS(jobs)}K)`).join('、');
+
+  // 薪资梯队
+  const tierLines = ['50K+', '30-50K', '15-30K', '8-15K', '<8K'].map(t => `${t}: ${tierMap[t] || 0}条`).join('、');
+
+  // 经验
+  const expLines = expSorted.slice(0, 5).map(([e, n]) => `${e}: ${n}条`).join('、');
+
+  return `你是一位资深的 AI 产品经理求职顾问，名叫"AI求职助手"。你掌握了一份包含 ${total} 条 AI 相关岗位的真实数据集，覆盖 ${catSorted.length} 大方向和 ${citySorted.length} 个城市。
+
+以下是你掌握的数据：
+
+岗位数据概要（共${total}条）：
+${catDetail}
+## 城市分布
+${cityLines}
+
+## 薪资梯队
+${tierLines}
+
+## 经验要求
+${expLines}
+
+你的职责：
+1. 回答用户关于 AI PM 求职市场的问题，必须引用具体数据
+2. 根据用户背景推荐合适的岗位方向、城市和薪资预期
+3. 分析不同方向和城市的差异
+4. 给出具体的求职建议和技能提升路径
+5. 如果问题超出数据范围，诚实说明
+
+回答要求：
+- 使用 Markdown 格式，善用表格、列表、加粗
+- 给出具体数字和岗位名称
+- 语气专业但亲切，像一位有经验的前辈在给建议
+- 每次回复控制在 300 字以内，除非用户要求详细分析`;
+}
+let SYSTEM_PROMPT = '';
+
+let chatHistory = [];
+let isStreaming = false;
+
+// === DEFAULT API KEYS (用户可在设置中覆盖) ===
+const DEFAULT_COZE_TOKEN = 'pat_SO5TSMEUUX9J7e2mdmwbJMzoNT7b4I2yb97YJXrqNR9OxHOYBDDe3atheflppXcl';
+const DEFAULT_COZE_BOT_ID = '7627977491663650856';
+const DEFAULT_KIMI_KEY = 'sk-kimi-Nn9dAo9CfBKfF36qWwTl9vleQMh1ddlEQmb9XKo54coeVddpOtmgVx13OhIDLyCw';
+
+// API provider: 'coze' or 'kimi'
+function getApiType() { return localStorage.getItem('chat_api_type') || 'coze'; }
+function hasApiConfig() { return true; /* 内置默认 Key，始终可用 */ }
+function getCozeToken() { return localStorage.getItem('coze_token') || DEFAULT_COZE_TOKEN; }
+function getCozeBotId() { return localStorage.getItem('coze_bot_id') || DEFAULT_COZE_BOT_ID; }
+function getKimiKey() { return localStorage.getItem('kimi_api_key') || DEFAULT_KIMI_KEY; }
+function switchApiTab(type) {
+  localStorage.setItem('chat_api_type', type);
+  document.querySelectorAll('.api-tab').forEach(b => b.classList.toggle('on', b.dataset.api === type));
+  document.getElementById('cozeForm').style.display = type === 'coze' ? '' : 'none';
+  document.getElementById('kimiForm').style.display = type === 'kimi' ? '' : 'none';
+  updateApiBadge();
+}
+function updateApiBadge() {
+  const badge = document.getElementById('apiBadge');
+  if (!badge) return;
+  const t = getApiType();
+  badge.textContent = t === 'coze' ? '扣子' : 'Kimi';
+}
+function quickSwitchApi() {
+  const cur = getApiType();
+  const next = cur === 'coze' ? 'kimi' : 'coze';
+  switchApiTab(next);
+  clearChat();
+}
+// 初始化 badge
+setTimeout(updateApiBadge, 0);
+
+// Toggle chat
+function toggleChat() {
+  SFX.slide();
+  const panel = document.getElementById('chatPanel');
+  const fab = document.getElementById('chatFab');
+  const isOpen = panel.classList.toggle('open');
+  fab.classList.toggle('open', isOpen);
+  if (isOpen) {
+    if (!hasApiConfig()) { showSettings(); } else { hideSettings(); }
+    if (!document.getElementById('chatBody').children.length) renderWelcome();
+    document.getElementById('chatTextarea').focus();
+  }
+}
+document.getElementById('chatFab').onclick = toggleChat;
+
+// Settings
+const REVEAL_PW = '12138';
+function showSettings() {
+  const s = document.getElementById('chatSettings');
+  s.classList.add('show');
+  const type = getApiType();
+  switchApiTab(type);
+  // 不填入当前 Key，输入框留空，保护已有密钥不被看到
+  document.getElementById('cozeKeyInput').value = '';
+  document.getElementById('cozeBotInput').value = '';
+  document.getElementById('kimiKeyInput').value = '';
+  // 恢复密码框模式
+  document.getElementById('cozeKeyInput').type = 'password';
+  document.getElementById('cozeBotInput').type = 'password';
+  document.getElementById('kimiKeyInput').type = 'password';
+}
+function hideSettings() { document.getElementById('chatSettings').classList.remove('show'); }
+function revealKeys() {
+  const pw = prompt('请输入管理密码以查看当前 API Key：');
+  if (pw !== REVEAL_PW) { alert('密码错误'); return; }
+  const type = getApiType();
+  if (type === 'coze') {
+    document.getElementById('cozeKeyInput').type = 'text';
+    document.getElementById('cozeBotInput').type = 'text';
+    document.getElementById('cozeKeyInput').value = getCozeToken();
+    document.getElementById('cozeBotInput').value = getCozeBotId();
+  } else {
+    document.getElementById('kimiKeyInput').type = 'text';
+    document.getElementById('kimiKeyInput').value = getKimiKey();
+  }
+}
+function saveKey() {
+  const type = getApiType();
+  if (type === 'coze') {
+    const token = document.getElementById('cozeKeyInput').value.trim();
+    const botId = document.getElementById('cozeBotInput').value.trim();
+    // 空值保留当前 Key，非空则覆盖
+    if (token) localStorage.setItem('coze_token', token);
+    if (botId) localStorage.setItem('coze_bot_id', botId);
+  } else {
+    const key = document.getElementById('kimiKeyInput').value.trim();
+    if (key) {
+      localStorage.setItem('kimi_api_key', key);
+      const note = document.getElementById('kimiKeyNote');
+      if (key.startsWith('sk-kimi-')) {
+        note.innerHTML = '✅ Kimi Code Key，直连 api.kimi.com';
+      } else {
+        note.innerHTML = '✅ Moonshot Key，直连 api.moonshot.ai';
+      }
+      note.style.color = '#30d158';
+      note.style.display = 'block';
+    }
+  }
+  hideSettings();
+  if (!document.getElementById('chatBody').children.length) renderWelcome();
+}
+
+// Welcome
+function renderWelcome() {
+  const body = document.getElementById('chatBody');
+  body.innerHTML = '';
+  const dirSet = new Set(); DATA.forEach(d => (d.cats||[]).forEach(c => { if(c!=='AI通用') dirSet.add(c); }));
+  const citySet = new Set(); DATA.forEach(d => citySet.add(norm(d.city)));
+  const dirNames = [...dirSet].slice(0,5).map(d=>d.replace(/^AI[+＋]/,'').replace(/\/.*$/,'')).join('、');
+  addAiMsg(`你好！我是你的 **AI 求职顾问** 🎯\n\n我掌握了 **${DATA.length} 条** AI 产品经理相关岗位数据，覆盖${dirNames}等 **${dirSet.size} 大方向**和 **${citySet.size} 个城市**。\n\n你可以问我任何关于 AI PM 求职的问题，或者试试下面的快捷问题：`);
+  const qDiv = document.createElement('div');
+  qDiv.className = 'quick-q';
+  const questions = [
+    '我是3年经验的产品经理，想转AI方向，推荐什么城市和方向？',
+    '视频AI和电商AI哪个薪资更高？具体差多少？',
+    '杭州和上海的AI PM岗位有什么区别？',
+    '想拿30K+月薪需要什么条件？'
+  ];
+  questions.forEach(q => {
+    const btn = document.createElement('button');
+    btn.className = 'qq-btn';
+    btn.textContent = q;
+    btn.onclick = () => { document.getElementById('chatTextarea').value = q; sendMsg(); qDiv.remove(); };
+    qDiv.appendChild(btn);
+  });
+  body.appendChild(qDiv);
+}
+
+// Add message
+function addUserMsg(text) {
+  const body = document.getElementById('chatBody');
+  const div = document.createElement('div');
+  div.className = 'msg msg-user';
+  div.innerHTML = `<div class="msg-bubble">${escHtml(text)}</div>`;
+  body.appendChild(div);
+  body.scrollTop = body.scrollHeight;
+}
+function addAiMsg(md) {
+  const body = document.getElementById('chatBody');
+  const div = document.createElement('div');
+  div.className = 'msg msg-ai';
+  div.innerHTML = `<div class="msg-bubble">${renderMd(md)}</div>`;
+  body.appendChild(div);
+  body.scrollTop = body.scrollHeight;
+  return div;
+}
+function addTyping() {
+  const body = document.getElementById('chatBody');
+  const div = document.createElement('div');
+  div.className = 'msg msg-ai';
+  div.id = 'typingIndicator';
+  div.innerHTML = '<div class="msg-bubble"><div class="typing"><span></span><span></span><span></span></div></div>';
+  body.appendChild(div);
+  body.scrollTop = body.scrollHeight;
+}
+function removeTyping() {
+  document.getElementById('typingIndicator')?.remove();
+}
+
+// Send message
+async function sendMsg(overrideText) {
+  if (isStreaming) return;
+  const textarea = document.getElementById('chatTextarea');
+  const text = overrideText || textarea.value.trim();
+  if (!text) return;
+  textarea.value = '';
+  textarea.style.height = 'auto';
+
+  if (!hasApiConfig()) { showSettings(); return; }
+
+  // Remove quick questions
+  document.querySelector('.quick-q')?.remove();
+
+  SFX.send();
+  addUserMsg(text);
+  chatHistory.push({ role: 'user', content: text });
+
+  // Keep last 20 turns
+  if (chatHistory.length > 40) chatHistory = chatHistory.slice(-40);
+
+  addTyping();
+  isStreaming = true;
+  document.getElementById('chatSendBtn').disabled = true;
+
+  const apiType = getApiType();
+  const userMsgs = chatHistory.map(m => ({ role: m.role, content: m.content }));
+
+  // 构建请求参数
+  const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+  const isNetlify = location.hostname.includes('netlify.app');
+  // GitHub Pages 或其他外部域名 → 走 Netlify 代理（含 CORS Edge Function）
+  const API_BASE = (isLocal || isNetlify) ? '' : 'https://ai-pm-job-dashboard.netlify.app';
+
+  let apiUrl, headers, body;
+  if (apiType === 'coze') {
+    const token = getCozeToken();
+    const botId = getCozeBotId();
+    // 本地/Netlify 直连扣子 API；GitHub Pages 走 Netlify 代理绕 CORS
+    apiUrl = (isLocal || isNetlify) ? 'https://api.coze.cn/v3/chat' : API_BASE + '/api/coze/chat';
+    headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token };
+    body = { bot_id: botId, user_id: 'dashboard_user', stream: true, auto_save_history: false,
+             additional_messages: [{ role: 'user', content: text, content_type: 'text' }] };
+  } else {
+    const apiKey = getKimiKey();
+    const isKimiCode = apiKey.startsWith('sk-kimi-');
+    if (isKimiCode) {
+      // Kimi Code: 全部走 Netlify 代理（浏览器直调 api.kimi.com 会 CORS 报错）
+      apiUrl = 'https://ai-pm-job-dashboard.netlify.app/api/kimi/messages';
+      headers = { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' };
+      body = { model: 'kimi-for-coding', system: SYSTEM_PROMPT, messages: userMsgs, max_tokens: 4096, stream: true };
+    } else {
+      // Moonshot Key → 直连（无 CORS 问题）
+      apiUrl = 'https://api.moonshot.ai/v1/chat/completions';
+      headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey };
+      body = { model: 'kimi-k2.5', messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...userMsgs],
+               max_tokens: 4096, stream: true };
+    }
+  }
+
+  try {
+    const res = await fetch(apiUrl, { method: 'POST', headers, body: JSON.stringify(body) });
+
+    if (!res.ok) {
+      removeTyping();
+      let errBody = '';
+      try { errBody = await res.text(); } catch(e) {}
+      if (res.status === 401) {
+        const hint = apiType === 'coze'
+          ? '请确认扣子 Token 以 `pat_` 开头，Bot ID 正确'
+          : '请确认 Kimi Key 以 `sk-` 开头且未过期';
+        addAiMsg(`⚠️ **认证失败**\n\n${hint}\n\n点击右上角 ⚙ 重新设置。\n\n> ${errBody.slice(0,200)}`);
+      } else if (res.status === 429) {
+        addAiMsg('⚠️ **请求频率超限**，请等待几秒后重试。');
+      } else {
+        addAiMsg(`⚠️ 请求失败 (HTTP ${res.status})\n\n> ${errBody.slice(0,200)}`);
+      }
+      isStreaming = false;
+      document.getElementById('chatSendBtn').disabled = false;
+      return;
+    }
+
+    removeTyping();
+    SFX.receive();
+    const aiDiv = addAiMsg('');
+    const bubble = aiDiv.querySelector('.msg-bubble');
+    let fullText = '';
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let sseEvent = ''; // 追踪 event: 行
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      for (const line of lines) {
+        const trimmed = line.trim();
+        // 记录 SSE event 类型
+        if (trimmed.startsWith('event:')) {
+          sseEvent = trimmed.slice(6).trim();
+          continue;
+        }
+        if (!trimmed.startsWith('data:')) continue;
+        const payload = trimmed.startsWith('data: ') ? trimmed.slice(6) : trimmed.slice(5);
+        if (!payload || payload === '[DONE]') continue;
+        try {
+          const evt = JSON.parse(payload);
+          let chunk = '';
+          // 扣子 v3: event行=conversation.message.delta, data里type=answer
+          if (sseEvent === 'conversation.message.delta' && evt.type === 'answer' && evt.content) {
+            chunk = evt.content;
+          }
+          // 扣子也可能把event放data里
+          if (!chunk && evt.event === 'conversation.message.delta' && evt.message?.type === 'answer') {
+            chunk = evt.message.content || '';
+          }
+          // OpenAI / Moonshot 格式
+          if (!chunk && evt.choices?.[0]?.delta?.content) {
+            chunk = evt.choices[0].delta.content;
+          }
+          // Anthropic / Kimi Code 格式
+          if (!chunk && evt.type === 'content_block_delta' && evt.delta?.text) {
+            chunk = evt.delta.text;
+          }
+          if (chunk) {
+            fullText += chunk;
+            bubble.innerHTML = renderMd(fullText);
+            document.getElementById('chatBody').scrollTop = document.getElementById('chatBody').scrollHeight;
+          }
+        } catch(e) { console.log('SSE parse err:', e, payload.slice(0,100)); }
+        sseEvent = ''; // 重置
+      }
+    }
+
+    chatHistory.push({ role: 'assistant', content: fullText });
+  } catch (err) {
+    console.error('Chat fetch error:', err);
+    removeTyping();
+    const errName = err.name || '';
+    if (errName === 'TypeError' && err.message?.includes('Failed to fetch')) {
+      addAiMsg('⚠️ **CORS 跨域被拦截**\n\n浏览器阻止了对 `' + apiUrl + '` 的请求。\n\n错误详情：`' + err.message + '`\n\n> 该 API 不允许浏览器直接调用，请切换到 **扣子 Coze** 接口。');
+    } else {
+      addAiMsg('⚠️ 网络错误：`' + (err.message || err) + '`');
+    }
+  }
+
+  isStreaming = false;
+  document.getElementById('chatSendBtn').disabled = false;
+}
+
+// Clear chat
+function clearChat() {
+  chatHistory = [];
+  renderWelcome();
+}
+
+// Textarea auto-resize + Enter to send
+const ta = document.getElementById('chatTextarea');
+ta.addEventListener('input', () => { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 120) + 'px'; });
+ta.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); }
+});
+
+// Escape to close panel
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.getElementById('chatPanel').classList.contains('open')) {
+    // Only close chat if modal is not open
+    if (!document.getElementById('overlay').classList.contains('show')) toggleChat();
+  }
+});
+
+// Simple Markdown renderer
+function renderMd(md) {
+  if (!md) return '';
+  let h = escHtml(md);
+  // Code blocks
+  h = h.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
+  // Inline code
+  h = h.replace(/`([^`]+)`/g, '<code>$1</code>');
+  // Bold
+  h = h.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  // Italic
+  h = h.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  // Headers
+  h = h.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  h = h.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+  h = h.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+  // Tables
+  h = h.replace(/^\|(.+)\|$/gm, (match) => {
+    const cells = match.split('|').filter(c => c.trim());
+    if (cells.every(c => /^[\s-:]+$/.test(c))) return '<!--sep-->';
+    return '<tr>' + cells.map(c => '<td>' + c.trim() + '</td>').join('') + '</tr>';
+  });
+  h = h.replace(/((?:<tr>.*<\/tr>\n?)+)/g, (match) => {
+    let table = match.replace('<!--sep-->\n', '').replace('<!--sep-->', '');
+    // First row as header
+    table = table.replace(/<tr>(.*?)<\/tr>/, (m, inner) => '<thead><tr>' + inner.replace(/<td>/g, '<th>').replace(/<\/td>/g, '</th>') + '</tr></thead>');
+    return '<table>' + table + '</table>';
+  });
+  // Unordered list
+  h = h.replace(/^- (.+)$/gm, '<li>$1</li>');
+  h = h.replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul>$1</ul>');
+  // Ordered list
+  h = h.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+  // Line breaks
+  h = h.replace(/\n\n/g, '</p><p>');
+  h = h.replace(/\n/g, '<br>');
+  h = '<p>' + h + '</p>';
+  h = h.replace(/<p><\/p>/g, '');
+  // Clean up
+  h = h.replace(/<p>(<h[123]>)/g, '$1');
+  h = h.replace(/(<\/h[123]>)<\/p>/g, '$1');
+  h = h.replace(/<p>(<ul>)/g, '$1');
+  h = h.replace(/(<\/ul>)<\/p>/g, '$1');
+  h = h.replace(/<p>(<table>)/g, '$1');
+  h = h.replace(/(<\/table>)<\/p>/g, '$1');
+  h = h.replace(/<p>(<pre>)/g, '$1');
+  h = h.replace(/(<\/pre>)<\/p>/g, '$1');
+  return h;
+}
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ========== "Ask AI" from modal ==========
+const origOpenModal = openModal;
+openModal = function(idx) {
+  origOpenModal(idx);
+  // Add "Ask AI" button
+  const modal = document.getElementById('modal');
+  const j = DATA[idx];
+  const askBtn = document.createElement('button');
+  askBtn.textContent = '🤖 问 AI 分析这个岗位';
+  askBtn.style.cssText = 'margin-top:16px;width:100%;padding:12px;border-radius:12px;background:linear-gradient(135deg,#0071e3,#2997ff);color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .2s';
+  askBtn.onmouseenter = () => askBtn.style.opacity = '.85';
+  askBtn.onmouseleave = () => askBtn.style.opacity = '1';
+  askBtn.onclick = () => {
+    closeModal();
+    if (!document.getElementById('chatPanel').classList.contains('open')) toggleChat();
+    setTimeout(() => {
+      const q = `帮我分析这个岗位：${j.title} - ${j.company} - ${j.city} - ${j.salary}，这个岗位怎么样？适合什么背景的人？需要重点准备什么？`;
+      sendMsg(q);
+    }, 400);
+  };
+  modal.appendChild(askBtn);
+};
+</script>
+</body>
+</html>

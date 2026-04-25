@@ -1,0 +1,14 @@
+# Python 依赖
+# 使用: pip install -r requirements.txt
+
+# 爬虫核心
+DrissionPage>=4.1.0
+
+# 数据处理 / Excel 导出
+openpyxl>=3.1.0
+
+# HTTP 请求 (飞书同步)
+requests>=2.31.0
+
+# 可选: 知识库索引生成加速 (JSON 序列化)
+# orjson>=3.9.0

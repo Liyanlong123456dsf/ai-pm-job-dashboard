@@ -1,0 +1,78 @@
+# ==========================================================================
+# Netlify 定位：仅作为 API 代理层，不承担前端页面
+# 前端入口：https://liyanlong123456dsf.github.io/ai-pm-job-dashboard/
+# ==========================================================================
+
+[build]
+  publish = "."
+
+# ============ API 代理（Kimi / Moonshot / Coze）============
+
+[[redirects]]
+  from = "/api/kimi/*"
+  to = "https://api.kimi.com/coding/v1/:splat"
+  status = 200
+  force = true
+  headers = {X-From = "netlify-proxy"}
+
+[[redirects]]
+  from = "/api/moonshot/*"
+  to = "https://api.moonshot.ai/v1/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/coze/*"
+  to = "https://api.coze.cn/v3/:splat"
+  status = 200
+  force = true
+
+# ============ 岗位数据 API（供扣子 Bot API 插件调用）============
+
+[[edge_functions]]
+  path = "/api/jobs"
+  function = "jobs-api"
+
+[[edge_functions]]
+  path = "/api/jobs/stats"
+  function = "jobs-api"
+
+# ============ CORS 支持（允许 GitHub Pages 等外部域名调用 API 代理）============
+
+[[edge_functions]]
+  path = "/api/kimi/*"
+  function = "cors-proxy"
+
+[[edge_functions]]
+  path = "/api/moonshot/*"
+  function = "cors-proxy"
+
+[[edge_functions]]
+  path = "/api/coze/*"
+  function = "cors-proxy"
+
+# ============ 前端重定向到 GitHub Pages ============
+# 所有非 API 的请求都 301 跳转到 GitHub Pages
+# 这样用户访问 ai-pm-job-dashboard.netlify.app 会自动跳到 GitHub Pages 主站点
+
+[[redirects]]
+  from = "/"
+  to = "https://liyanlong123456dsf.github.io/ai-pm-job-dashboard/"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/job_dashboard.html"
+  to = "https://liyanlong123456dsf.github.io/ai-pm-job-dashboard/job_dashboard.html"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/index.html"
+  to = "https://liyanlong123456dsf.github.io/ai-pm-job-dashboard/"
+  status = 301
+  force = true
+
+# 静态数据文件：继续提供（供 Coze Bot 等外部调用方兼容）
+# 这些文件已在仓库根，publish="." 会把它们一起发布
+# jobs_data.json / run_status.json 保留（但主用户走 GitHub Raw）

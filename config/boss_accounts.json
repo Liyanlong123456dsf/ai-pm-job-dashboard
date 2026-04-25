@@ -1,0 +1,21 @@
+{
+  "_comment": "BOSS 直聘账号池配置。每个账号独立的 Chrome Profile 目录，Cookie 不串。删除本文件后自动降级为单账号（使用旧的 .chrome_profile）。",
+  "accounts": [
+    {
+      "alias": "主账号",
+      "profile_dir": ".chrome_profile",
+      "enabled": true
+    },
+    {
+      "alias": "备用",
+      "profile_dir": ".chrome_profile_b",
+      "enabled": true
+    }
+  ],
+  "pool_settings": {
+    "min_account_rest_min": 10,
+    "all_failed_cooldown_min": 30,
+    "alert_throttle_min": 60,
+    "recovery_check_min": 30
+  }
+}

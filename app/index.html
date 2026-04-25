@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; script-src 'self' 'unsafe-inline'">
+<title>AI PM Job Dashboard</title>
+<link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+
+<!-- ========== 顶部标题栏 ========== -->
+<header class="titlebar">
+  <div class="brand">
+    <span class="logo">AI</span>
+    <span class="title">PM Job Dashboard</span>
+    <span class="ver" id="appVer">v1.0.0</span>
+  </div>
+  <nav class="tabs">
+    <button class="tab active" data-tab="control">⚙️ 控制台</button>
+    <button class="tab" data-tab="dashboard">📊 数据看板</button>
+    <button class="tab" data-tab="logs">📜 日志</button>
+    <button class="tab" data-tab="config">🧩 配置</button>
+    <button class="tab" data-tab="history">📈 历史</button>
+    <button class="tab" data-tab="about">ℹ️ 关于</button>
+  </nav>
+  <div class="status">
+    <span class="dot" id="runDot"></span>
+    <span id="runLabel">待机</span>
+  </div>
+</header>
+
+<!-- ========== 主内容区 ========== -->
+<main class="main">
+  <!-- 控制台 -->
+  <section class="panel active" data-panel="control">
+    <div class="hero">
+      <h1>控制台</h1>
+      <p>一键启动 · 实时监控 · 全流程托管</p>
+    </div>
+
+    <!-- 动作卡片 -->
+    <div class="action-grid">
+      <div class="action-card primary" data-runner="auto_daily">
+        <div class="a-icon">🚀</div>
+        <div class="a-title">守护进程</div>
+        <div class="a-desc">全天候循环爬取 · 每轮间隔 10 分钟</div>
+        <div class="a-ctrl">
+          <button class="btn btn-primary" onclick="startRunner('auto_daily')">启动</button>
+          <button class="btn btn-danger" onclick="stopRunner('auto_daily')">停止</button>
+        </div>
+        <div class="a-pid" id="pid-auto_daily">未运行</div>
+      </div>
+
+      <div class="action-card" data-runner="one_round">
+        <div class="a-icon">⚡</div>
+        <div class="a-title">单轮爬取</div>
+        <div class="a-desc">仅执行一轮全量抓取流程</div>
+        <div class="a-ctrl">
+          <button class="btn btn-primary" onclick="startRunner('one_round')">执行</button>
+          <button class="btn btn-danger" onclick="stopRunner('one_round')">停止</button>
+        </div>
+        <div class="a-pid" id="pid-one_round">未运行</div>
+      </div>
+
+      <div class="action-card" data-runner="sync_feishu">
+        <div class="a-icon">📤</div>
+        <div class="a-title">飞书同步</div>
+        <div class="a-desc">同步 knowledge_base.md 到飞书文档</div>
+        <div class="a-ctrl">
+          <button class="btn btn-primary" onclick="startRunner('sync_feishu')">同步</button>
+          <button class="btn btn-danger" onclick="stopRunner('sync_feishu')">停止</button>
+        </div>
+        <div class="a-pid" id="pid-sync_feishu">未运行</div>
+      </div>
+    </div>
+
+    <!-- BOSS 账号池 -->
+    <div class="card" id="poolCard">
+      <div class="card-head">
+        <h3>🔐 BOSS 账号池</h3>
+        <span class="card-meta" id="poolMeta">—</span>
+      </div>
+      <div class="pool-grid" id="poolGrid">
+        <div style="text-align:center;color:var(--text-40);padding:24px">加载中…</div>
+      </div>
+      <div class="pool-hint" id="poolHint"></div>
+    </div>
+
+    <!-- 飞书告警/日报 -->
+    <div class="card" id="feishuCard">
+      <div class="card-head">
+        <h3>🔔 飞书告警 & 岗位日报</h3>
+        <span class="card-meta" id="feishuMeta">检测中…</span>
+      </div>
+      <div class="feishu-body">
+        <div class="feishu-status" id="feishuStatus">
+          <span class="fs-dot" id="fsDot"></span>
+          <span class="fs-text" id="fsText">正在检测 webhook 配置…</span>
+        </div>
+        <div class="feishu-actions">
+          <button class="btn btn-primary" id="btnFeishuTest">📝 发测试文本</button>
+          <button class="btn btn-primary" id="btnFeishuTestAlert">⚠️ 账号失效告警样例</button>
+          <button class="btn btn-primary" id="btnFeishuTestReport">📊 推送岗位日报样例</button>
+          <button class="btn" id="btnFeishuReset">🔄 清节流</button>
+        </div>
+        <div class="feishu-history" id="feishuHistory"></div>
+        <div class="feishu-result" id="feishuResult"></div>
+      </div>
+    </div>
+
+    <!-- 数据清洗 -->
+    <div class="card" id="cleanupCard">
+      <div class="card-head">
+        <h3>🧹 数据清洗</h3>
+        <span class="card-meta" id="cleanupMeta">—</span>
+      </div>
+      <div class="cleanup-body">
+        <div class="cleanup-info" id="cleanupInfo">加载中…</div>
+        <div class="cleanup-actions">
+          <div class="action-card" data-runner="stale_cleanup">
+            <div class="a-ctrl">
+              <button class="btn btn-primary" onclick="startRunner('stale_cleanup')">立即清洗</button>
+              <button class="btn btn-danger" onclick="stopRunner('stale_cleanup')">停止</button>
+            </div>
+            <div class="a-pid" id="pid-stale_cleanup">未运行</div>
+          </div>
+        </div>
+        <div class="cleanup-history" id="cleanupHistory"></div>
+      </div>
+    </div>
+
+    <!-- 进度概览 -->
+    <div class="card">
+      <div class="card-head">
+        <h3 id="progressTitle">📊 当前轮次进度</h3>
+        <span class="card-meta">
+          <span id="taskTypeBadge" class="task-badge" style="display:none">—</span>
+          <span id="progressTs">—</span>
+        </span>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+        <div class="progress-meta">
+          <span id="progressPhase">等待启动…</span>
+          <span id="progressPct">0%</span>
+        </div>
+      </div>
+      <ul class="steps" id="stepsList"></ul>
+    </div>
+
+    <!-- KPI 条 -->
+    <div class="kpi-row">
+      <div class="kpi"><div class="n" id="kpiTotal">—</div><div class="l">总岗位数</div></div>
+      <div class="kpi"><div class="n" id="kpiAdded">—</div><div class="l">本轮新增</div></div>
+      <div class="kpi"><div class="n" id="kpiRaw">—</div><div class="l">原始抓取</div></div>
+      <div class="kpi"><div class="n" id="kpiCleaned">—</div><div class="l">清洗后</div></div>
+      <div class="kpi"><div class="n" id="kpiErrs">—</div><div class="l">错误数</div></div>
+    </div>
+
+    <!-- 快捷操作 -->
+    <div class="card">
+      <div class="card-head"><h3>📁 快捷入口</h3></div>
+      <div class="shortcuts">
+        <button class="chip" onclick="api.openFolder('repo')">📂 打开项目目录</button>
+        <button class="chip" onclick="api.openFolder('logs')">📜 打开日志目录</button>
+        <button class="chip" onclick="api.openFolder('config')">🧩 打开配置目录</button>
+        <button class="chip" onclick="api.openExternal('https://github.com/Liyanlong123456dsf/ai-pm-job-dashboard')">🔗 GitHub 仓库</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 数据看板 (嵌入) -->
+  <section class="panel" data-panel="dashboard">
+    <iframe id="dashFrame" src="dashboard.html" class="full-frame"></iframe>
+  </section>
+
+  <!-- 日志 -->
+  <section class="panel" data-panel="logs">
+    <div class="hero small">
+      <h1>实时日志</h1>
+      <p>子进程标准输出 + 文件日志</p>
+    </div>
+    <div class="log-tools">
+      <div class="log-tabs">
+        <button class="log-tab active" data-log="live">🔴 实时</button>
+        <button class="log-tab" data-log="auto_daily">auto_daily.log</button>
+        <button class="log-tab" data-log="crawler">crawler.log</button>
+        <button class="log-tab" data-log="daily">daily_update.log</button>
+        <button class="log-tab" data-log="cleanup">stale_cleanup.log</button>
+      </div>
+      <div class="log-actions">
+        <button class="chip" onclick="clearLog()">🧹 清空</button>
+        <button class="chip" onclick="toggleAutoScroll()" id="scrollBtn">📌 自动滚动: 开</button>
+        <button class="chip" onclick="refreshFileLog()">🔄 刷新</button>
+      </div>
+    </div>
+    <pre class="log-box" id="logBox"></pre>
+  </section>
+
+  <!-- 配置 -->
+  <section class="panel" data-panel="config">
+    <div class="hero small">
+      <h1>配置管理</h1>
+      <p>修改后自动保存，下一轮生效</p>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-head"><h3>🏷 关键词库</h3><span class="card-meta" id="kwCount">—</span></div>
+        <div class="kw-edit">
+          <textarea id="kwList" placeholder="每行一个关键词"></textarea>
+          <div class="row-btns">
+            <button class="btn" onclick="addSampleKeyword()">➕ 添加示例</button>
+            <button class="btn btn-primary" onclick="saveKeywords()">💾 保存</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>🏙 城市列表</h3><span class="card-meta" id="cityCount">—</span></div>
+        <div class="kw-edit">
+          <textarea id="cityList" placeholder="城市名=编码，每行一条，如：杭州=101210100"></textarea>
+          <div class="row-btns">
+            <button class="btn btn-primary" onclick="saveCities()">💾 保存</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>⏰ 调度参数</h3></div>
+        <div class="form">
+          <label>冷却间隔（分钟）<input type="number" id="cfgInterval" min="1" max="1440"></label>
+          <label>调度模式
+            <select id="cfgMode">
+              <option value="continuous">continuous · 全天候</option>
+              <option value="daily">daily · 每日定时</option>
+            </select>
+          </label>
+          <label class="check"><input type="checkbox" id="cfgAlwaysFull"> 每轮全量模式</label>
+          <label>关键词每轮采样数（min ~ max）
+            <div class="dual">
+              <input type="number" id="cfgSampleMin" min="1" max="50">
+              <span>~</span>
+              <input type="number" id="cfgSampleMax" min="1" max="50">
+            </div>
+          </label>
+          <button class="btn btn-primary" onclick="saveSchedule()">💾 保存调度</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h3>⚙️ 系统信息</h3></div>
+        <div class="info-list" id="sysInfoBox"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 历史 -->
+  <section class="panel" data-panel="history">
+    <div class="hero small">
+      <h1>执行历史</h1>
+      <p>每轮执行记录、成功率、耗时趋势</p>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <h3>📋 最近运行</h3>
+        <span class="card-meta" id="hisSummary">—</span>
+      </div>
+      <div class="hist-chart" id="histChart"></div>
+      <table class="hist-table">
+        <thead>
+          <tr><th>#</th><th>时间</th><th>模式</th><th>结果</th><th>耗时</th><th>信息</th></tr>
+        </thead>
+        <tbody id="histBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 关于 -->
+  <section class="panel" data-panel="about">
+    <div class="hero">
+      <h1>关于</h1>
+      <p>AI PM Job Dashboard · 桌面一体化版</p>
+    </div>
+    <div class="card">
+      <div class="about-grid">
+        <div class="about-item">
+          <h4>🎯 项目</h4>
+          <p>AI 产品经理岗位自动抓取与分析平台。爬取 BOSS 直聘，数据去重、清洗、标签化后可视化。</p>
+        </div>
+        <div class="about-item">
+          <h4>🛠 技术</h4>
+          <p>DrissionPage · Electron · Python · Chart.js · Flask 式本地 API</p>
+        </div>
+        <div class="about-item">
+          <h4>🌐 链接</h4>
+          <p>
+            <a href="#" onclick="api.openExternal('https://github.com/Liyanlong123456dsf/ai-pm-job-dashboard');return false;">GitHub</a> ·
+            <a href="#" onclick="api.openExternal('https://nodejs.org');return false;">Node.js</a> ·
+            <a href="#" onclick="api.openExternal('https://python.org');return false;">Python</a>
+          </p>
+        </div>
+        <div class="about-item">
+          <h4>📜 许可</h4>
+          <p>MIT License · 数据仅用于学习研究，请勿用于商业侵权</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script src="js/renderer.js"></script>
+</body>
+</html>
