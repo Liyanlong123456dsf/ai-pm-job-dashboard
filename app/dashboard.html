@@ -769,6 +769,7 @@ section{padding:80px 20px;scroll-margin-top:52px}
       </select>
     </div>
     <div class="gf-count" id="gfCount">—</div>
+    <div class="gf-count" title="导出版本：包含岗位职责详情">导出v2</div>
     <button class="gf-action" id="gfCopyLink" title="复制带筛选的分享链接">🔗 分享</button>
     <button class="gf-action" id="gfExportCsv" title="导出当前筛选结果为 Excel 表格（含岗位职责详情）">⬇ 表格</button>
     <button class="gf-clear" id="gfClear">✕ 清空</button>
@@ -3511,7 +3512,7 @@ function exportFilteredCsv() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `ai-pm-jobs-${new Date().toISOString().slice(0,10)}-${rows.length}.xls`;
+  a.download = `ai-pm-jobs-with-desc-${new Date().toISOString().slice(0,10)}-${rows.length}.xls`;
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 1000);
   showToast(`✅ 已导出 ${rows.length} 条（含岗位职责详情）`, 'ok');
