@@ -73,7 +73,7 @@ def clean_jobs(jobs: list) -> tuple:
             stripped_bad_url += 1
             url = ''
 
-        if not title or not city or not salary or (not company and not url):
+        if not title or not company or not city or not salary:
             removed_invalid += 1
             continue
 
@@ -113,9 +113,7 @@ def load_existing() -> tuple:
     with open(DATA_FILE, 'r', encoding='utf-8') as f:
         data = json.load(f)
     jobs = data.get('jobs', data if isinstance(data, list) else [])
-    jobs, clean_stats = clean_jobs(jobs)
-    if clean_stats['input'] != clean_stats['output'] or clean_stats['stripped_bad_url']:
-        logger.info(f'Loaded and cleaned existing jobs: {clean_stats}')
+    jobs = [j for j in jobs if isinstance(j, dict)]
     # Build key index
     key_set = set()
     for j in jobs:
@@ -156,8 +154,18 @@ def merge(existing_jobs: list, existing_keys: set, new_jobs: list) -> tuple:
     return merged, len(added)
 
 
-def save(jobs: list):
-    jobs, clean_stats = clean_jobs(jobs)
+def save(jobs: list, clean: bool = False):
+    if clean:
+        jobs, clean_stats = clean_jobs(jobs)
+    else:
+        jobs = [j for j in jobs if isinstance(j, dict)]
+        clean_stats = {
+            'input': len(jobs),
+            'output': len(jobs),
+            'removed_invalid': 0,
+            'removed_duplicate': 0,
+            'stripped_bad_url': 0,
+        }
     meta = {
         'updated': datetime.datetime.now().strftime('%Y-%m-%d %H:%M'),
         'total': len(jobs),
@@ -179,7 +187,7 @@ def save(jobs: list):
     with open(DATA_FILE, 'w', encoding='utf-8') as f:
         json.dump({'meta': meta, 'jobs': frontend_jobs}, f, ensure_ascii=False)
 
-    logger.info(f'Saved {len(jobs)} cleaned jobs to {DATA_FILE} ({clean_stats})')
+    logger.info(f'Saved {len(jobs)} jobs to {DATA_FILE} ({clean_stats})')
 
 
 def save_snapshot(new_jobs: list):
