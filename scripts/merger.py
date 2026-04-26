@@ -73,7 +73,7 @@ def clean_jobs(jobs: list) -> tuple:
             stripped_bad_url += 1
             url = ''
 
-        if not title or not city or not salary or (not company and not url):
+        if not title or not company or not city or not salary or not url:
             removed_invalid += 1
             continue
 

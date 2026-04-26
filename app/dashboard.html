@@ -3459,13 +3459,13 @@ function copyShareLink() {
 function exportFilteredCsv() {
   const rows = getFilteredData();
   if (!rows.length) { showToast('当前无数据可导出', 'err'); return; }
-  const headers = ['标题','公司','城市','薪资','月薪K','档位','经验','学历','方向','关键词','发布日期','URL'];
+  const headers = ['标题','公司','城市','薪资','月薪K','档位','经验','学历','方向','关键词','岗位描述','发布日期','抓取时间','URL'];
   const csv = [headers.join(',')];
   rows.forEach(j => {
     const line = [
       j.title, j.company, j.city, j.salary, j.avg || '', j.tier || '',
       j.exp || '', j.edu || '', (j.cats||[]).join('|'), (j.kw||[]).join('|'),
-      j._date || '', j.url || '',
+      j.desc || '', j._date || '', j._crawled_at || '', j.url || '',
     ].map(v => {
       const s = String(v ?? '').replace(/"/g, '""');
       return /[",\n]/.test(s) ? `"${s}"` : s;
