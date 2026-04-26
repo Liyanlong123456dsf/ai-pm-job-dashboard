@@ -770,7 +770,7 @@ section{padding:80px 20px;scroll-margin-top:52px}
     </div>
     <div class="gf-count" id="gfCount">—</div>
     <button class="gf-action" id="gfCopyLink" title="复制带筛选的分享链接">🔗 分享</button>
-    <button class="gf-action" id="gfExportCsv" title="导出当前筛选结果为 CSV">⬇ CSV</button>
+    <button class="gf-action" id="gfExportCsv" title="导出当前筛选结果为 Excel 表格（含岗位职责详情）">⬇ 表格</button>
     <button class="gf-clear" id="gfClear">✕ 清空</button>
   </div>
 </div>
@@ -2593,10 +2593,14 @@ const CITY_GEO = {
 let _CHINA_GEO_CACHE = null;
 async function loadChinaGeo() {
   if (_CHINA_GEO_CACHE) return _CHINA_GEO_CACHE;
-  const CK = 'ai_pm_china_geo_v1';
+  const CK = 'ai_pm_china_geo_v2';
   try {
     const cached = localStorage.getItem(CK);
-    if (cached) { _CHINA_GEO_CACHE = JSON.parse(cached); return _CHINA_GEO_CACHE; }
+    if (cached) {
+      const geo = JSON.parse(cached);
+      if (geo && Array.isArray(geo.features)) { _CHINA_GEO_CACHE = geo; return _CHINA_GEO_CACHE; }
+      localStorage.removeItem(CK);
+    }
   } catch(e) {}
   // DataV 公开中国地图 GeoJSON (仅省界, ~200KB; 无 API key, CORS 开放)
   const URLS = [
@@ -2607,7 +2611,7 @@ async function loadChinaGeo() {
     try {
       console.log('[geo] fetching', url);
       const ctl = new AbortController();
-      const timer = setTimeout(() => ctl.abort(), 8000);
+      const timer = setTimeout(() => ctl.abort(), 3000);
       const res = await fetch(url, { mode: 'cors', signal: ctl.signal });
       clearTimeout(timer);
       if (!res.ok) { console.warn('[geo] bad status', res.status, url); continue; }
@@ -2713,17 +2717,23 @@ async function renderChinaMap() {
   let html = '';
 
   // 1. 画省界
-  if (geo && geo.features) {
+  if (geo && Array.isArray(geo.features)) {
     html += geo.features.map(f => {
-      const d = geoFeatureToPath(f);
-      if (!d) return '';
-      const name = (f.properties||{}).name || '';
-      return `<path class="geo-prov" d="${d}"><title>${name}</title></path>`;
+      try {
+        const d = geoFeatureToPath(f);
+        if (!d) return '';
+        const name = (f.properties||{}).name || '';
+        return `<path class="geo-prov" d="${d}"><title>${name}</title></path>`;
+      } catch(e) {
+        console.warn('[geo] skip bad feature', e.message);
+        return '';
+      }
     }).join('');
-    loading.style.display = 'none';
+    if (loading) loading.style.display = 'none';
   } else {
-    loading.innerHTML = '⚠️ 省界数据加载失败，仅显示城市气泡';
-    setTimeout(() => loading.style.display = 'none', 2500);
+    html += `<rect x="8" y="8" width="984" height="704" rx="24" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="1.2" stroke-dasharray="8 8"/>
+      <text x="500" y="54" text-anchor="middle" fill="rgba(255,255,255,.42)" font-size="13">省界加载失败，已切换为城市气泡地图</text>`;
+    if (loading) loading.style.display = 'none';
   }
 
   // 2. 画城市气泡 (escape quotes for inline SVG attrs)
@@ -3460,26 +3470,35 @@ function exportFilteredCsv() {
   const rows = getFilteredData();
   if (!rows.length) { showToast('当前无数据可导出', 'err'); return; }
   const headers = ['标题','公司','城市','薪资','月薪K','档位','经验','学历','方向','关键词','岗位职责/描述详情','描述字数','发布日期','抓取时间','URL'];
-  const csv = [headers.join(',')];
-  rows.forEach(j => {
-    const line = [
+  const descText = j => String(j.desc || j.job_desc || j.description || j.detail || j.jobDetail || j.job_detail || '').trim();
+  const cell = (v, cls='') => {
+    const text = String(v ?? '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+    return `<td${cls ? ` class="${cls}"` : ''}>${escHtml(text).replace(/\n/g, '<br>')}</td>`;
+  };
+  const head = headers.map(h => `<th>${escHtml(h)}</th>`).join('');
+  const body = rows.map(j => {
+    const desc = descText(j);
+    return `<tr>${[
       j.title, j.company, j.city, j.salary, j.avg || '', j.tier || '',
       j.exp || '', j.edu || '', (j.cats||[]).join('|'), (j.kw||[]).join('|'),
-      String(j.desc || '').trim(), String(j.desc || '').trim().length, j._date || '', j._crawled_at || '', j.url || '',
-    ].map(v => {
-      const s = String(v ?? '').replace(/"/g, '""');
-      return /[",\n]/.test(s) ? `"${s}"` : s;
-    }).join(',');
-    csv.push(line);
-  });
-  const blob = new Blob(['\ufeff' + csv.join('\n')], { type: 'text/csv;charset=utf-8' });
+      desc, desc.length, j._date || '', j._crawled_at || '', j.url || '',
+    ].map((v, i) => cell(v, i === 10 ? 'desc-cell' : '')).join('')}</tr>`;
+  }).join('');
+  const html = `<!doctype html><html><head><meta charset="utf-8">
+    <style>
+      table{border-collapse:collapse;font-family:Arial,'Microsoft YaHei',sans-serif;font-size:12px}
+      th{background:#eef3ff;font-weight:700}
+      th,td{border:1px solid #cfd7e6;padding:6px 8px;vertical-align:top;mso-number-format:"\\@";white-space:normal}
+      .desc-cell{width:760px;min-width:760px;line-height:1.45}
+    </style></head><body><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></body></html>`;
+  const blob = new Blob(['\ufeff' + html], { type: 'application/vnd.ms-excel;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `ai-pm-jobs-${new Date().toISOString().slice(0,10)}-${rows.length}.csv`;
+  a.download = `ai-pm-jobs-${new Date().toISOString().slice(0,10)}-${rows.length}.xls`;
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 1000);
-  showToast(`✅ 已导出 ${rows.length} 条`, 'ok');
+  showToast(`✅ 已导出 ${rows.length} 条（含岗位职责详情）`, 'ok');
 }
 
 function getFilteredData() {
