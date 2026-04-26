@@ -2593,18 +2593,19 @@ const CITY_GEO = {
 let _CHINA_GEO_CACHE = null;
 async function loadChinaGeo() {
   if (_CHINA_GEO_CACHE) return _CHINA_GEO_CACHE;
-  const CK = 'ai_pm_china_geo_v2';
+  const CK = 'ai_pm_china_geo_v3_local_provinces';
   try {
     const cached = localStorage.getItem(CK);
     if (cached) {
       const geo = JSON.parse(cached);
-      if (geo && Array.isArray(geo.features)) { _CHINA_GEO_CACHE = geo; return _CHINA_GEO_CACHE; }
+      if (geo && Array.isArray(geo.features) && geo.features.length > 1) { _CHINA_GEO_CACHE = geo; return _CHINA_GEO_CACHE; }
       localStorage.removeItem(CK);
     }
   } catch(e) {}
-  // DataV 公开中国地图 GeoJSON (仅省界, ~200KB; 无 API key, CORS 开放)
+  const localGeoUrl = new URL('china-provinces.geojson', location.href).href;
   const URLS = [
-    'https://geo.datav.aliyun.com/areas_v3/bound/100000.json',
+    localGeoUrl,
+    'https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json',
     'https://cdn.jsdelivr.net/gh/hustcc/echarts-map-collection@latest/china.json',
   ];
   for (const url of URLS) {
@@ -2612,11 +2613,15 @@ async function loadChinaGeo() {
       console.log('[geo] fetching', url);
       const ctl = new AbortController();
       const timer = setTimeout(() => ctl.abort(), 3000);
-      const res = await fetch(url, { mode: 'cors', signal: ctl.signal });
+      const res = await fetch(url, { signal: ctl.signal, cache: 'force-cache' });
       clearTimeout(timer);
       if (!res.ok) { console.warn('[geo] bad status', res.status, url); continue; }
       const geo = await res.json();
       console.log('[geo] loaded', url, 'features:', (geo.features||[]).length);
+      if (!geo || !Array.isArray(geo.features) || geo.features.length <= 1) {
+        console.warn('[geo] invalid province features:', url);
+        continue;
+      }
       _CHINA_GEO_CACHE = geo;
       try { localStorage.setItem(CK, JSON.stringify(geo)); } catch(e) { console.warn('[geo] cache failed', e.message); }
       return geo;
@@ -2712,7 +2717,7 @@ async function renderChinaMap() {
   const maxN = Math.max(...cities.map(c => c.n), 1);
   const radiusOf = n => 4 + Math.sqrt(n / maxN) * 26;
 
-  const renderGeoHtml = geo => {
+  const renderGeoHtml = (geo, fallbackText='正在加载本地省界，先显示城市气泡') => {
     let html = '';
     if (geo && Array.isArray(geo.features)) {
       html += geo.features.map(f => {
@@ -2728,7 +2733,7 @@ async function renderChinaMap() {
       }).join('');
     } else {
       html += `<rect x="8" y="8" width="984" height="704" rx="24" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="1.2" stroke-dasharray="8 8"/>
-      <text x="500" y="54" text-anchor="middle" fill="rgba(255,255,255,.42)" font-size="13">省界加载失败，已切换为城市气泡地图</text>`;
+      <text x="500" y="54" text-anchor="middle" fill="rgba(255,255,255,.42)" font-size="13">${fallbackText}</text>`;
     }
 
     html += cities.map(c => {
@@ -2785,16 +2790,20 @@ async function renderChinaMap() {
     });
   };
 
-  const drawGeo = geo => {
-    svg.innerHTML = renderGeoHtml(geo);
+  const drawGeo = (geo, fallbackText) => {
+    svg.innerHTML = renderGeoHtml(geo, fallbackText);
     if (loading) loading.style.display = 'none';
     bindGeoBubbles();
   };
 
-  drawGeo(null);
+  drawGeo(null, '正在加载本地省界，先显示城市气泡');
   loadChinaGeo().then(geo => {
     if (geo && Array.isArray(geo.features)) drawGeo(geo);
-  }).catch(e => console.warn('[geo] background geo load failed:', e.message));
+    else drawGeo(null, '省界加载失败，已切换为城市气泡地图');
+  }).catch(e => {
+    console.warn('[geo] background geo load failed:', e.message);
+    drawGeo(null, '省界加载失败，已切换为城市气泡地图');
+  });
   console.log('[geo] 渲染完成, 城市气泡=', cities.length);
   } catch (err) {
     console.error('[geo] 渲染异常:', err);
