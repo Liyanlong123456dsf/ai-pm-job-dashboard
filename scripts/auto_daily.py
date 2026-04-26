@@ -100,36 +100,15 @@ def load_schedule():
         return {}
 
 
-def is_cleanup_day():
-    """判断今天是否是清洗日（优先用 cleanup_interval_days 间隔天数，回退到 cleanup_days 固定日期）"""
-    schedule = load_schedule()
-    interval = schedule.get('cleanup_interval_days', 0)
-    if interval and interval > 0:
-        # 基于间隔天数：读取上次清洗日期
-        record_file = LOG_DIR / 'cleanup_record.json'
-        try:
-            if record_file.exists():
-                records = json.loads(record_file.read_text(encoding='utf-8'))
-                if records:
-                    last_date = records[-1].get('date', '')
-                    if last_date:
-                        from datetime import timedelta
-                        last = datetime.strptime(last_date, '%Y-%m-%d').date()
-                        if (datetime.now().date() - last).days < interval:
-                            return False
-        except Exception:
-            pass
-        return True  # 无记录或已超过间隔
-    # 回退：固定日期模式（如 [1, 15]）
-    cleanup_days = schedule.get('cleanup_days', [1, 15])
-    today_day = datetime.now().day
-    return today_day in cleanup_days
+def should_run_daily_cleanup():
+    """每日自动执行数据清洗，确保上传前 jobs_data.json 始终是清洗后的数据"""
+    return True
 
 
 def run_stale_cleanup():
     """执行老数据清洗（调用 stale_cleanup.py）"""
     script = SCRIPT_DIR / 'stale_cleanup.py'
-    logger.info('🧹 开始月度老数据清洗...')
+    logger.info('🧹 开始每日老数据清洗...')
     try:
         result = subprocess.run(
             [sys.executable, str(script)],
@@ -139,18 +118,18 @@ def run_stale_cleanup():
             timeout=7200,  # 2小时超时
         )
         if result.returncode == 0:
-            logger.info('🧹 老数据清洗完成')
+            logger.info('🧹 每日老数据清洗完成')
             if result.stdout:
                 for line in result.stdout.strip().split('\n')[-5:]:
                     logger.info(f'  | {line}')
         else:
-            logger.warning(f'🧹 老数据清洗异常（退出码 {result.returncode}）')
+            logger.warning(f'🧹 每日老数据清洗异常（退出码 {result.returncode}）')
             if result.stderr:
                 logger.warning(f'  stderr: {result.stderr[:200]}')
     except subprocess.TimeoutExpired:
-        logger.warning('🧹 老数据清洗超时（2小时）')
+        logger.warning('🧹 每日老数据清洗超时（2小时）')
     except Exception as e:
-        logger.warning(f'🧹 老数据清洗异常: {e}')
+        logger.warning(f'🧹 每日老数据清洗异常: {e}')
 
 
 def get_crawl_mode():
@@ -758,11 +737,11 @@ def _run_one_round(round_num):
         error_msg = f'登录未就绪[{login_state.get("status", "unknown")}]: {login_state.get("detail", "")}'
     else:
         maybe_refresh_keyword_library(round_num)
-        # ② 清洗日检查（每月 1/15）
-        if is_cleanup_day():
-            logger.info('📅 今天是清洗日，先执行老数据清洗')
-            notify('AI 岗位爬取', '清洗日：先执行老数据清洗')
-            _write_runtime_state(round_num, 'stale_cleanup', '正在执行老数据清洗')
+        # ② 每日先执行数据清洗
+        if should_run_daily_cleanup():
+            logger.info('📅 每日流程：先执行老数据清洗')
+            notify('AI 岗位爬取', '每日流程：先执行老数据清洗')
+            _write_runtime_state(round_num, 'stale_cleanup', '正在执行每日老数据清洗')
             run_stale_cleanup()
 
         # ③ 全量爬取（用选中的账号 Profile）

@@ -19,6 +19,7 @@ import math
 import logging
 import argparse
 import re
+from urllib.parse import urlencode
 from pathlib import Path
 
 logger = logging.getLogger('spider.boss_dp')
@@ -389,6 +390,17 @@ def random_delay(lo=MIN_DELAY, hi=MAX_DELAY):
         delay += random.uniform(1, 3)
     time.sleep(delay)
 
+def build_search_url(keyword: str, city_code: str, page_num: int = 1, salary_code: str = '') -> str:
+    params = {
+        'query': keyword,
+        'city': city_code,
+    }
+    if salary_code:
+        params['salary'] = str(salary_code)
+    if page_num and page_num > 1:
+        params['page'] = str(page_num)
+    return f'https://www.zhipin.com/web/geek/job?{urlencode(params)}'
+
 def is_relevant(job_name: str, skills: str = '') -> bool:
     """判断岗位是否与 AI 产品经理强相关（扩展词库 + 不区分大小写）"""
     text = f'{job_name} {skills}'.upper()
@@ -724,7 +736,7 @@ class BossDPSpider:
                 new_count += 1
         return new_count, existing_count, relevant_count
 
-    def scrape_keyword(self, keyword: str, city_code: str) -> int:
+    def scrape_keyword(self, keyword: str, city_code: str, salary_code: str = '', salary_label: str = '', stop_on_no_new: bool = True) -> int:
         """用 API 拦截 + 翻页模式抓取一个关键词"""
         keyword_new = 0
         no_new_pages = 0
@@ -735,7 +747,7 @@ class BossDPSpider:
 
             if page_num == 1:
                 # 首页：正常导航
-                url = f'https://www.zhipin.com/web/geek/job?query={keyword}&city={city_code}'
+                url = build_search_url(keyword, city_code, salary_code=salary_code)
                 self.page.get(url)
             else:
                 # 后续页：尝试点击「下一页」按钮，更像真人
@@ -744,10 +756,10 @@ class BossDPSpider:
                     if next_btn:
                         next_btn.click()
                     else:
-                        url = f'https://www.zhipin.com/web/geek/job?query={keyword}&city={city_code}&page={page_num}'
+                        url = build_search_url(keyword, city_code, page_num=page_num, salary_code=salary_code)
                         self.page.get(url)
                 except:
-                    url = f'https://www.zhipin.com/web/geek/job?query={keyword}&city={city_code}&page={page_num}'
+                    url = build_search_url(keyword, city_code, page_num=page_num, salary_code=salary_code)
                     self.page.get(url)
 
             # 页面加载后等待（模拟阅读）
@@ -793,7 +805,7 @@ class BossDPSpider:
 
             self._safe_listen_stop()
 
-            if page_new == 0:
+            if stop_on_no_new and page_new == 0:
                 no_new_pages += 1
                 if no_new_pages >= 2:
                     break
@@ -805,7 +817,7 @@ class BossDPSpider:
 
         return keyword_new
 
-    def scrape_keyword_greedy(self, keyword: str, city_code: str, city_name: str = '') -> int:
+    def scrape_keyword_greedy(self, keyword: str, city_code: str, city_name: str = '', salary_code: str = '', salary_label: str = '', stop_on_no_new: bool = True) -> int:
         """贪婪模式：翻到底为止（连续2页0新增判定翻到底）"""
         keyword_new = 0
         page_num = 0
@@ -818,7 +830,7 @@ class BossDPSpider:
                 break
 
             if page_num == 1:
-                url = f'https://www.zhipin.com/web/geek/job?query={keyword}&city={city_code}'
+                url = build_search_url(keyword, city_code, salary_code=salary_code)
                 self.page.get(url)
             else:
                 try:
@@ -826,10 +838,10 @@ class BossDPSpider:
                     if next_btn:
                         next_btn.click()
                     else:
-                        url = f'https://www.zhipin.com/web/geek/job?query={keyword}&city={city_code}&page={page_num}'
+                        url = build_search_url(keyword, city_code, page_num=page_num, salary_code=salary_code)
                         self.page.get(url)
                 except:
-                    url = f'https://www.zhipin.com/web/geek/job?query={keyword}&city={city_code}&page={page_num}'
+                    url = build_search_url(keyword, city_code, page_num=page_num, salary_code=salary_code)
                     self.page.get(url)
 
             random_delay(1.5, 3.0)
@@ -846,9 +858,10 @@ class BossDPSpider:
             page_new, page_existing, page_relevant = self._add_jobs(page_jobs)
             keyword_new += page_new
 
-            logger.info(f'    ↳ 第{page_num}页: +{page_new}新 / {page_relevant}相关 / {page_existing}重复 (原始{len(page_jobs)}条)')
+            salary_part = f' [{salary_label}]' if salary_label else ''
+            logger.info(f'    ↳ 第{page_num}页{salary_part}: +{page_new}新 / {page_relevant}相关 / {page_existing}重复 (原始{len(page_jobs)}条)')
 
-            if page_new == 0:
+            if stop_on_no_new and page_new == 0:
                 consecutive_zero += 1
                 if consecutive_zero >= MAX_CONSECUTIVE_ZERO:
                     self._safe_listen_stop()
@@ -872,7 +885,7 @@ class BossDPSpider:
 
         return keyword_new
 
-    def run_keyword(self, keyword: str, cities: dict, greedy: bool = False) -> list:
+    def run_keyword(self, keyword: str, cities: dict, greedy: bool = False, salary_code: str = '', salary_label: str = '', stop_on_no_new: bool = True) -> list:
         """爬取单个关键词×所有城市，获取详情，返回标准化结果"""
         if not self._browser_alive():
             logger.warning(f'浏览器已断连，跳过关键词 {keyword}')
@@ -887,8 +900,9 @@ class BossDPSpider:
                 logger.warning(f'浏览器已断连，停止关键词 {keyword} (城市 {city_i}/{len(city_items)})')
                 break
 
-            n = self.scrape_keyword_greedy(keyword, city_code, city_name) if greedy else self.scrape_keyword(keyword, city_code)
-            print(f'  → {keyword} @ {city_name}: +{n} | 累计 {len(self.all_jobs)} (过滤 {self.skipped})')
+            n = self.scrape_keyword_greedy(keyword, city_code, city_name, salary_code=salary_code, salary_label=salary_label, stop_on_no_new=stop_on_no_new) if greedy else self.scrape_keyword(keyword, city_code, salary_code=salary_code, salary_label=salary_label, stop_on_no_new=stop_on_no_new)
+            salary_part = f' [{salary_label}]' if salary_label else ''
+            print(f'  → {keyword} @ {city_name}{salary_part}: +{n} | 累计 {len(self.all_jobs)} (过滤 {self.skipped})')
 
             # 进度回调
             if self._progress_cb:
