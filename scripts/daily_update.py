@@ -489,12 +489,12 @@ def main():
         )
 
     hangzhou_stages = [
-        ('杭州20-40K第1遍', keywords, SALARY_SPECS_20_40, 20, 40),
-        ('杭州20-40K第2遍', keywords, SALARY_SPECS_20_40, 20, 40),
+        ('杭州第1轮20-40K', keywords, SALARY_SPECS_20_40, 20, 40),
+        ('杭州第2轮20-40K', keywords, SALARY_SPECS_20_40, 20, 40),
     ]
     if focus_keywords:
-        hangzhou_stages.append(('杭州重点方向20-40K加倍', focus_keywords, SALARY_SPECS_20_40, 20, 40))
-    hangzhou_stages.append(('杭州40K以上第1遍', keywords, SALARY_SPECS_40_PLUS, 40, None))
+        hangzhou_stages.append(('杭州重点方向20-40K加倍轮次', focus_keywords, SALARY_SPECS_20_40, 20, 40))
+    hangzhou_stages.append(('杭州第3轮40K以上', keywords, SALARY_SPECS_40_PLUS, 40, None))
 
     total_stage_count = len(hangzhou_stages) + (1 if other_cities else 0)
     stage_no = 0
@@ -519,7 +519,7 @@ def main():
 
     if other_cities:
         stage_no += 1
-        _crawl_stage(stage_no, total_stage_count, '其他城市20K以上一次', keywords, other_cities, OTHER_CITY_SALARY_SPECS, 20, None)
+        _crawl_stage(stage_no, total_stage_count, '其他城市爬取20K以上一次', keywords, other_cities, OTHER_CITY_SALARY_SPECS, 20, None)
 
     # 关闭浏览器
     try:
