@@ -236,7 +236,7 @@ def main():
     keep_jobs = []
     for job in jobs:
         has_url = bool(job.get('url'))
-        if not has_url:
+        if not has_url and _os.environ.get('AI_PM_REMOVE_NO_URL_STALE') == '1':
             # 用 _date（最后活跃日期）判断过期
             job_date = job.get('_date', '') or job.get('_crawled_at', '9999-99-99')
             if job_date[:10] < cutoff:
