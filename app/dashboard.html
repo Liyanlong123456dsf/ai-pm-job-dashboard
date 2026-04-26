@@ -1297,12 +1297,8 @@ const IS_ELECTRON = navigator.userAgent.toLowerCase().includes('electron');
 const IS_LOCAL = IS_ELECTRON
   || location.protocol === 'file:'
   || /^(localhost|127\.|0\.0\.0\.0|\[::1\])/.test(location.hostname);
-const DATA_URL = IS_LOCAL
-  ? '../jobs_data.json?t=' + Date.now()
-  : 'https://raw.githubusercontent.com/Liyanlong123456dsf/ai-pm-job-dashboard/main/jobs_data.json?t=' + Date.now();
-const STATUS_URL = IS_LOCAL
-  ? '../run_status.json?t=' + Date.now()
-  : 'https://raw.githubusercontent.com/Liyanlong123456dsf/ai-pm-job-dashboard/main/run_status.json?t=' + Date.now();
+const DATA_URL = '../jobs_data.json?t=' + Date.now();
+const STATUS_URL = '../run_status.json?t=' + Date.now();
 async function boot() {
   try {
     const resp = await fetch(DATA_URL);
@@ -3630,9 +3626,7 @@ async function reloadData(manual){
   const btn = document.getElementById('navRefresh');
   if (btn) btn.classList.add('spin');
   try {
-    const url = IS_LOCAL
-      ? '../jobs_data.json?t=' + Date.now()
-      : 'https://raw.githubusercontent.com/Liyanlong123456dsf/ai-pm-job-dashboard/main/jobs_data.json?t=' + Date.now();
+    const url = '../jobs_data.json?t=' + Date.now();
     const resp = await fetch(url, { cache: 'no-store' });
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const json = await resp.json();
