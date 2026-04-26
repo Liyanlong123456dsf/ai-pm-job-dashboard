@@ -2679,7 +2679,7 @@ async function renderChinaMap() {
   // 聚合城市数据
   const cityMap = {};
   DATA.forEach(j => {
-    const c = norm(j.city);
+    const c = norm(j.city || '');
     if (!CITY_GEO[c]) return;
     cityMap[c] = cityMap[c] || { jobs: [], avgs: [] };
     cityMap[c].jobs.push(j);
@@ -2699,7 +2699,7 @@ async function renderChinaMap() {
 
   // 未识别经纬度的城市
   const unknown = new Set();
-  DATA.forEach(j => { const c = norm(j.city); if (c && !CITY_GEO[c]) unknown.add(c); });
+  DATA.forEach(j => { const c = norm(j.city || ''); if (c && !CITY_GEO[c]) unknown.add(c); });
   if (unknown.size) console.info('[geo] 未映射城市:', Array.from(unknown));
 
   // 统计
@@ -2707,18 +2707,15 @@ async function renderChinaMap() {
   const topCity = cities.length ? cities[cities.length-1] : null;
   const allAvgs = cities.flatMap(c => c.median ? [c.median] : []).sort((a,b) => a-b);
   const nationMedian = allAvgs.length ? allAvgs[Math.floor(allAvgs.length/2)] : 0;
-  statsEl.innerHTML = `覆盖 <b>${cities.length}</b> 城市 · <b>${totalJobs}</b> 岗位 · 全国中位 <b>${nationMedian.toFixed(1)}K</b>${topCity?` · 第一: <b>${topCity.city}</b> (${topCity.n}条)`:''}`;
+  if (statsEl) statsEl.innerHTML = `覆盖 <b>${cities.length}</b> 城市 · <b>${totalJobs}</b> 岗位 · 全国中位 <b>${nationMedian.toFixed(1)}K</b>${topCity?` · 第一: <b>${topCity.city}</b> (${topCity.n}条)`:''}`;
 
-  // 加载省界
-  const geo = await loadChinaGeo();
   const maxN = Math.max(...cities.map(c => c.n), 1);
   const radiusOf = n => 4 + Math.sqrt(n / maxN) * 26;
 
-  let html = '';
-
-  // 1. 画省界
-  if (geo && Array.isArray(geo.features)) {
-    html += geo.features.map(f => {
+  const renderGeoHtml = geo => {
+    let html = '';
+    if (geo && Array.isArray(geo.features)) {
+      html += geo.features.map(f => {
       try {
         const d = geoFeatureToPath(f);
         if (!d) return '';
@@ -2728,16 +2725,13 @@ async function renderChinaMap() {
         console.warn('[geo] skip bad feature', e.message);
         return '';
       }
-    }).join('');
-    if (loading) loading.style.display = 'none';
-  } else {
-    html += `<rect x="8" y="8" width="984" height="704" rx="24" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="1.2" stroke-dasharray="8 8"/>
+      }).join('');
+    } else {
+      html += `<rect x="8" y="8" width="984" height="704" rx="24" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="1.2" stroke-dasharray="8 8"/>
       <text x="500" y="54" text-anchor="middle" fill="rgba(255,255,255,.42)" font-size="13">省界加载失败，已切换为城市气泡地图</text>`;
-    if (loading) loading.style.display = 'none';
-  }
+    }
 
-  // 2. 画城市气泡 (escape quotes for inline SVG attrs)
-  html += cities.map(c => {
+    html += cities.map(c => {
     const [x, y] = geoProject(c.lng, c.lat);
     const r = radiusOf(c.n);
     const color = salaryColor(c.median);
@@ -2748,15 +2742,16 @@ async function renderChinaMap() {
       data-city="${cityEsc}" data-n="${c.n}" data-med="${c.median.toFixed(1)}" data-max="${c.max.toFixed(0)}" data-cos="${escHtml(c.topCos.join(',')).replace(/"/g,'&quot;')}" data-x="${x.toFixed(0)}" data-y="${y.toFixed(0)}"
     ></circle>
     ${showLabel ? `<text class="geo-bubble-label" x="${x.toFixed(1)}" y="${(y - r - 3).toFixed(1)}" text-anchor="middle">${c.city}</text>` : ''}`;
-  }).join('');
+    }).join('');
+    return html;
+  };
 
-  svg.innerHTML = html;
-
-  // 3. 交互: hover tooltip + click filter
-  const wrap = svg.parentElement;
-  svg.querySelectorAll('.geo-bubble').forEach(el => {
+  const bindGeoBubbles = () => {
+    const wrap = svg.parentElement;
+    svg.querySelectorAll('.geo-bubble').forEach(el => {
     el.addEventListener('mouseenter', e => {
       const ds = el.dataset;
+      if (!tipEl) return;
       tipEl.innerHTML = `
         <div class="gt-city">${ds.city}</div>
         <div class="gt-row"><span>岗位数</span><b>${ds.n}</b></div>
@@ -2777,7 +2772,7 @@ async function renderChinaMap() {
       tipEl.style.left = x + 'px';
       tipEl.style.top = y + 'px';
     });
-    el.addEventListener('mouseleave', () => tipEl.classList.remove('show'));
+    el.addEventListener('mouseleave', () => { if (tipEl) tipEl.classList.remove('show'); });
     el.addEventListener('click', () => {
       const city = el.dataset.city;
       if (typeof GFILTER === 'object') GFILTER.city = city;
@@ -2787,7 +2782,19 @@ async function renderChinaMap() {
       if (typeof syncFilterToURL === 'function') syncFilterToURL();
       switchTab('jobs');
     });
-  });
+    });
+  };
+
+  const drawGeo = geo => {
+    svg.innerHTML = renderGeoHtml(geo);
+    if (loading) loading.style.display = 'none';
+    bindGeoBubbles();
+  };
+
+  drawGeo(null);
+  loadChinaGeo().then(geo => {
+    if (geo && Array.isArray(geo.features)) drawGeo(geo);
+  }).catch(e => console.warn('[geo] background geo load failed:', e.message));
   console.log('[geo] 渲染完成, 城市气泡=', cities.length);
   } catch (err) {
     console.error('[geo] 渲染异常:', err);
@@ -3585,6 +3592,7 @@ function initAll(isRefresh){
   renderDeep();
   renderExplore();
   setupGlobalFilter();
+  renderChinaMap().catch(e => console.error('[geo] init render failed:', e));
   if (!isRefresh) setupHeroGraph();
 }
 boot();
