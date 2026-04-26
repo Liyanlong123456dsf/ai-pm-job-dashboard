@@ -1,5 +1,5 @@
-<!DOCTYPE html>
-<html>
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -7,12 +7,12 @@
 <meta http-equiv="Expires" content="0">
 <title>AI 岗位全景分析</title>
 <script>
-// 带时间戳跳转，绕过所有中间缓存
-window.location.replace('app/dashboard.html?v=' + Date.now() + (location.hash || ''));
+const DASHBOARD_VERSION = 'export-v3-with-desc';
+window.location.replace('app/dashboard.html?v=' + DASHBOARD_VERSION + '-' + Date.now() + (location.hash || ''));
 </script>
-<meta http-equiv="refresh" content="0;url=app/dashboard.html">
+<meta http-equiv="refresh" content="0;url=app/dashboard.html?v=export-v3-with-desc">
 </head>
 <body>
-<p style="font-family:system-ui;text-align:center;padding:40px;color:#666">正在跳转到看板...</p>
+<p style="font-family:system-ui;text-align:center;padding:40px;color:#666">正在跳转到新版看板...</p>
 </body>
 </html>
