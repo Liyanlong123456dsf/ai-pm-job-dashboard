@@ -17,6 +17,7 @@ from pathlib import Path
 from datetime import datetime
 import time as _time
 import subprocess
+from pipeline import MIN_AVG_SALARY_K
 
 # Setup paths
 SCRIPT_DIR = Path(__file__).parent
@@ -35,6 +36,41 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger('daily')
+
+HANGZHOU_CITY_NAME = '杭州'
+SALARY_SPECS_20_40 = [
+    {'code': '406', 'label': '20-30K'},
+    {'code': '407', 'label': '30-50K'},
+]
+SALARY_SPECS_40_PLUS = [
+    {'code': '407', 'label': '30-50K(40K+近似)'},
+    {'code': '408', 'label': '50K+'},
+]
+OTHER_CITY_SALARY_SPECS = [
+    {'code': '406', 'label': '20-30K'},
+    {'code': '407', 'label': '30-50K'},
+    {'code': '408', 'label': '50K+'},
+]
+FOCUS_KEYWORD_SEEDS = [
+    'AIGC产品经理',
+    '生成式AI产品经理',
+    'AIGC电商产品经理',
+    'AIGC视频产品经理',
+    'AIGC营销产品经理',
+    'AI电商产品经理',
+    'AI电商营销产品经理',
+    'AI营销产品经理',
+    'AI内容营销产品经理',
+    'AI视频产品经理',
+    'AI短视频产品经理',
+    'AI内容产品经理',
+    'AI商业化产品经理',
+    '直播电商产品经理',
+    '内容电商产品经理',
+]
+FOCUS_KEYWORD_MARKERS = (
+    'AIGC', '生成式', '电商', '营销', '视频', '短视频', '直播', '内容', '商业化'
+)
 
 
 def _save_status(status):
@@ -199,6 +235,41 @@ def _popup_report(status):
         logger.warning(f'报告弹出失败: {e}')
 
 
+def _merge_keyword_terms(*groups):
+    merged = []
+    seen = set()
+    for group in groups:
+        for raw in group or []:
+            term = str(raw or '').strip()
+            if term and term not in seen:
+                seen.add(term)
+                merged.append(term)
+    return merged
+
+
+def _is_focus_keyword(term):
+    upper = str(term or '').upper()
+    return any(marker.upper() in upper for marker in FOCUS_KEYWORD_MARKERS)
+
+
+def _prioritize_focus_keywords(keywords):
+    focus = [kw for kw in keywords if _is_focus_keyword(kw)]
+    normal = [kw for kw in keywords if not _is_focus_keyword(kw)]
+    return _merge_keyword_terms(focus, normal)
+
+
+def _filter_salary_jobs(jobs, min_avg=MIN_AVG_SALARY_K, max_avg=None):
+    filtered = []
+    for job in jobs:
+        try:
+            avg = float(job.get('avg') or 0)
+        except Exception:
+            avg = 0
+        if avg >= min_avg and (max_avg is None or avg < max_avg):
+            filtered.append(job)
+    return filtered
+
+
 def main():
     parser = argparse.ArgumentParser(description='AI PM 岗位每日更新')
     parser.add_argument('--dry-run', action='store_true', help='仅测试抓取，不写入文件')
@@ -256,16 +327,33 @@ def main():
     logger.info(f'开始每日更新 {datetime.now().strftime("%Y-%m-%d %H:%M")}')
     logger.info('=' * 50)
 
-    # Load config
     from spiders.boss_dp import load_config, load_keywords
     config = load_config()
-    keywords = load_keywords(quick=args.quick)
     cities = config['cities']
-    is_greedy = not args.quick  # 全量模式用贪婪策略，快速模式用标准策略
+    if args.quick:
+        keywords = load_keywords(quick=True)
+    else:
+        keywords = config.get('keywords') or load_keywords(quick=False)
+    keywords = _prioritize_focus_keywords(_merge_keyword_terms(FOCUS_KEYWORD_SEEDS, keywords))
+    focus_keywords = [kw for kw in keywords if _is_focus_keyword(kw)]
+    hangzhou_code = cities.get(HANGZHOU_CITY_NAME)
+    if not hangzhou_code:
+        logger.error('配置中未找到杭州城市码，无法执行杭州重点爬取')
+        status['errors'].append('配置中未找到杭州城市码')
+        _step('配置检查', False, '缺少杭州城市码')
+        status['overall'] = 'failed'
+        status['duration_sec'] = round(_time.time() - _t0)
+        _save_status(status)
+        _finish_progress(status)
+        _popup_report(status)
+        return False
+    hangzhou_city = {HANGZHOU_CITY_NAME: hangzhou_code}
+    other_cities = {k: v for k, v in cities.items() if k != HANGZHOU_CITY_NAME}
+    is_greedy = not args.quick
     mode_label = '快速' if args.quick else '全量(贪婪)'
-    logger.info(f'[{mode_label}] 关键词: {keywords}, 城市: {list(cities.keys())}')
+    logger.info(f'[{mode_label}] 杭州重点策略: {len(keywords)} 关键词，其中重点方向 {len(focus_keywords)} 个')
+    logger.info(f'[{mode_label}] 其他城市: {list(other_cities.keys())}')
 
-    # === 1. 逐关键词爬取+清洗+合并+保存 ===
     from pipeline import process_batch
     from merger import load_existing, merge, save, save_snapshot
     from spiders.boss_dp import BossDPSpider
@@ -282,7 +370,7 @@ def main():
         '导出总表', '生成知识库', '飞书同步', 'Git 推送', '云同步',
     ]
 
-    _write_progress(5, '🔍 正在爬取 BOSS 直聘...', f'{total_kws} 关键词 × {len(cities)} 城市', status.get('steps', []))
+    _write_progress(5, '🔍 正在爬取 BOSS 直聘...', f'杭州17-40K两遍 + 40K以上一遍；其他城市一次', status.get('steps', []))
 
     # 启动浏览器 + 登录
     try:
@@ -316,66 +404,123 @@ def main():
 
     spider._processed_keys = set()
 
-    # 逐关键词爬取+清洗+合并+保存
-    kw_list = list(keywords)
-    import random as _rand
-    _rand.shuffle(kw_list)
+    def _crawl_stage(stage_idx, stage_count, stage_name, stage_keywords, stage_cities,
+                     salary_specs, min_avg=MIN_AVG_SALARY_K, max_avg=None):
+        nonlocal total_added, total_raw, total_cleaned
+        if not stage_keywords or not stage_cities:
+            logger.info(f'{stage_name}: 无关键词或城市，跳过')
+            _step(stage_name, True, '无关键词或城市，跳过')
+            return
 
-    for kw_idx, kw in enumerate(kw_list, 1):
-        pct = 5 + int(75 * (kw_idx - 1) / max(total_kws, 1))
-        _write_progress(pct, f'🔍 爬取: {kw}', f'[{kw_idx}/{total_kws}]', status.get('steps', []))
+        spider.all_jobs = {}
+        spider._processed_keys = set()
+        stage_units = max(1, len(stage_keywords) * len(salary_specs))
 
-        try:
-            # 爬取单个关键词×所有城市
-            kw_raw = spider.run_keyword(kw, cities, greedy=is_greedy)
-            total_raw += len(kw_raw)
-            logger.info(f'关键词 [{kw}] 抓取 {len(kw_raw)} 条原始数据')
+        for spec_idx, spec in enumerate(salary_specs, 1):
+            salary_code = spec.get('code', '')
+            salary_label = spec.get('label', '')
+            for kw_idx, kw in enumerate(stage_keywords, 1):
+                unit_idx = (spec_idx - 1) * len(stage_keywords) + kw_idx
+                pct = 5 + int(70 * ((stage_idx - 1) + unit_idx / stage_units) / max(stage_count, 1))
+                _write_progress(
+                    pct,
+                    f'🔍 {stage_name}',
+                    f'{kw} · {salary_label} [{unit_idx}/{stage_units}]',
+                    status.get('steps', [])
+                )
 
-            if not kw_raw:
-                _step(f'爬取: {kw}', True, '无新数据')
-                continue
+                try:
+                    kw_raw = spider.run_keyword(
+                        kw,
+                        stage_cities,
+                        greedy=is_greedy,
+                        salary_code=salary_code,
+                        salary_label=salary_label,
+                        stop_on_no_new=True,
+                    )
+                    total_raw += len(kw_raw)
+                    logger.info(f'{stage_name} [{kw}] [{salary_label}] 抓取 {len(kw_raw)} 条原始数据')
 
-            # 清洗
-            kw_cleaned = process_batch(kw_raw)
-            total_cleaned += len(kw_cleaned)
-            logger.info(f'关键词 [{kw}] 清洗后 {len(kw_cleaned)} 条')
+                    if not kw_raw:
+                        _step(f'{stage_name}: {kw} {salary_label}', True, '无数据')
+                        continue
 
-            if args.dry_run:
-                logger.info(f'[DRY RUN] 关键词 {kw}: {len(kw_cleaned)} 条')
-                for j in kw_cleaned[:3]:
-                    logger.info(f'  {j["title"]} | {j["company"]} | {j["city"]}')
-                continue
+                    kw_cleaned_all = process_batch(kw_raw)
+                    kw_cleaned = _filter_salary_jobs(kw_cleaned_all, min_avg=min_avg, max_avg=max_avg)
+                    total_cleaned += len(kw_cleaned)
+                    logger.info(f'{stage_name} [{kw}] [{salary_label}] 清洗 {len(kw_cleaned_all)} → 薪资过滤 {len(kw_cleaned)} 条')
 
-            # 合并+保存
-            existing_keys, existing_jobs = load_existing()
-            old_total = len(existing_jobs)
-            merged, kw_added = merge(existing_jobs, existing_keys, kw_cleaned)
-            save(merged)
-            save_snapshot(kw_cleaned)
-            total_added += kw_added
+                    if args.dry_run:
+                        logger.info(f'[DRY RUN] {stage_name} {kw} {salary_label}: {len(kw_cleaned)} 条')
+                        for j in kw_cleaned[:3]:
+                            logger.info(f'  {j["title"]} | {j["company"]} | {j["city"]} | {j["salary"]}')
+                        continue
 
-            logger.info(f'关键词 [{kw}] 合并: 原{old_total}+新{len(kw_raw)}→清{len(kw_cleaned)}→+{kw_added}=总{len(merged)}')
-            _step(f'爬取+清洗+合并: {kw}', True, f'+{kw_added}条 (累计+{total_added})')
+                    if not kw_cleaned:
+                        _step(f'{stage_name}: {kw} {salary_label}', True, '薪资过滤后无数据')
+                        continue
 
-            status['crawl_raw'] = total_raw
-            status['crawl_cleaned'] = total_cleaned
-            status['added'] = total_added
-            status['total'] = len(merged)
-            _save_status(status)
+                    existing_keys, existing_jobs = load_existing()
+                    old_total = len(existing_jobs)
+                    merged, kw_added = merge(existing_jobs, existing_keys, kw_cleaned)
+                    save(merged)
+                    save_snapshot(kw_cleaned)
+                    total_added += kw_added
 
-        except Exception as e:
-            logger.error(f'关键词 [{kw}] 处理失败: {e}', exc_info=True)
-            status['errors'].append(f'{kw}: {e}')
-            _step(f'爬取: {kw}', False, str(e)[:200])
-            # 继续下一个关键词，不中断整个流程
+                    logger.info(f'{stage_name} [{kw}] 合并: 原{old_total}+新{len(kw_raw)}→清{len(kw_cleaned)}→+{kw_added}=总{len(merged)}')
+                    _step(f'{stage_name}: {kw} {salary_label}', True, f'+{kw_added}条 (累计+{total_added})')
 
-        # 关键词间进度更新
-        pct = 5 + int(75 * kw_idx / max(total_kws, 1))
+                    status['crawl_raw'] = total_raw
+                    status['crawl_cleaned'] = total_cleaned
+                    status['added'] = total_added
+                    status['total'] = len(merged)
+                    _save_status(status)
+                except Exception as e:
+                    logger.error(f'{stage_name} [{kw}] [{salary_label}] 处理失败: {e}', exc_info=True)
+                    status['errors'].append(f'{stage_name}/{kw}/{salary_label}: {e}')
+                    _step(f'{stage_name}: {kw} {salary_label}', False, str(e)[:200])
+
         elapsed = _time.time() - _crawl_t0
-        eta_min = (elapsed / max(kw_idx, 1)) * (total_kws - kw_idx) / 60
-        _write_progress(pct, f'🔍 已完成 {kw_idx}/{total_kws} 关键词',
-                        f'累计新增 {total_added} 条 · 剩余 ≈{eta_min:.0f}分钟',
-                        status.get('steps', []) + [{'name': ph, 'ok': None, 'detail': '待执行', 'time': ''} for ph in _pending_phases])
+        eta_min = elapsed / max(stage_idx, 1) * (stage_count - stage_idx) / 60
+        _write_progress(
+            5 + int(70 * stage_idx / max(stage_count, 1)),
+            f'🔍 已完成 {stage_name}',
+            f'累计新增 {total_added} 条 · 剩余阶段 ≈{eta_min:.0f}分钟',
+            status.get('steps', []) + [{'name': ph, 'ok': None, 'detail': '待执行', 'time': ''} for ph in _pending_phases]
+        )
+
+    hangzhou_stages = [
+        ('杭州第1轮17-40K', keywords, SALARY_SPECS_20_40, MIN_AVG_SALARY_K, 40),
+        ('杭州第2轮17-40K', keywords, SALARY_SPECS_20_40, MIN_AVG_SALARY_K, 40),
+    ]
+    if focus_keywords:
+        hangzhou_stages.append(('杭州重点方向17-40K加倍轮次', focus_keywords, SALARY_SPECS_20_40, MIN_AVG_SALARY_K, 40))
+    hangzhou_stages.append(('杭州第3轮40K以上', keywords, SALARY_SPECS_40_PLUS, 40, None))
+
+    total_stage_count = len(hangzhou_stages) + (1 if other_cities else 0)
+    stage_no = 0
+    for stage_name, stage_keywords, salary_specs, min_avg, max_avg in hangzhou_stages:
+        stage_no += 1
+        _crawl_stage(stage_no, total_stage_count, stage_name, stage_keywords, hangzhou_city, salary_specs, min_avg, max_avg)
+
+    if not args.dry_run:
+        try:
+            existing_keys, existing_jobs = load_existing()
+            before_hz_clean = len(existing_jobs)
+            save(existing_jobs)
+            existing_keys, existing_jobs = load_existing()
+            status['total'] = len(existing_jobs)
+            _save_status(status)
+            logger.info(f'✅ 杭州清洗去重完成: {before_hz_clean} → {len(existing_jobs)}')
+            _step('杭州清洗去重完成', True, f'{before_hz_clean} → {len(existing_jobs)} 条')
+        except Exception as e:
+            logger.warning(f'杭州清洗去重失败(非致命): {e}')
+            status['errors'].append(f'杭州清洗去重失败: {e}')
+            _step('杭州清洗去重完成', False, str(e))
+
+    if other_cities:
+        stage_no += 1
+        _crawl_stage(stage_no, total_stage_count, '其他城市爬取17K以上一次', keywords, other_cities, OTHER_CITY_SALARY_SPECS, MIN_AVG_SALARY_K, None)
 
     # 关闭浏览器
     try:
@@ -387,6 +532,20 @@ def main():
     status['crawl_cleaned'] = total_cleaned
     status['added'] = total_added
     _save_status(status)
+
+    try:
+        existing_keys, existing_jobs = load_existing()
+        before_clean_total = len(existing_jobs)
+        save(existing_jobs)
+        existing_keys, existing_jobs = load_existing()
+        status['total'] = len(existing_jobs)
+        _save_status(status)
+        logger.info(f'✅ 上传前数据清洗完成: {before_clean_total} → {len(existing_jobs)}')
+        _step('上传前清洗', True, f'{before_clean_total} → {len(existing_jobs)} 条')
+    except Exception as e:
+        logger.warning(f'上传前数据清洗失败(非致命): {e}')
+        status['errors'].append(f'上传前数据清洗失败: {e}')
+        _step('上传前清洗', False, str(e))
 
     if total_raw == 0:
         logger.warning('今日未抓取到任何数据！')
@@ -483,6 +642,12 @@ def main():
         if not _proxy_set:
             logger.info('未检测到本地代理，git 将直连推送')
         today = datetime.now().strftime('%Y-%m-%d')
+        branch_ret = subprocess.run(['git', 'branch', '--show-current'],
+                                    cwd=str(BASE_DIR), capture_output=True, text=True,
+                                    encoding='utf-8', errors='replace', timeout=30)
+        publish_branch = (branch_ret.stdout or '').strip() or 'main'
+        status['git_branch'] = publish_branch
+        status['main_published'] = publish_branch == 'main'
         subprocess.run(['git', 'add', '-A'], cwd=str(BASE_DIR), check=True, timeout=120)
         diff_ret = subprocess.run(['git', 'diff', '--cached', '--quiet'], cwd=str(BASE_DIR), timeout=60)
         if diff_ret.returncode == 0:
@@ -500,7 +665,7 @@ def main():
             last_push_err = ''
             for _try in range(5):
                 try:
-                    ret = subprocess.run(['git', 'push', 'origin', 'main'],
+                    ret = subprocess.run(['git', 'push', 'origin', f'HEAD:{publish_branch}'],
                                           cwd=str(BASE_DIR), capture_output=True, text=True,
                                           encoding='utf-8', errors='replace', timeout=180)
                 except subprocess.TimeoutExpired:
@@ -515,9 +680,9 @@ def main():
                 logger.warning(f'Git push 第{_try+1}次失败(code={ret.returncode}): {last_push_err[:120]}')
                 _time.sleep(5 * (_try + 1))
             if push_ok:
-                logger.info('✅ Git 提交推送完成')
+                logger.info(f'✅ Git 提交推送完成: {publish_branch}')
                 status['git_pushed'] = True
-                _step('Git 推送', True, f'daily: {today}')
+                _step('Git 推送', True, f'daily: {today} -> {publish_branch}')
             else:
                 raise RuntimeError(f'Git push 5次均失败: {last_push_err}')
     except Exception as e:
@@ -527,9 +692,12 @@ def main():
 
     # === 9. 数据已通过 Git 推送同步（GitHub Raw URL 自动更新，无需 Netlify 部署） ===
     _write_progress(93, '☁️ 数据已通过 Git 云同步', '', status.get('steps', []))
-    if status.get('git_pushed'):
+    if status.get('git_pushed') and status.get('main_published', True):
         status['deployed'] = True
         _step('云同步', True, '数据已通过 GitHub Raw URL 自动更新')
+    elif status.get('git_pushed'):
+        status['deployed'] = False
+        _step('云同步', False, f'已推送到临时分支 {status.get("git_branch")}，main 网页未更新')
     else:
         _step('云同步', False, 'Git 推送未成功，数据未同步')
 
@@ -554,12 +722,14 @@ def main():
     status['duration_sec'] = round(_time.time() - _t0)
     status['overall'] = 'success' if not status['errors'] else 'partial'
     try:
-        if total_added > 0 and status.get('git_pushed'):
+        if total_added > 0 and status.get('git_pushed') and status.get('main_published', True):
             from feishu_alert import send_daily_report_alert
             status_for_alert = dict(status)
             status_for_alert['added'] = total_added
             status_for_alert['total'] = len(final_jobs)
             send_daily_report_alert(status=status_for_alert, min_new=1, top_n=5, throttle_sec=0)
+        elif total_added > 0 and not status.get('main_published', True):
+            logger.warning('当前为临时分支，跳过飞书岗位日报推送，避免网页 main 数据不一致')
         elif total_added > 0:
             logger.warning('Git 推送未成功，跳过飞书岗位日报推送，避免网页数据不一致')
         else:

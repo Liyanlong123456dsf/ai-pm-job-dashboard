@@ -14,6 +14,7 @@ with open(CONFIG_PATH, 'r', encoding='utf-8') as f:
     _cfg = json.load(f)
 
 CAT_RULES = _cfg.get('cat_rules', {})
+MIN_AVG_SALARY_K = 17
 
 
 def parse_salary(s: str) -> float:
@@ -106,6 +107,8 @@ def process_one(raw: dict) -> dict:
         return None
 
     avg = parse_salary(salary)
+    if avg < MIN_AVG_SALARY_K:
+        return None
     tier = salary_tier(avg)
 
     url = str(raw.get('url') or '').strip()
