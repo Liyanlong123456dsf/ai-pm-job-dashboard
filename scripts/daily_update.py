@@ -17,6 +17,7 @@ from pathlib import Path
 from datetime import datetime
 import time as _time
 import subprocess
+from pipeline import MIN_AVG_SALARY_K
 
 # Setup paths
 SCRIPT_DIR = Path(__file__).parent
@@ -257,7 +258,7 @@ def _prioritize_focus_keywords(keywords):
     return _merge_keyword_terms(focus, normal)
 
 
-def _filter_salary_jobs(jobs, min_avg=20, max_avg=None):
+def _filter_salary_jobs(jobs, min_avg=MIN_AVG_SALARY_K, max_avg=None):
     filtered = []
     for job in jobs:
         try:
@@ -369,7 +370,7 @@ def main():
         '导出总表', '生成知识库', '飞书同步', 'Git 推送', '云同步',
     ]
 
-    _write_progress(5, '🔍 正在爬取 BOSS 直聘...', f'杭州20-40K两遍 + 40K以上一遍；其他城市一次', status.get('steps', []))
+    _write_progress(5, '🔍 正在爬取 BOSS 直聘...', f'杭州17-40K两遍 + 40K以上一遍；其他城市一次', status.get('steps', []))
 
     # 启动浏览器 + 登录
     try:
@@ -404,7 +405,7 @@ def main():
     spider._processed_keys = set()
 
     def _crawl_stage(stage_idx, stage_count, stage_name, stage_keywords, stage_cities,
-                     salary_specs, min_avg=20, max_avg=None):
+                     salary_specs, min_avg=MIN_AVG_SALARY_K, max_avg=None):
         nonlocal total_added, total_raw, total_cleaned
         if not stage_keywords or not stage_cities:
             logger.info(f'{stage_name}: 无关键词或城市，跳过')
@@ -489,11 +490,11 @@ def main():
         )
 
     hangzhou_stages = [
-        ('杭州第1轮20-40K', keywords, SALARY_SPECS_20_40, 20, 40),
-        ('杭州第2轮20-40K', keywords, SALARY_SPECS_20_40, 20, 40),
+        ('杭州第1轮17-40K', keywords, SALARY_SPECS_20_40, MIN_AVG_SALARY_K, 40),
+        ('杭州第2轮17-40K', keywords, SALARY_SPECS_20_40, MIN_AVG_SALARY_K, 40),
     ]
     if focus_keywords:
-        hangzhou_stages.append(('杭州重点方向20-40K加倍轮次', focus_keywords, SALARY_SPECS_20_40, 20, 40))
+        hangzhou_stages.append(('杭州重点方向17-40K加倍轮次', focus_keywords, SALARY_SPECS_20_40, MIN_AVG_SALARY_K, 40))
     hangzhou_stages.append(('杭州第3轮40K以上', keywords, SALARY_SPECS_40_PLUS, 40, None))
 
     total_stage_count = len(hangzhou_stages) + (1 if other_cities else 0)
@@ -519,7 +520,7 @@ def main():
 
     if other_cities:
         stage_no += 1
-        _crawl_stage(stage_no, total_stage_count, '其他城市爬取20K以上一次', keywords, other_cities, OTHER_CITY_SALARY_SPECS, 20, None)
+        _crawl_stage(stage_no, total_stage_count, '其他城市爬取17K以上一次', keywords, other_cities, OTHER_CITY_SALARY_SPECS, MIN_AVG_SALARY_K, None)
 
     # 关闭浏览器
     try:
