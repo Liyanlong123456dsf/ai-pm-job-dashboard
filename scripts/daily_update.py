@@ -38,19 +38,12 @@ logging.basicConfig(
 logger = logging.getLogger('daily')
 
 HANGZHOU_CITY_NAME = '杭州'
-SALARY_SPECS_20_40 = [
-    {'code': '406', 'label': '20-30K'},
-    {'code': '407', 'label': '30-50K'},
-]
-SALARY_SPECS_40_PLUS = [
-    {'code': '407', 'label': '30-50K(40K+近似)'},
-    {'code': '408', 'label': '50K+'},
-]
-OTHER_CITY_SALARY_SPECS = [
+SALARY_SPECS_17_PLUS = [
     {'code': '406', 'label': '20-30K'},
     {'code': '407', 'label': '30-50K'},
     {'code': '408', 'label': '50K+'},
 ]
+OTHER_CITY_SALARY_SPECS = SALARY_SPECS_17_PLUS
 FOCUS_KEYWORD_SEEDS = [
     'AIGC产品经理',
     '生成式AI产品经理',
@@ -370,7 +363,7 @@ def main():
         '导出总表', '生成知识库', '飞书同步', 'Git 推送', '云同步',
     ]
 
-    _write_progress(5, '🔍 正在爬取 BOSS 直聘...', f'杭州17-40K两遍 + 40K以上一遍；其他城市一次', status.get('steps', []))
+    _write_progress(5, '🔍 正在爬取 BOSS 直聘...', f'杭州17K以上两遍 + 重点方向加倍；其他城市一次', status.get('steps', []))
 
     # 启动浏览器 + 登录
     try:
@@ -490,12 +483,11 @@ def main():
         )
 
     hangzhou_stages = [
-        ('杭州第1轮17-40K', keywords, SALARY_SPECS_20_40, MIN_AVG_SALARY_K, 40),
-        ('杭州第2轮17-40K', keywords, SALARY_SPECS_20_40, MIN_AVG_SALARY_K, 40),
+        ('杭州第1轮17K以上', keywords, SALARY_SPECS_17_PLUS, MIN_AVG_SALARY_K, None),
+        ('杭州第2轮17K以上', keywords, SALARY_SPECS_17_PLUS, MIN_AVG_SALARY_K, None),
     ]
     if focus_keywords:
-        hangzhou_stages.append(('杭州重点方向17-40K加倍轮次', focus_keywords, SALARY_SPECS_20_40, MIN_AVG_SALARY_K, 40))
-    hangzhou_stages.append(('杭州第3轮40K以上', keywords, SALARY_SPECS_40_PLUS, 40, None))
+        hangzhou_stages.append(('杭州重点方向17K以上加倍轮次', focus_keywords, SALARY_SPECS_17_PLUS, MIN_AVG_SALARY_K, None))
 
     total_stage_count = len(hangzhou_stages) + (1 if other_cities else 0)
     stage_no = 0
