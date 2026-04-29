@@ -27,6 +27,7 @@ venv/
 # ===== 运行产物 =====
 logs/
 history/
+backups/
 deploy-staging/
 run_status.json
 *.lock
