@@ -42,7 +42,7 @@ api.onRunnerStatus(status => {
     if (wasRunning && !isRunning) {
       if (k === 'stale_cleanup') refreshCleanupStatus();
       if (k === 'sync_feishu') refreshFeishuStatus();
-      if (k === 'auto_daily' || k === 'one_round') {
+      if (k === 'auto_daily' || k === 'one_round' || k === 'parallel_crawl') {
         refreshCleanupStatus();
         refreshFeishuStatus();
         refreshStrategySummary();
@@ -141,6 +141,7 @@ function refreshFileLog() {
 const TASK_META = {
   crawl:   { title: '📊 当前爬取进度',  badge: '🔍 爬取', cls: 'badge-crawl' },
   cleanup: { title: '🧹 当前清洗进度',  badge: '🧹 清洗', cls: 'badge-cleanup' },
+  parallel_crawl: { title: '🔀 双浏览器并行进度', badge: '🔀 并行', cls: 'badge-crawl' },
 };
 
 api.onTick(({ progress, status, pool }) => {
@@ -395,12 +396,17 @@ function updateStrategySummary(cfg) {
   const cityNames = Object.keys(cities);
   const hasHangzhou = cityNames.includes('杭州');
   const otherCityCount = hasHangzhou ? cityNames.length - 1 : cityNames.length;
+  const parallel = (cfg.schedule && cfg.schedule.parallel) || {};
+  const parallelEnabled = !!parallel.enabled;
+  const ports = parallel.ports || [9222, 9223];
 
   setText('strategyMeta', `${keywords.length}/${targetCount} 词 · ${focusKeywords.length} 重点`);
   setText('strategySample', `${sampleMin}-${sampleMax} 个/轮`);
   setText('strategyFocus', `${focusMin}-${focusMax} 个/轮`);
   setText('strategyKeywordPool', `全局关键词 ${keywords.length} 个 · 上限 ${targetCount}`);
   setText('strategyCities', hasHangzhou ? `杭州外 ${otherCityCount} 城各 1 轮` : `${otherCityCount} 城各 1 轮`);
+  setText('strategyParallel', parallelEnabled ? '已启用 · 双浏览器均衡分片' : '默认关闭 · 单账号轮换');
+  setText('strategyParallelDetail', parallelEnabled ? `Worker A/B 端口 ${ports[0] || 9222}/${ports[1] || 9223}，主控统一合并` : '可在配置页手动开启，需至少 2 个可用账号');
 }
 
 // ========== 配置 ==========
@@ -422,6 +428,11 @@ async function loadConfig() {
   document.getElementById('cfgInterval').value = s.interval_minutes ?? 10;
   document.getElementById('cfgMode').value = s.mode || 'continuous';
   document.getElementById('cfgAlwaysFull').checked = !!s.always_full;
+  const parallel = s.parallel || {};
+  const parallelPorts = parallel.ports || [9222, 9223];
+  document.getElementById('cfgParallelEnabled').checked = !!parallel.enabled;
+  document.getElementById('cfgParallelPortA').value = parallelPorts[0] ?? 9222;
+  document.getElementById('cfgParallelPortB').value = parallelPorts[1] ?? 9223;
 
   const ks = cfg.keyword_settings || {};
   document.getElementById('cfgSampleMin').value = ks.sample_min ?? 6;
@@ -488,6 +499,8 @@ async function saveSchedule() {
   const focusSampleMin = parseInt(document.getElementById('cfgFocusSampleMin').value, 10);
   const focusSampleMax = parseInt(document.getElementById('cfgFocusSampleMax').value, 10);
   const targetCount = parseInt(document.getElementById('cfgTargetCount').value, 10);
+  const parallelPortA = parseInt(document.getElementById('cfgParallelPortA').value, 10);
+  const parallelPortB = parseInt(document.getElementById('cfgParallelPortB').value, 10);
   const finalSampleMin = Number.isFinite(sampleMin) ? sampleMin : 6;
   const finalSampleMax = Number.isFinite(sampleMax) ? sampleMax : 10;
   const finalFocusMin = Number.isFinite(focusSampleMin) ? focusSampleMin : 3;
@@ -495,10 +508,19 @@ async function saveSchedule() {
   const finalTargetCount = Number.isFinite(targetCount) ? targetCount : 100;
   if (finalSampleMax < finalSampleMin) { toast('关键词采样 max 不能小于 min', 'err'); return; }
   if (finalFocusMax < finalFocusMin) { toast('重点保底 max 不能小于 min', 'err'); return; }
+  const finalPortA = Number.isFinite(parallelPortA) ? parallelPortA : 9222;
+  const finalPortB = Number.isFinite(parallelPortB) ? parallelPortB : 9223;
+  if (finalPortA === finalPortB) { toast('并行端口 A/B 不能相同', 'err'); return; }
   CFG_CACHE.schedule = CFG_CACHE.schedule || {};
   CFG_CACHE.schedule.interval_minutes = parseInt(document.getElementById('cfgInterval').value, 10) || 10;
   CFG_CACHE.schedule.mode = document.getElementById('cfgMode').value;
   CFG_CACHE.schedule.always_full = document.getElementById('cfgAlwaysFull').checked;
+  CFG_CACHE.schedule.parallel = {
+    enabled: document.getElementById('cfgParallelEnabled').checked,
+    workers: 2,
+    strategy: 'balanced',
+    ports: [finalPortA, finalPortB],
+  };
   CFG_CACHE.keyword_settings = CFG_CACHE.keyword_settings || {};
   CFG_CACHE.keyword_settings.sample_min = finalSampleMin;
   CFG_CACHE.keyword_settings.sample_max = finalSampleMax;

@@ -62,6 +62,17 @@
         <div class="a-pid" id="pid-one_round">未运行</div>
       </div>
 
+      <div class="action-card" data-runner="parallel_crawl">
+        <div class="a-icon">🔀</div>
+        <div class="a-title">双浏览器并行</div>
+        <div class="a-desc">两个账号/两个 Chrome Profile 均衡分片 · 主控统一合并</div>
+        <div class="a-ctrl">
+          <button class="btn btn-primary" onclick="startRunner('parallel_crawl')">执行</button>
+          <button class="btn btn-danger" onclick="stopRunner('parallel_crawl')">停止</button>
+        </div>
+        <div class="a-pid" id="pid-parallel_crawl">未运行</div>
+      </div>
+
       <div class="action-card" data-runner="sync_feishu">
         <div class="a-icon">📤</div>
         <div class="a-title">飞书同步</div>
@@ -86,6 +97,7 @@
           <div class="strategy-item"><span class="s-label">重点保底</span><strong id="strategyFocus">3-5 个/轮</strong><small>AI营销 / AI内容中台 / AIGC / AI电商方向</small></div>
           <div class="strategy-item"><span class="s-label">杭州策略</span><strong>随机关键词 1 轮 + 重点方向额外 2 轮</strong><small>重点方向总计约 3 倍频率</small></div>
           <div class="strategy-item"><span class="s-label">其他城市</span><strong id="strategyCities">每城随机关键词 1 轮</strong><small>弱相关词只参与普通随机，不进入保底池</small></div>
+          <div class="strategy-item"><span class="s-label">并行模式</span><strong id="strategyParallel">默认关闭</strong><small id="strategyParallelDetail">单账号轮换更稳，双浏览器需手动开启</small></div>
         </div>
       </div>
 
@@ -215,6 +227,8 @@
         <button class="log-tab" data-log="auto_daily">auto_daily.log</button>
         <button class="log-tab" data-log="crawler">crawler.log</button>
         <button class="log-tab" data-log="daily">daily_update.log</button>
+        <button class="log-tab" data-log="parallel">parallel_crawl.log</button>
+        <button class="log-tab" data-log="worker">parallel_worker.log</button>
         <button class="log-tab" data-log="cleanup">stale_cleanup.log</button>
       </div>
       <div class="log-actions">
@@ -266,6 +280,14 @@
             </select>
           </label>
           <label class="check"><input type="checkbox" id="cfgAlwaysFull"> 每轮全量模式</label>
+          <label class="check"><input type="checkbox" id="cfgParallelEnabled"> 启用双浏览器并行（2账号/2端口）</label>
+          <label>并行端口（A / B）
+            <div class="dual">
+              <input type="number" id="cfgParallelPortA" min="9000" max="9999">
+              <span>/</span>
+              <input type="number" id="cfgParallelPortB" min="9000" max="9999">
+            </div>
+          </label>
           <label>关键词每轮采样数（min ~ max）
             <div class="dual">
               <input type="number" id="cfgSampleMin" min="1" max="50">

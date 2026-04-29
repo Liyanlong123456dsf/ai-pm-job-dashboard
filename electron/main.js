@@ -90,6 +90,7 @@ const runners = {
   login_check: null,  // 登录检查
   sync_feishu: null,  // 飞书同步
   stale_cleanup: null, // 数据清洗
+  parallel_crawl: null, // 双浏览器并行
 };
 
 function spawnPy(key, scriptRel, args = [], extraEnv = {}) {
@@ -261,6 +262,8 @@ ipcMain.handle('logs:tail', (_e, name, lines = 300) => {
     auto_daily: 'auto_daily.log',
     crawler: 'crawler.log',
     daily: 'daily_update.log',
+    parallel: 'parallel_crawl.log',
+    worker: 'parallel_worker.log',
     cleanup: 'stale_cleanup.log',
   };
   const fn = map[name] || name;
@@ -271,6 +274,7 @@ ipcMain.handle('runner:start', (_e, action) => {
   switch (action) {
     case 'auto_daily':   return spawnPy('auto_daily', 'auto_daily.py');
     case 'one_round':    return spawnPy('one_round', 'daily_update.py');
+    case 'parallel_crawl': return spawnPy('parallel_crawl', 'parallel_crawl.py');
     case 'sync_feishu':  return spawnPy('sync_feishu', 'sync_feishu.py');
     case 'stale_cleanup': return spawnPy('stale_cleanup', 'stale_cleanup.py', [], { AI_PM_CHROME_PORT: '9224' });
     // 'login_check' 已废弃：请通过「账号池」面板的「扫码登录」按钮 → boss:manual-login
@@ -322,6 +326,14 @@ function readAccountPoolSummary() {
   };
 }
 
+function readParallelPorts() {
+  const cfg = readJson(USER_CONFIG_FILE) || readJson(path.join(CONFIG_DIR, 'keywords.json')) || {};
+  const ports = cfg.schedule && cfg.schedule.parallel && Array.isArray(cfg.schedule.parallel.ports)
+    ? cfg.schedule.parallel.ports
+    : [9222, 9223];
+  return ports;
+}
+
 ipcMain.handle('boss:pool-status', () => readAccountPoolSummary());
 
 ipcMain.handle('boss:manual-login', (_e, alias) => {
@@ -333,7 +345,8 @@ ipcMain.handle('boss:manual-login', (_e, alias) => {
   // 不同账号分配不同 Chrome 调试端口，避免 DrissionPage 复用已有实例
   const cfg = readBossAccountsConfig();
   const idx = (cfg.accounts || []).findIndex(a => a.alias === alias);
-  const port = 9222 + Math.max(idx, 0);
+  const ports = readParallelPorts();
+  const port = ports[Math.max(idx, 0)] || (9222 + Math.max(idx, 0));
   return spawnPy(
     key,
     'login_check.py',

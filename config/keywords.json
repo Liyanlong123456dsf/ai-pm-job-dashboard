@@ -206,7 +206,16 @@
       1,
       15
     ],
-    "cleanup_max_age_days": 7
+    "cleanup_max_age_days": 7,
+    "parallel": {
+      "enabled": true,
+      "workers": 2,
+      "strategy": "balanced",
+      "ports": [
+        9222,
+        9223
+      ]
+    }
   },
   "cat_rules": {
     "大模型/LLM": [
