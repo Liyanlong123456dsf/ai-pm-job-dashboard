@@ -22,8 +22,11 @@ OUTPUT_CSV = str(_Path(BASE) / 'AIPM总表_统一格式.csv')
 HEADER = ['公司名称（全称）', '岗位名称', '所在城市', '薪资区间', 'BOSS链接',
           '年限要求', '学历要求', '方向分类', '关键词', '岗位描述', '数据来源']
 
-def norm_key(title, company):
-    s = re.sub(r'[\s\-_（(）)·/|，,]', '', f'{title}_{company}'.lower())
+def norm_key(title, company, city='', salary='', url=''):
+    url = str(url or '').strip().split('?')[0]
+    if url:
+        return 'url:' + url.lower()
+    s = re.sub(r'[\s\-_（(）)·/|，,]', '', f'{title}_{company}_{city}_{salary}'.lower())
     return s
 
 all_rows = OrderedDict()  # norm_key -> row dict
@@ -36,14 +39,17 @@ if os.path.exists(CSV_PATH):
             company = (r.get('公司名称（全称）') or '').strip()
             if not title:
                 continue
-            k = norm_key(title, company)
+            city = (r.get('所在城市') or '').strip()
+            salary = (r.get('薪资区间') or '').strip()
+            url = (r.get('BOSS链接') or '').strip().split('?')[0]
+            k = norm_key(title, company, city, salary, url)
             if k not in all_rows:
                 all_rows[k] = {
                     '公司名称（全称）': company,
                     '岗位名称': title,
-                    '所在城市': (r.get('所在城市') or '').strip(),
-                    '薪资区间': (r.get('薪资区间') or '').strip(),
-                    'BOSS链接': (r.get('BOSS链接') or '').strip().split('?')[0],
+                    '所在城市': city,
+                    '薪资区间': salary,
+                    'BOSS链接': url,
                     '年限要求': (r.get('年限要求') or '').strip(),
                     '学历要求': (r.get('学历要求') or '').strip(),
                     '方向分类': '',
@@ -65,14 +71,17 @@ if os.path.exists(XLSX_PATH) and openpyxl:
         title = str(row[4] or '').strip()
         if not title:
             continue
-        k = norm_key(title, company)
+        city = str(row[2] or '').strip()
+        salary = str(row[3] or '').strip()
+        url = str(row[5] or '').strip().split('?')[0] if row[5] else ''
+        k = norm_key(title, company, city, salary, url)
         if k not in all_rows:
             all_rows[k] = {
                 '公司名称（全称）': company,
                 '岗位名称': title,
-                '所在城市': str(row[2] or '').strip(),
-                '薪资区间': str(row[3] or '').strip(),
-                'BOSS链接': str(row[5] or '').strip().split('?')[0] if row[5] else '',
+                '所在城市': city,
+                '薪资区间': salary,
+                'BOSS链接': url,
                 '年限要求': str(row[6] or '').strip() if len(row) > 6 and row[6] else '',
                 '学历要求': str(row[7] or '').strip() if len(row) > 7 and row[7] else '',
                 '方向分类': '',
@@ -92,7 +101,7 @@ json_add = 0
 for j in jobs:
     title = j.get('title', '')
     company = j.get('company', '')
-    k = norm_key(title, company)
+    k = norm_key(title, company, j.get('city', ''), j.get('salary', ''), j.get('url', ''))
     if k not in all_rows:
         all_rows[k] = {
             '公司名称（全称）': company,
