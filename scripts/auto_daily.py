@@ -731,8 +731,8 @@ def _run_one_round(round_num):
             cfg = account_pool.load_config()
             fallback_sec = cfg['settings']['all_failed_cooldown_min'] * 60
         except Exception:
-            fallback_sec = 1800
-        suggested_wait_sec = max(int(login_state.get('retry_after_sec') or fallback_sec), 300)
+            fallback_sec = 3600
+        suggested_wait_sec = max(int(login_state.get('retry_after_sec') or 0), fallback_sec, 300)
         success = False
         error_msg = f'登录未就绪[{login_state.get("status", "unknown")}]: {login_state.get("detail", "")}'
     else:

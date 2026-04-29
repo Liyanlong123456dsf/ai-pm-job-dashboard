@@ -80,8 +80,8 @@ def load_config() -> dict:
     return {
         'accounts': enabled,
         'settings': {
-            'min_account_rest_min': int(settings.get('min_account_rest_min', 10) or 10),
-            'all_failed_cooldown_min': int(settings.get('all_failed_cooldown_min', 30) or 30),
+            'min_account_rest_min': int(settings.get('min_account_rest_min', 5) or 5),
+            'all_failed_cooldown_min': int(settings.get('all_failed_cooldown_min', 60) or 60),
             'alert_throttle_min': int(settings.get('alert_throttle_min', 60) or 60),
             'recovery_check_min': int(settings.get('recovery_check_min', 30) or 30),
         },

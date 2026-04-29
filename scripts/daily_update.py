@@ -39,30 +39,66 @@ logger = logging.getLogger('daily')
 
 HANGZHOU_CITY_NAME = '杭州'
 SALARY_SPECS_17_PLUS = [
+    {'code': '405', 'label': '15-20K'},
     {'code': '406', 'label': '20-30K'},
     {'code': '407', 'label': '30-50K'},
     {'code': '408', 'label': '50K+'},
 ]
 OTHER_CITY_SALARY_SPECS = SALARY_SPECS_17_PLUS
 FOCUS_KEYWORD_SEEDS = [
+    'AI营销产品经理',
+    'AIGC营销产品经理',
+    'AI广告产品经理',
+    'AI投放产品经理',
+    'AI增长产品经理',
+    'AI商业化产品经理',
+    'AI品牌营销产品经理',
+    'AI营销中台产品经理',
+    'AI营销工具产品经理',
+    'AI智能营销产品经理',
+    'AI用户增长产品经理',
+    'AI内容产品经理',
+    'AI内容中台产品经理',
+    'AIGC内容中台产品经理',
+    'AI内容平台产品经理',
+    'AI内容生成产品经理',
+    'AI内容管理产品经理',
+    'AI素材中台产品经理',
+    'AI创作平台产品经理',
+    'AI创作工具产品经理',
+    'AI文案产品经理',
+    'AI图文产品经理',
+    'AI内容分发产品经理',
+    'AI内容推荐产品经理',
     'AIGC产品经理',
     '生成式AI产品经理',
-    'AIGC电商产品经理',
+    'AIGC应用产品经理',
+    'AIGC平台产品经理',
+    'AIGC工具产品经理',
+    'AIGC内容产品经理',
+    'AIGC创作产品经理',
     'AIGC视频产品经理',
-    'AIGC营销产品经理',
+    'AIGC短视频产品经理',
+    'AIGC短剧产品经理',
+    'AIGC图像产品经理',
+    'AIGC文案产品经理',
+    'AIGC素材产品经理',
+    'AIGC商业化产品经理',
     'AI电商产品经理',
+    'AIGC电商产品经理',
     'AI电商营销产品经理',
-    'AI营销产品经理',
-    'AI内容营销产品经理',
-    'AI视频产品经理',
-    'AI短视频产品经理',
-    'AI内容产品经理',
-    'AI商业化产品经理',
-    '直播电商产品经理',
-    '内容电商产品经理',
+    'AI跨境电商产品经理',
+    'AI导购产品经理',
+    'AI智能导购产品经理',
+    'AI商品产品经理',
+    'AI商家工具产品经理',
+    'AI选品产品经理',
+    'AI内容电商产品经理',
+    'AI电商增长产品经理',
 ]
 FOCUS_KEYWORD_MARKERS = (
-    'AIGC', '生成式', '电商', '营销', '视频', '短视频', '直播', '内容', '商业化'
+    'AIGC', '生成式', '电商', '营销', '内容中台', '内容平台', '内容生成', '内容管理',
+    '创作平台', '创作工具', '文案', '图文', '内容分发', '内容推荐', '素材中台', '商业化'
 )
 
 
@@ -240,14 +276,17 @@ def _merge_keyword_terms(*groups):
     return merged
 
 
-def _is_focus_keyword(term):
-    upper = str(term or '').upper()
+def _is_focus_keyword(term, focus_keywords=None):
+    normalized = str(term or '').strip()
+    if focus_keywords is not None:
+        return normalized in set(focus_keywords)
+    upper = normalized.upper()
     return any(marker.upper() in upper for marker in FOCUS_KEYWORD_MARKERS)
 
 
-def _prioritize_focus_keywords(keywords):
-    focus = [kw for kw in keywords if _is_focus_keyword(kw)]
-    normal = [kw for kw in keywords if not _is_focus_keyword(kw)]
+def _prioritize_focus_keywords(keywords, focus_keywords=None):
+    focus = [kw for kw in keywords if _is_focus_keyword(kw, focus_keywords)]
+    normal = [kw for kw in keywords if not _is_focus_keyword(kw, focus_keywords)]
     return _merge_keyword_terms(focus, normal)
 
 
@@ -320,15 +359,13 @@ def main():
     logger.info(f'开始每日更新 {datetime.now().strftime("%Y-%m-%d %H:%M")}')
     logger.info('=' * 50)
 
-    from spiders.boss_dp import load_config, load_keywords
+    from spiders.boss_dp import get_focus_keywords, load_config, load_keywords
     config = load_config()
     cities = config['cities']
-    if args.quick:
-        keywords = load_keywords(quick=True)
-    else:
-        keywords = config.get('keywords') or load_keywords(quick=False)
-    keywords = _prioritize_focus_keywords(_merge_keyword_terms(FOCUS_KEYWORD_SEEDS, keywords))
-    focus_keywords = [kw for kw in keywords if _is_focus_keyword(kw)]
+    all_focus_keywords = _merge_keyword_terms(get_focus_keywords(config), FOCUS_KEYWORD_SEEDS)
+    keywords = load_keywords(quick=args.quick)
+    keywords = _prioritize_focus_keywords(keywords, all_focus_keywords)
+    focus_keywords = [kw for kw in keywords if _is_focus_keyword(kw, all_focus_keywords)]
     hangzhou_code = cities.get(HANGZHOU_CITY_NAME)
     if not hangzhou_code:
         logger.error('配置中未找到杭州城市码，无法执行杭州重点爬取')
@@ -344,7 +381,7 @@ def main():
     other_cities = {k: v for k, v in cities.items() if k != HANGZHOU_CITY_NAME}
     is_greedy = not args.quick
     mode_label = '快速' if args.quick else '全量(贪婪)'
-    logger.info(f'[{mode_label}] 杭州重点策略: {len(keywords)} 关键词，其中重点方向 {len(focus_keywords)} 个')
+    logger.info(f'[{mode_label}] 随机关键词: {len(keywords)} 个，其中重点方向 {len(focus_keywords)} 个')
     logger.info(f'[{mode_label}] 其他城市: {list(other_cities.keys())}')
 
     from pipeline import process_batch
@@ -363,7 +400,7 @@ def main():
         '导出总表', '生成知识库', '飞书同步', 'Git 推送', '云同步',
     ]
 
-    _write_progress(5, '🔍 正在爬取 BOSS 直聘...', f'杭州17K以上两遍 + 重点方向加倍；其他城市一次', status.get('steps', []))
+    _write_progress(5, '🔍 正在爬取 BOSS 直聘...', f'全城市随机关键词一次；杭州重点方向额外两次；最终严格17K以上', status.get('steps', []))
 
     # 启动浏览器 + 登录
     try:
@@ -483,11 +520,11 @@ def main():
         )
 
     hangzhou_stages = [
-        ('杭州第1轮17K以上', keywords, SALARY_SPECS_17_PLUS, MIN_AVG_SALARY_K, None),
-        ('杭州第2轮17K以上', keywords, SALARY_SPECS_17_PLUS, MIN_AVG_SALARY_K, None),
+        ('杭州随机关键词17K以上', keywords, SALARY_SPECS_17_PLUS, MIN_AVG_SALARY_K, None),
     ]
     if focus_keywords:
-        hangzhou_stages.append(('杭州重点方向17K以上加倍轮次', focus_keywords, SALARY_SPECS_17_PLUS, MIN_AVG_SALARY_K, None))
+        hangzhou_stages.append(('杭州重点方向17K以上第2轮', focus_keywords, SALARY_SPECS_17_PLUS, MIN_AVG_SALARY_K, None))
+        hangzhou_stages.append(('杭州重点方向17K以上第3轮', focus_keywords, SALARY_SPECS_17_PLUS, MIN_AVG_SALARY_K, None))
 
     total_stage_count = len(hangzhou_stages) + (1 if other_cities else 0)
     stage_no = 0

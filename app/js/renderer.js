@@ -45,6 +45,7 @@ api.onRunnerStatus(status => {
       if (k === 'auto_daily' || k === 'one_round') {
         refreshCleanupStatus();
         refreshFeishuStatus();
+        refreshStrategySummary();
       }
     }
 
@@ -372,12 +373,43 @@ async function refreshCleanupStatus() {
   } catch (_) {}
 }
 
+async function refreshStrategySummary() {
+  try {
+    const cfg = await api.readConfig();
+    if (cfg) updateStrategySummary(cfg);
+  } catch (_) {
+    setText('strategyMeta', '配置读取失败');
+  }
+}
+
+function updateStrategySummary(cfg) {
+  const keywords = cfg.keywords || [];
+  const cities = cfg.cities || {};
+  const ks = cfg.keyword_settings || {};
+  const focusKeywords = ks.focus_keywords || [];
+  const sampleMin = ks.sample_min ?? 6;
+  const sampleMax = ks.sample_max ?? 10;
+  const focusMin = ks.focus_sample_min ?? 3;
+  const focusMax = ks.focus_sample_max ?? 5;
+  const targetCount = ks.target_count ?? keywords.length;
+  const cityNames = Object.keys(cities);
+  const hasHangzhou = cityNames.includes('杭州');
+  const otherCityCount = hasHangzhou ? cityNames.length - 1 : cityNames.length;
+
+  setText('strategyMeta', `${keywords.length}/${targetCount} 词 · ${focusKeywords.length} 重点`);
+  setText('strategySample', `${sampleMin}-${sampleMax} 个/轮`);
+  setText('strategyFocus', `${focusMin}-${focusMax} 个/轮`);
+  setText('strategyKeywordPool', `全局关键词 ${keywords.length} 个 · 上限 ${targetCount}`);
+  setText('strategyCities', hasHangzhou ? `杭州外 ${otherCityCount} 城各 1 轮` : `${otherCityCount} 城各 1 轮`);
+}
+
 // ========== 配置 ==========
 let CFG_CACHE = null;
 async function loadConfig() {
   const cfg = await api.readConfig();
   if (!cfg) { toast('读取配置失败', 'err'); return; }
   CFG_CACHE = cfg;
+  updateStrategySummary(cfg);
 
   document.getElementById('kwList').value = (cfg.keywords || []).join('\n');
   setText('kwCount', `${(cfg.keywords || []).length} 个`);
@@ -392,8 +424,11 @@ async function loadConfig() {
   document.getElementById('cfgAlwaysFull').checked = !!s.always_full;
 
   const ks = cfg.keyword_settings || {};
-  document.getElementById('cfgSampleMin').value = ks.sample_min ?? 5;
-  document.getElementById('cfgSampleMax').value = ks.sample_max ?? 8;
+  document.getElementById('cfgSampleMin').value = ks.sample_min ?? 6;
+  document.getElementById('cfgSampleMax').value = ks.sample_max ?? 10;
+  document.getElementById('cfgFocusSampleMin').value = ks.focus_sample_min ?? 3;
+  document.getElementById('cfgFocusSampleMax').value = ks.focus_sample_max ?? 5;
+  document.getElementById('cfgTargetCount').value = ks.target_count ?? 100;
 
   const info = await api.sysInfo();
   const box = document.getElementById('sysInfoBox');
@@ -427,7 +462,7 @@ async function saveKeywords() {
   if (list.length < 3) { toast('至少保留 3 个关键词', 'err'); return; }
   CFG_CACHE.keywords = Array.from(new Set(list));
   const ok = await api.writeConfig(CFG_CACHE);
-  if (ok) { toast(`已保存 ${CFG_CACHE.keywords.length} 个关键词`, 'ok'); setText('kwCount', `${CFG_CACHE.keywords.length} 个`); }
+  if (ok) { toast(`已保存 ${CFG_CACHE.keywords.length} 个关键词`, 'ok'); setText('kwCount', `${CFG_CACHE.keywords.length} 个`); updateStrategySummary(CFG_CACHE); }
   else toast('保存失败', 'err');
 }
 
@@ -442,22 +477,38 @@ async function saveCities() {
   if (Object.keys(cities).length < 1) { toast('至少保留 1 个城市', 'err'); return; }
   CFG_CACHE.cities = cities;
   const ok = await api.writeConfig(CFG_CACHE);
-  if (ok) { toast(`已保存 ${Object.keys(cities).length} 个城市`, 'ok'); setText('cityCount', `${Object.keys(cities).length} 个`); }
+  if (ok) { toast(`已保存 ${Object.keys(cities).length} 个城市`, 'ok'); setText('cityCount', `${Object.keys(cities).length} 个`); updateStrategySummary(CFG_CACHE); }
   else toast('保存失败', 'err');
 }
 
 async function saveSchedule() {
   if (!CFG_CACHE) await loadConfig();
+  const sampleMin = parseInt(document.getElementById('cfgSampleMin').value, 10);
+  const sampleMax = parseInt(document.getElementById('cfgSampleMax').value, 10);
+  const focusSampleMin = parseInt(document.getElementById('cfgFocusSampleMin').value, 10);
+  const focusSampleMax = parseInt(document.getElementById('cfgFocusSampleMax').value, 10);
+  const targetCount = parseInt(document.getElementById('cfgTargetCount').value, 10);
+  const finalSampleMin = Number.isFinite(sampleMin) ? sampleMin : 6;
+  const finalSampleMax = Number.isFinite(sampleMax) ? sampleMax : 10;
+  const finalFocusMin = Number.isFinite(focusSampleMin) ? focusSampleMin : 3;
+  const finalFocusMax = Number.isFinite(focusSampleMax) ? focusSampleMax : 5;
+  const finalTargetCount = Number.isFinite(targetCount) ? targetCount : 100;
+  if (finalSampleMax < finalSampleMin) { toast('关键词采样 max 不能小于 min', 'err'); return; }
+  if (finalFocusMax < finalFocusMin) { toast('重点保底 max 不能小于 min', 'err'); return; }
   CFG_CACHE.schedule = CFG_CACHE.schedule || {};
   CFG_CACHE.schedule.interval_minutes = parseInt(document.getElementById('cfgInterval').value, 10) || 10;
   CFG_CACHE.schedule.mode = document.getElementById('cfgMode').value;
   CFG_CACHE.schedule.always_full = document.getElementById('cfgAlwaysFull').checked;
   CFG_CACHE.keyword_settings = CFG_CACHE.keyword_settings || {};
-  CFG_CACHE.keyword_settings.sample_min = parseInt(document.getElementById('cfgSampleMin').value, 10) || 5;
-  CFG_CACHE.keyword_settings.sample_max = parseInt(document.getElementById('cfgSampleMax').value, 10) || 8;
+  CFG_CACHE.keyword_settings.sample_min = finalSampleMin;
+  CFG_CACHE.keyword_settings.sample_max = finalSampleMax;
+  CFG_CACHE.keyword_settings.focus_sample_min = finalFocusMin;
+  CFG_CACHE.keyword_settings.focus_sample_max = finalFocusMax;
+  CFG_CACHE.keyword_settings.target_count = finalTargetCount;
 
   const ok = await api.writeConfig(CFG_CACHE);
-  toast(ok ? '调度配置已保存' : '保存失败', ok ? 'ok' : 'err');
+  if (ok) { toast('调度配置已保存', 'ok'); updateStrategySummary(CFG_CACHE); }
+  else toast('保存失败', 'err');
 }
 
 // ========== 历史 ==========
@@ -575,4 +626,5 @@ function toast(msg, type = 'ok') {
   refreshPool();
   refreshFeishuStatus();
   refreshCleanupStatus();
+  refreshStrategySummary();
 })();

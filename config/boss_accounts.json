@@ -13,8 +13,8 @@
     }
   ],
   "pool_settings": {
-    "min_account_rest_min": 10,
-    "all_failed_cooldown_min": 30,
+    "min_account_rest_min": 5,
+    "all_failed_cooldown_min": 60,
     "alert_throttle_min": 60,
     "recovery_check_min": 30
   }

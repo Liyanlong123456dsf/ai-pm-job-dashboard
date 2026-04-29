@@ -238,6 +238,51 @@ body { display: flex; flex-direction: column; }
 .card-head h3 { font-size: 15px; font-weight: 600; letter-spacing: -0.2px; }
 .card-meta { font-size: 11px; color: var(--text-40); font-family: 'SF Mono', Menlo, Consolas, monospace; display: inline-flex; align-items: center; gap: 8px; }
 
+.strategy-grid {
+  display: grid;
+  grid-template-columns: 1.1fr .9fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.strategy-card {
+  background: linear-gradient(135deg, rgba(41,151,255,.06), var(--bg-card));
+}
+.strategy-card.risk {
+  background: linear-gradient(135deg, rgba(255,159,10,.07), var(--bg-card));
+  border-color: rgba(255,159,10,.16);
+}
+.strategy-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+.strategy-list.compact { gap: 9px; }
+.strategy-item {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 4px 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line-2);
+}
+.strategy-item:last-child { border-bottom: none; }
+.strategy-item .s-label {
+  grid-row: span 2;
+  color: var(--text-40);
+  font-size: 11px;
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+}
+.strategy-item strong {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+.strategy-item small {
+  color: var(--text-40);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
 /* 任务类型徽章 */
 .task-badge {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -518,6 +563,8 @@ body { display: flex; flex-direction: column; }
 
 @media (max-width: 960px) {
   .grid-2 { grid-template-columns: 1fr; }
+  .strategy-grid { grid-template-columns: 1fr; }
+  .strategy-item { grid-template-columns: 82px 1fr; }
 }
 
 .kw-edit textarea {
@@ -563,6 +610,15 @@ body { display: flex; flex-direction: column; }
 .dual { display: flex; align-items: center; gap: 8px; }
 .dual span { color: var(--text-40); }
 .dual input { flex: 1; }
+.config-note {
+  color: var(--text-40);
+  font-size: 12px;
+  line-height: 1.6;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(41,151,255,.06);
+}
 
 .info-list {
   display: flex;

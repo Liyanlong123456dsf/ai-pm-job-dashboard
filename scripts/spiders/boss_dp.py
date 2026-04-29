@@ -46,28 +46,63 @@ CHROME_PORT = int(os.environ.get('AI_PM_CHROME_PORT', '9222'))
 DEFAULT_KEYWORDS = [
     'AI产品经理', 'AIGC产品经理', '大模型产品经理', 'LLM产品经理', '智能体产品经理',
     'Agent产品经理', '多模态产品经理', 'NLP产品经理', '对话产品经理',
-    'AI平台产品经理', 'AI工具产品经理', 'AI应用产品经理', 'AI交互产品经理', 'AI搜索产品经理', 'AI推荐产品经理',
-    'AI策略产品经理', 'AI商业化产品经理', 'AI增长产品经理', 'AI数据产品经理', 'AI中台产品经理',
-    'AI产品专家', '生成式AI产品经理', 'Copilot产品经理', 'RAG产品经理', 'AI助手产品经理',
-    '智能客服产品经理', 'AI办公产品经理', 'AI教育产品经理', 'AI医疗产品经理', 'AI金融产品经理',
-    'AI风控产品经理', 'AI电商产品经理', 'AI营销产品经理', 'AI内容产品经理', 'AI视频产品经理',
-    'AI语音产品经理', 'AI视觉产品经理', 'AI机器人产品经理', '机器学习产品经理', '深度学习产品经理',
+    'AI商业化产品经理', 'AI增长产品经理', 'AI平台产品经理', 'AI交互产品经理', 'AI搜索产品经理', 'AI推荐产品经理',
+    'AI策略产品经理', 'AI工具产品经理', 'AI应用产品经理', 'AI数据产品经理', 'AI中台产品经理',
+    'AI产品专家',
+    'AI营销产品经理', 'AI内容产品经理', 'AI内容中台产品经理', 'AIGC内容中台产品经理', 'AI电商产品经理', 'AI跨境电商产品经理',
+    'AIGC营销产品经理', 'AI广告产品经理', 'AI投放产品经理', 'AI品牌营销产品经理', 'AI营销中台产品经理',
+    'AI营销工具产品经理', 'AI获客产品经理', 'AI私域产品经理', 'AI智能营销产品经理', 'AI用户增长产品经理',
+    'AI内容平台产品经理', 'AI内容生成产品经理', 'AI内容管理产品经理', 'AI内容审核产品经理',
+    'AI素材中台产品经理', 'AI素材管理产品经理', 'AI创作平台产品经理', 'AI创作工具产品经理',
+    'AI文案产品经理', 'AI图文产品经理', 'AI内容分发产品经理', 'AI内容推荐产品经理',
+    'AIGC应用产品经理', 'AIGC平台产品经理', 'AIGC工具产品经理', 'AIGC内容产品经理',
+    'AIGC创作产品经理', 'AIGC视频产品经理', 'AIGC短视频产品经理', 'AIGC短剧产品经理',
+    'AIGC图像产品经理', 'AIGC文案产品经理', 'AIGC素材产品经理', 'AIGC商业化产品经理',
+    'AIGC设计产品经理', 'AIGC电商产品经理', 'AI电商营销产品经理', 'AI导购产品经理',
+    'AI智能导购产品经理', 'AI商品产品经理', 'AI商家工具产品经理', 'AI选品产品经理',
+    'AI内容电商产品经理', 'AI电商增长产品经理', 'AI直播电商产品经理',
     '模型平台产品经理', 'AISaaS产品经理', 'ToB AI产品经理', '企业AI产品经理', '智能产品经理',
     '大模型应用产品经理', '智能体平台产品经理', 'AI工作流产品经理', 'AI解决方案产品经理', 'AI产品负责人',
+    '生成式AI产品经理', 'Copilot产品经理', 'RAG产品经理', 'AI助手产品经理', '智能客服产品经理',
+    'AI办公产品经理', 'AI教育产品经理', 'AI医疗产品经理', 'AI金融产品经理', 'AI风控产品经理',
+    'AI机器人产品经理', '机器学习产品经理', '深度学习产品经理', 'AI视频产品经理',
+    'AI语音产品经理', 'AI视觉产品经理',
+]
+
+DEFAULT_FOCUS_KEYWORDS = [
+    'AI营销产品经理', 'AIGC营销产品经理', 'AI广告产品经理', 'AI投放产品经理',
+    'AI增长产品经理', 'AI商业化产品经理', 'AI品牌营销产品经理', 'AI营销中台产品经理',
+    'AI营销工具产品经理', 'AI智能营销产品经理', 'AI用户增长产品经理',
+    'AI内容产品经理', 'AI内容中台产品经理', 'AIGC内容中台产品经理', 'AI内容平台产品经理',
+    'AI内容生成产品经理', 'AI内容管理产品经理', 'AI素材中台产品经理',
+    'AI创作平台产品经理', 'AI创作工具产品经理', 'AI文案产品经理',
+    'AI图文产品经理', 'AI内容分发产品经理', 'AI内容推荐产品经理',
+    'AIGC产品经理', '生成式AI产品经理', 'AIGC应用产品经理', 'AIGC平台产品经理',
+    'AIGC工具产品经理', 'AIGC内容产品经理', 'AIGC创作产品经理',
+    'AIGC视频产品经理', 'AIGC短视频产品经理', 'AIGC短剧产品经理', 'AIGC图像产品经理',
+    'AIGC文案产品经理', 'AIGC素材产品经理', 'AIGC商业化产品经理',
+    'AI电商产品经理', 'AIGC电商产品经理', 'AI电商营销产品经理',
+    'AI跨境电商产品经理', 'AI导购产品经理', 'AI智能导购产品经理',
+    'AI商品产品经理', 'AI商家工具产品经理', 'AI选品产品经理',
+    'AI内容电商产品经理', 'AI电商增长产品经理',
 ]
 
 DEFAULT_KEYWORD_SETTINGS = {
-    'sample_min': 5,
-    'sample_max': 8,
-    'target_count': 50,
+    'sample_min': 6,
+    'sample_max': 10,
+    'focus_sample_min': 3,
+    'focus_sample_max': 5,
+    'target_count': 100,
     'refresh_day': 1,
     'refresh_retry_hours': 6,
     'seed_queries': [
         'AI产品经理', 'AIGC产品经理', '大模型产品经理', '智能体产品经理', 'Agent产品经理',
         '多模态产品经理', '对话产品经理', 'AI商业化产品经理', 'AI平台产品经理',
         'AI交互产品经理',
-        'AI工具产品经理', 'AI应用产品经理',
+        'AI工具产品经理', 'AI应用产品经理', 'AI营销产品经理', 'AI内容中台产品经理',
+        'AIGC内容中台产品经理', 'AI电商产品经理', 'AI跨境电商产品经理',
     ],
+    'focus_keywords': DEFAULT_FOCUS_KEYWORDS,
     'last_refreshed_at': '',
     'last_refreshed_month': '',
     'last_refresh_source_counts': {
@@ -83,10 +118,10 @@ MAX_SCROLLS_PER_PAGE = 2
 
 # 防封参数 — 强硬省时版，在安全边界内压缩等待
 MIN_DELAY, MAX_DELAY = 0.8, 1.8
-KEYWORD_REST_MIN, KEYWORD_REST_MAX = 2, 5
-CITY_REST_MIN, CITY_REST_MAX = 3, 8
+KEYWORD_REST_MIN, KEYWORD_REST_MAX = 1, 3
+CITY_REST_MIN, CITY_REST_MAX = 2, 6
 DETAIL_DELAY_MIN, DETAIL_DELAY_MAX = 0.8, 1.5
-DETAIL_BATCH_PAUSE = (3, 6)    # 每批详情后的短休息
+DETAIL_BATCH_PAUSE = (1, 5)    # 每批详情后的短休息
 DETAIL_BATCH_SIZE = 25         # 每批25个，减少批次间休息次数
 
 # 强相关过滤：岗位名必须命中以下任一关键词才算"AI PM 强相关"
@@ -115,13 +150,63 @@ _PM_TERMS = [
 _KEYWORD_DIRECTION_TERMS = [
     '大模型', 'AIGC', '生成式AI', 'LLM', '智能体', 'AGENT', '多模态', 'NLP', 'COPILOT', 'RAG',
     '平台', '工具', '商业化', '增长', '数据', '搜索', '推荐', '策略', '对话', '客服', '电商', '营销',
-    '内容', '视频', '语音', '视觉', '机器人', '办公', '教育', '医疗', '金融', '风控', 'SAAS', '工作流', '解决方案',
+    '内容', '内容中台', '内容平台', '内容生成', '创作', '文案', '素材', '图文', '导购', '商家工具', '选品',
+    '视频', '语音', '视觉', '机器人', '办公', '教育', '医疗', '金融', '风控', 'SAAS', '工作流', '解决方案',
 ]
 _EXCLUDED_KEYWORD_TERMS = [
-    '销售', '开发', '工程师', '测试', '实施', '运维', '实习', '兼职', '主播', '顾问', '助理', '管培',
+    '销售', '运营', '开发', '工程师', '测试', '实施', '运维', '实习', '兼职', '主播', '顾问', '助理', '管培',
 ]
 
 _CANONICAL_KEYWORD_RULES = [
+    ('AIGC营销产品经理', ['AIGC营销产品经理', 'AIGC营销']),
+    ('AI广告产品经理', ['AI广告产品经理', 'AI广告']),
+    ('AI投放产品经理', ['AI投放产品经理', 'AI投放']),
+    ('AI品牌营销产品经理', ['AI品牌营销产品经理', 'AI品牌营销']),
+    ('AI营销中台产品经理', ['AI营销中台产品经理', 'AI营销中台']),
+    ('AI营销工具产品经理', ['AI营销工具产品经理', 'AI营销工具']),
+    ('AI获客产品经理', ['AI获客产品经理', 'AI获客']),
+    ('AI私域产品经理', ['AI私域产品经理', 'AI私域']),
+    ('AI智能营销产品经理', ['AI智能营销产品经理', '智能营销']),
+    ('AI用户增长产品经理', ['AI用户增长产品经理', 'AI用户增长', '用户增长']),
+    ('AI内容中台产品经理', ['AI内容中台产品经理', 'AI内容中台']),
+    ('内容中台产品经理', ['内容中台产品经理']),
+    ('AIGC内容中台产品经理', ['AIGC内容中台产品经理', 'AIGC内容中台']),
+    ('AI内容平台产品经理', ['AI内容平台产品经理', 'AI内容平台']),
+    ('AI内容生成产品经理', ['AI内容生成产品经理', 'AI内容生成']),
+    ('AI内容管理产品经理', ['AI内容管理产品经理', 'AI内容管理']),
+    ('AI内容审核产品经理', ['AI内容审核产品经理', 'AI内容审核']),
+    ('AI素材中台产品经理', ['AI素材中台产品经理', 'AI素材中台']),
+    ('AI素材管理产品经理', ['AI素材管理产品经理', 'AI素材管理']),
+    ('AI创作平台产品经理', ['AI创作平台产品经理', 'AI创作平台']),
+    ('AI创作工具产品经理', ['AI创作工具产品经理', 'AI创作工具']),
+    ('AI文案产品经理', ['AI文案产品经理', 'AI文案']),
+    ('AI图文产品经理', ['AI图文产品经理', 'AI图文']),
+    ('AI内容分发产品经理', ['AI内容分发产品经理', 'AI内容分发']),
+    ('AI内容推荐产品经理', ['AI内容推荐产品经理', 'AI内容推荐']),
+    ('AIGC应用产品经理', ['AIGC应用产品经理', 'AIGC应用']),
+    ('AIGC平台产品经理', ['AIGC平台产品经理', 'AIGC平台']),
+    ('AIGC工具产品经理', ['AIGC工具产品经理', 'AIGC工具']),
+    ('AIGC内容产品经理', ['AIGC内容产品经理', 'AIGC内容']),
+    ('AIGC创作产品经理', ['AIGC创作产品经理', 'AIGC创作']),
+    ('AIGC视频产品经理', ['AIGC视频产品经理', 'AIGC视频']),
+    ('AIGC短视频产品经理', ['AIGC短视频产品经理', 'AIGC短视频']),
+    ('AIGC短剧产品经理', ['AIGC短剧产品经理', 'AIGC短剧']),
+    ('AIGC图像产品经理', ['AIGC图像产品经理', 'AIGC图像']),
+    ('AIGC文案产品经理', ['AIGC文案产品经理', 'AIGC文案']),
+    ('AIGC素材产品经理', ['AIGC素材产品经理', 'AIGC素材']),
+    ('AIGC商业化产品经理', ['AIGC商业化产品经理', 'AIGC商业化']),
+    ('AIGC设计产品经理', ['AIGC设计产品经理', 'AIGC设计']),
+    ('AIGC电商产品经理', ['AIGC电商产品经理', 'AIGC电商']),
+    ('AI电商营销产品经理', ['AI电商营销产品经理', 'AI电商营销']),
+    ('AI跨境电商产品经理', ['AI跨境电商产品经理', 'AI跨境电商']),
+    ('AI导购产品经理', ['AI导购产品经理', 'AI导购']),
+    ('AI智能导购产品经理', ['AI智能导购产品经理', '智能导购']),
+    ('AI商品产品经理', ['AI商品产品经理', 'AI商品']),
+    ('AI商家工具产品经理', ['AI商家工具产品经理', 'AI商家工具']),
+    ('AI选品产品经理', ['AI选品产品经理', 'AI选品']),
+    ('AI内容电商产品经理', ['AI内容电商产品经理', 'AI内容电商']),
+    ('AI电商增长产品经理', ['AI电商增长产品经理', 'AI电商增长']),
+    ('AI直播电商产品经理', ['AI直播电商产品经理', 'AI直播电商']),
     ('AI产品经理', ['AI产品经理', 'AI 产品经理', 'AI方向', 'AI NATIVE', 'AI C 端', 'AI服务', '产品经理(AI', '产品经理-AI']),
     ('智能体平台产品经理', ['智能体平台']),
     ('模型平台产品经理', ['模型平台']),
@@ -232,10 +317,13 @@ def _keyword_settings(config):
     settings.update(config.get('keyword_settings') or {})
     settings['sample_min'] = max(1, _safe_int(settings.get('sample_min'), DEFAULT_KEYWORD_SETTINGS['sample_min']))
     settings['sample_max'] = max(settings['sample_min'], _safe_int(settings.get('sample_max'), DEFAULT_KEYWORD_SETTINGS['sample_max']))
+    settings['focus_sample_min'] = max(0, _safe_int(settings.get('focus_sample_min'), DEFAULT_KEYWORD_SETTINGS['focus_sample_min']))
+    settings['focus_sample_max'] = max(settings['focus_sample_min'], _safe_int(settings.get('focus_sample_max'), DEFAULT_KEYWORD_SETTINGS['focus_sample_max']))
     settings['target_count'] = max(10, _safe_int(settings.get('target_count'), DEFAULT_KEYWORD_SETTINGS['target_count']))
     settings['refresh_day'] = min(28, max(1, _safe_int(settings.get('refresh_day'), DEFAULT_KEYWORD_SETTINGS['refresh_day'])))
     settings['refresh_retry_hours'] = max(1, _safe_int(settings.get('refresh_retry_hours'), DEFAULT_KEYWORD_SETTINGS['refresh_retry_hours']))
     settings['seed_queries'] = _merge_unique_terms(settings.get('seed_queries') or [], DEFAULT_KEYWORD_SETTINGS['seed_queries'])
+    settings['focus_keywords'] = _merge_unique_terms(settings.get('focus_keywords') or [], DEFAULT_FOCUS_KEYWORDS)
     settings['last_refreshed_at'] = str(settings.get('last_refreshed_at') or '')
     settings['last_refreshed_month'] = str(settings.get('last_refreshed_month') or '')
     counts = settings.get('last_refresh_source_counts') or {}
@@ -245,6 +333,12 @@ def _keyword_settings(config):
         'final_keywords': max(0, _safe_int(counts.get('final_keywords'), 0)),
     }
     return settings
+
+def get_focus_keywords(config=None):
+    if config is None:
+        config = load_config()
+    settings = config.get('keyword_settings') or {}
+    return _merge_unique_terms(settings.get('focus_keywords') or [], DEFAULT_FOCUS_KEYWORDS)
 
 def _keyword_variants_from_raw(raw):
     source = _normalize_keyword_source_text(raw)
@@ -297,6 +391,8 @@ def _looks_like_search_keyword(term):
 def _keyword_rank(term, entry):
     upper = term.upper()
     score = entry.get('score', 0)
+    if term in DEFAULT_FOCUS_KEYWORDS:
+        score += 8
     if '产品经理' in term:
         score += 10
     elif '产品负责人' in term or '产品专家' in term:
@@ -306,7 +402,7 @@ def _keyword_rank(term, entry):
     for token in ['大模型', 'AIGC', '生成式AI', 'LLM', 'AGENT', '智能体', '多模态', 'NLP', 'COPILOT', 'RAG', 'AI']:
         if token.upper() in upper:
             score += 2
-    for token in ['平台', '工具', '商业化', '增长', '数据', '搜索', '推荐', '策略', '对话', '客服', '电商', '营销', '内容', '视频', '语音', '视觉', '机器人', '办公', '教育', '医疗', '金融', '风控', 'SAAS', '工作流', '解决方案']:
+    for token in ['平台', '工具', '商业化', '增长', '数据', '搜索', '推荐', '策略', '对话', '客服', '电商', '营销', '内容', '内容中台', '创作', '文案', '素材', '图文', '导购', '商家工具', '选品', '视频', '语音', '视觉', '机器人', '办公', '教育', '医疗', '金融', '风控', 'SAAS', '工作流', '解决方案']:
         if token.upper() in upper:
             score += 1
     if entry.get('suggestion'):
@@ -366,7 +462,7 @@ def load_cities():
     return load_config()['cities']
 
 def load_keywords(quick=False):
-    """加载关键词：每轮随机抽取 5-8 个搜索词"""
+    """加载关键词：每轮随机抽取 6-10 个搜索词"""
     config = load_config()
     settings = config['keyword_settings']
     all_kw = _merge_unique_terms(config.get('keywords') or [], DEFAULT_KEYWORDS)
@@ -375,9 +471,27 @@ def load_keywords(quick=False):
     low = min(settings['sample_min'], len(all_kw))
     high = min(settings['sample_max'], len(all_kw))
     pick_count = random.randint(low, max(low, high))
-    selected = random.sample(all_kw, min(pick_count, len(all_kw)))
+    focus_pool = [kw for kw in all_kw if kw in set(settings.get('focus_keywords') or [])]
+    normal_pool = [kw for kw in all_kw if kw not in set(focus_pool)]
+    focus_count = 0
+    if focus_pool and settings.get('focus_sample_max', 0) > 0:
+        focus_low = min(settings['focus_sample_min'], pick_count, len(focus_pool))
+        focus_high = min(settings['focus_sample_max'], pick_count, len(focus_pool))
+        if focus_high >= focus_low:
+            focus_count = random.randint(focus_low, focus_high)
+    selected = random.sample(focus_pool, focus_count) if focus_count else []
+    remain_count = min(pick_count, len(all_kw)) - len(selected)
+    if remain_count > 0:
+        normal_pick = random.sample(normal_pool, min(remain_count, len(normal_pool)))
+        selected.extend(normal_pick)
+        remain_count -= len(normal_pick)
+    if remain_count > 0:
+        focus_remaining = [kw for kw in focus_pool if kw not in selected]
+        selected.extend(random.sample(focus_remaining, min(remain_count, len(focus_remaining))))
+    random.shuffle(selected)
     mode_label = '快速模式' if quick else '全量模式'
-    logger.info(f'[{mode_label}] 词库 {len(all_kw)} 个，本轮随机抽取 {len(selected)} 个关键词: {selected}')
+    selected_focus_count = len([kw for kw in selected if kw in set(settings.get('focus_keywords') or [])])
+    logger.info(f'[{mode_label}] 词库 {len(all_kw)} 个，本轮随机抽取 {len(selected)} 个关键词，其中重点方向 {selected_focus_count} 个: {selected}')
     return selected
 
 def random_delay(lo=MIN_DELAY, hi=MAX_DELAY):
@@ -915,7 +1029,7 @@ class BossDPSpider:
 
             # 城市间休息
             if city_i < len(city_items) - 1:
-                random_delay(KEYWORD_REST_MIN, KEYWORD_REST_MAX)
+                random_delay(CITY_REST_MIN, CITY_REST_MAX)
 
         # 获取该关键词下所有新岗位的详情
         kw_new_keys = {k for k, j in self.all_jobs.items() if k not in self._processed_keys}
@@ -1112,7 +1226,7 @@ class BossDPSpider:
 
             # 关键词间休息
             if kw_idx < total_kws:
-                rest = random.uniform(CITY_REST_MIN, CITY_REST_MAX)
+                rest = random.uniform(KEYWORD_REST_MIN, KEYWORD_REST_MAX)
                 print(f'  ☕ 关键词切换休息 {rest:.0f}s...')
                 simulate_human(self.page)
                 time.sleep(rest)
