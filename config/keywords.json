@@ -33,7 +33,7 @@
     "AI视觉产品经理",
     "AI产品负责人",
     "AI策略产品经理",
-    "内容中台产品经理",
+    "AI内容中台产品经理",
     "AI搜索产品经理",
     "RAG产品经理",
     "AI推荐产品经理",
@@ -55,7 +55,6 @@
     "AIGC图像产品经理",
     "AIGC应用产品经理",
     "AIGC短剧产品经理",
-    "AI内容中台产品经理",
     "AI内容平台产品经理",
     "AI内容推荐产品经理",
     "AI内容电商产品经理",
@@ -184,7 +183,35 @@
       "suggestions": 797,
       "titles": 166,
       "final_keywords": 99
-    }
+    },
+    "fallback_keywords": [
+      "AIGC产品经理",
+      "AIGC内容产品经理",
+      "AIGC应用产品经理",
+      "AIGC工具产品经理",
+      "AIGC视频产品经理",
+      "AIGC短视频产品经理",
+      "AIGC创作产品经理",
+      "AI视频产品经理",
+      "AI内容生成产品经理",
+      "AI创作工具产品经理"
+    ],
+    "fallback_markers": [
+      "AIGC",
+      "生成式",
+      "GENAI",
+      "视频",
+      "短视频",
+      "短剧",
+      "剪辑",
+      "影像",
+      "内容生成",
+      "内容创作",
+      "创作",
+      "文案",
+      "素材"
+    ],
+    "fallback_ratio": 0.3
   },
   "cities": {
     "杭州": "101210100",
@@ -209,7 +236,7 @@
     ],
     "cleanup_max_age_days": 7,
     "parallel": {
-      "enabled": true,
+      "enabled": false,
       "workers": 2,
       "strategy": "balanced",
       "ports": [

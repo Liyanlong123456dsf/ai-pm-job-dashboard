@@ -392,10 +392,12 @@ function updateStrategySummary(cfg) {
   const sampleMax = ks.sample_max ?? 10;
   const focusMin = ks.focus_sample_min ?? 3;
   const focusMax = ks.focus_sample_max ?? 5;
+  const fallbackRatio = ks.fallback_ratio ?? 0.3;
+  const fallbackKeywords = ks.fallback_keywords || [];
   const targetCount = ks.target_count ?? keywords.length;
   const cityNames = Object.keys(cities);
-  const hasHangzhou = cityNames.includes('杭州');
-  const otherCityCount = hasHangzhou ? cityNames.length - 1 : cityNames.length;
+  const primaryCities = ['杭州', '上海', '北京'].filter(c => cityNames.includes(c));
+  const otherCityCount = cityNames.filter(c => !['杭州', '上海', '北京'].includes(c)).length;
   const parallel = (cfg.schedule && cfg.schedule.parallel) || {};
   const parallelEnabled = !!parallel.enabled;
   const ports = parallel.ports || [9222, 9223];
@@ -403,8 +405,11 @@ function updateStrategySummary(cfg) {
   setText('strategyMeta', `${keywords.length}/${targetCount} 词 · ${focusKeywords.length} 重点`);
   setText('strategySample', `${sampleMin}-${sampleMax} 个/轮`);
   setText('strategyFocus', `${focusMin}-${focusMax} 个/轮`);
+  setText('strategyFallback', `额外增加 ${Math.round(fallbackRatio * 100)}%`);
+  setText('strategyFallbackDetail', `${fallbackKeywords.slice(0, 4).join('、') || 'AIGC产品经理、AI视频产品经理'} 等强相关词，不删除原有抽样`);
   setText('strategyKeywordPool', `全局关键词 ${keywords.length} 个 · 上限 ${targetCount}`);
-  setText('strategyCities', hasHangzhou ? `杭州外 ${otherCityCount} 城各 1 轮` : `${otherCityCount} 城各 1 轮`);
+  setText('strategyCityRounds', `${primaryCities.join(' / ') || '重点城市'} 各 2 轮`);
+  setText('strategyCities', `其他 ${otherCityCount} 城各 1 轮`);
   setText('strategyParallel', parallelEnabled ? '已启用 · 双浏览器均衡分片' : '默认关闭 · 单账号轮换');
   setText('strategyParallelDetail', parallelEnabled ? `Worker A/B 端口 ${ports[0] || 9222}/${ports[1] || 9223}，主控统一合并` : '可在配置页手动开启，需至少 2 个可用账号');
 }
@@ -439,6 +444,7 @@ async function loadConfig() {
   document.getElementById('cfgSampleMax').value = ks.sample_max ?? 10;
   document.getElementById('cfgFocusSampleMin').value = ks.focus_sample_min ?? 3;
   document.getElementById('cfgFocusSampleMax').value = ks.focus_sample_max ?? 5;
+  document.getElementById('cfgFallbackRatio').value = Math.round((ks.fallback_ratio ?? 0.3) * 100);
   document.getElementById('cfgTargetCount').value = ks.target_count ?? 100;
 
   const info = await api.sysInfo();
@@ -498,6 +504,7 @@ async function saveSchedule() {
   const sampleMax = parseInt(document.getElementById('cfgSampleMax').value, 10);
   const focusSampleMin = parseInt(document.getElementById('cfgFocusSampleMin').value, 10);
   const focusSampleMax = parseInt(document.getElementById('cfgFocusSampleMax').value, 10);
+  const fallbackRatio = parseInt(document.getElementById('cfgFallbackRatio').value, 10);
   const targetCount = parseInt(document.getElementById('cfgTargetCount').value, 10);
   const parallelPortA = parseInt(document.getElementById('cfgParallelPortA').value, 10);
   const parallelPortB = parseInt(document.getElementById('cfgParallelPortB').value, 10);
@@ -505,9 +512,11 @@ async function saveSchedule() {
   const finalSampleMax = Number.isFinite(sampleMax) ? sampleMax : 10;
   const finalFocusMin = Number.isFinite(focusSampleMin) ? focusSampleMin : 3;
   const finalFocusMax = Number.isFinite(focusSampleMax) ? focusSampleMax : 5;
+  const finalFallbackRatio = Number.isFinite(fallbackRatio) ? fallbackRatio : 30;
   const finalTargetCount = Number.isFinite(targetCount) ? targetCount : 100;
   if (finalSampleMax < finalSampleMin) { toast('关键词采样 max 不能小于 min', 'err'); return; }
   if (finalFocusMax < finalFocusMin) { toast('重点保底 max 不能小于 min', 'err'); return; }
+  if (finalFallbackRatio < 0 || finalFallbackRatio > 100) { toast('AIGC / AI视频强相关占比需在 0 到 100 之间', 'err'); return; }
   const finalPortA = Number.isFinite(parallelPortA) ? parallelPortA : 9222;
   const finalPortB = Number.isFinite(parallelPortB) ? parallelPortB : 9223;
   if (finalPortA === finalPortB) { toast('并行端口 A/B 不能相同', 'err'); return; }
@@ -526,6 +535,8 @@ async function saveSchedule() {
   CFG_CACHE.keyword_settings.sample_max = finalSampleMax;
   CFG_CACHE.keyword_settings.focus_sample_min = finalFocusMin;
   CFG_CACHE.keyword_settings.focus_sample_max = finalFocusMax;
+  CFG_CACHE.keyword_settings.fallback_ratio = finalFallbackRatio / 100;
+  delete CFG_CACHE.keyword_settings.fallback_min;
   CFG_CACHE.keyword_settings.target_count = finalTargetCount;
 
   const ok = await api.writeConfig(CFG_CACHE);

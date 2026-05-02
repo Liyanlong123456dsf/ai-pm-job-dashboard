@@ -35,7 +35,7 @@
   <section class="panel active" data-panel="control">
     <div class="hero">
       <h1>控制台</h1>
-      <p>17K+ 严格入库 · 随机关键词保底抽样 · 杭州重点方向 3 倍</p>
+      <p>17K+ 严格入库 · 原抽样基础上 AIGC/AI视频 +30% · 杭沪京各 2 轮</p>
     </div>
 
     <!-- 动作卡片 -->
@@ -54,7 +54,7 @@
       <div class="action-card" data-runner="one_round">
         <div class="a-icon">⚡</div>
         <div class="a-title">单轮爬取</div>
-        <div class="a-desc">执行一轮 17K+ 抓取 · 杭州重点方向额外 2 轮</div>
+        <div class="a-desc">执行一轮 17K+ 抓取 · 杭州/上海/北京各 2 轮</div>
         <div class="a-ctrl">
           <button class="btn btn-primary" onclick="startRunner('one_round')">执行</button>
           <button class="btn btn-danger" onclick="stopRunner('one_round')">停止</button>
@@ -95,8 +95,8 @@
           <div class="strategy-item"><span class="s-label">薪资范围</span><strong>搜索 15-20K / 20-30K / 30-50K / 50K+</strong><small>最终入库严格 avg ≥ 17K</small></div>
           <div class="strategy-item"><span class="s-label">关键词抽样</span><strong id="strategySample">6-10 个/轮</strong><small id="strategyKeywordPool">全局关键词池读取中…</small></div>
           <div class="strategy-item"><span class="s-label">重点保底</span><strong id="strategyFocus">3-5 个/轮</strong><small>AI营销 / AI内容中台 / AIGC / AI电商方向</small></div>
-          <div class="strategy-item"><span class="s-label">杭州策略</span><strong>随机关键词 1 轮 + 重点方向额外 2 轮</strong><small>重点方向总计约 3 倍频率</small></div>
-          <div class="strategy-item"><span class="s-label">其他城市</span><strong id="strategyCities">每城随机关键词 1 轮</strong><small>弱相关词只参与普通随机，不进入保底池</small></div>
+          <div class="strategy-item"><span class="s-label">强相关加权</span><strong id="strategyFallback">AIGC / AI视频 ≥ 30%</strong><small id="strategyFallbackDetail">增加 AIGC产品经理、AI视频产品经理等强相关词占比</small></div>
+          <div class="strategy-item"><span class="s-label">城市策略</span><strong id="strategyCityRounds">杭 / 沪 / 京各 2 轮</strong><small id="strategyCities">其他城市各 1 轮</small></div>
           <div class="strategy-item"><span class="s-label">并行模式</span><strong id="strategyParallel">默认关闭</strong><small id="strategyParallelDetail">单账号轮换更稳，双浏览器需手动开启</small></div>
         </div>
       </div>
@@ -302,10 +302,13 @@
               <input type="number" id="cfgFocusSampleMax" min="0" max="20">
             </div>
           </label>
+          <label>AIGC / AI视频强相关占比（%）
+            <input type="number" id="cfgFallbackRatio" min="0" max="100">
+          </label>
           <label>关键词库上限
             <input type="number" id="cfgTargetCount" min="10" max="300">
           </label>
-          <div class="config-note">当前固定策略：搜索 15-20K 及以上档位，最终入库严格 avg ≥ 17K；杭州重点方向额外 2 轮。</div>
+          <div class="config-note">当前固定策略：搜索 15-20K 及以上档位，最终入库严格 avg ≥ 17K；杭州/上海/北京各 2 轮，其他城市 1 轮。</div>
           <button class="btn btn-primary" onclick="saveSchedule()">💾 保存调度</button>
         </div>
       </div>

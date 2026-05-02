@@ -9,6 +9,7 @@ import json
 import logging
 import os
 import queue
+from collections import Counter
 import subprocess
 import threading
 import time
@@ -36,6 +37,7 @@ logging.basicConfig(
 logger = logging.getLogger('parallel_crawl')
 
 HANGZHOU = '杭州'
+PRIMARY_CITY_ROUNDS = {'杭州': 2, '上海': 2, '北京': 2}
 SALARY_SPECS = [
     {'code': '405', 'label': '15-20K'},
     {'code': '406', 'label': '20-30K'},
@@ -150,14 +152,13 @@ def build_tasks(quick=False):
     focus_set = set(merge_terms(get_focus_keywords(config)))
     focus_keywords = [kw for kw in keywords if is_focus(kw, focus_set)]
     keywords = merge_terms(focus_keywords, [kw for kw in keywords if kw not in set(focus_keywords)])
-    hangzhou_code = cities.get(HANGZHOU)
-    if not hangzhou_code:
-        raise RuntimeError('配置中未找到杭州城市码')
-    stages = [('杭州随机关键词17K以上', keywords, {HANGZHOU: hangzhou_code})]
-    if focus_keywords:
-        stages.append(('杭州重点方向17K以上第2轮', focus_keywords, {HANGZHOU: hangzhou_code}))
-        stages.append(('杭州重点方向17K以上第3轮', focus_keywords, {HANGZHOU: hangzhou_code}))
-    other_cities = {k: v for k, v in cities.items() if k != HANGZHOU}
+    stages = []
+    for city_name, city_code in cities.items():
+        rounds = PRIMARY_CITY_ROUNDS.get(city_name, 1)
+        if city_name in PRIMARY_CITY_ROUNDS:
+            for round_idx in range(1, rounds + 1):
+                stages.append((f'{city_name}第{round_idx}轮17K以上', keywords, {city_name: city_code}))
+    other_cities = {k: v for k, v in cities.items() if k not in PRIMARY_CITY_ROUNDS}
     if other_cities:
         stages.append(('其他城市爬取17K以上一次', keywords, other_cities))
 
@@ -477,13 +478,30 @@ def main():
     try:
         settings = load_settings()
         tasks, keywords, focus_keywords, cities = build_tasks(quick=args.quick)
-        accounts = select_accounts(settings.get('ports') or [9222, 9223])
+        ports = settings.get('ports') or [9222, 9223]
+        if args.dry_run:
+            try:
+                accounts = select_accounts(ports)
+            except Exception as e:
+                logger.warning(f'Dry Run 跳过账号健康校验: {e}')
+                accounts = [
+                    {'alias': 'dry-run-A', 'port': int(ports[0])},
+                    {'alias': 'dry-run-B', 'port': int(ports[1] if len(ports) > 1 else 9223)},
+                ]
+        else:
+            accounts = select_accounts(ports)
         shards = split_balanced(tasks)
         step(status, '并行任务生成', True, f'{len(tasks)} 任务 · {len(keywords)} 关键词 · {len(focus_keywords)} 重点 · {len(cities)} 城市')
 
         if args.dry_run:
+            stage_summary = dict(Counter(task.get('stage', '') for task in tasks))
+            city_summary = dict(Counter(task.get('city_name', '') for task in tasks))
             write_json(PARALLEL_DIR / 'dry_run_plan.json', {
                 'accounts': accounts,
+                'keywords': keywords,
+                'focus_keywords': focus_keywords,
+                'stage_summary': stage_summary,
+                'city_summary': city_summary,
                 'shards': [{'count': len(shard), 'sample': shard[:10]} for shard in shards],
             })
             status['overall'] = 'success'

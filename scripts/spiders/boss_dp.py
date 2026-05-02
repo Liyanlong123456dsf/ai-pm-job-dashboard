@@ -12,10 +12,9 @@ import sys, io, os
 if sys.stdout.encoding != 'utf-8':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
-import json
-import time
-import random
+import time, json, random, logging, argparse, re
 import math
+from pathlib import Path
 import logging
 import argparse
 import re
@@ -87,6 +86,17 @@ DEFAULT_FOCUS_KEYWORDS = [
     'AI内容电商产品经理', 'AI电商增长产品经理',
 ]
 
+DEFAULT_FALLBACK_KEYWORDS = [
+    'AIGC产品经理', 'AIGC内容产品经理', 'AIGC应用产品经理', 'AIGC工具产品经理',
+    'AIGC视频产品经理', 'AIGC短视频产品经理', 'AIGC创作产品经理',
+    'AI视频产品经理', 'AI内容生成产品经理', 'AI创作工具产品经理',
+]
+
+DEFAULT_FALLBACK_MARKERS = [
+    'AIGC', '生成式', 'GENAI', '视频', '短视频', '短剧', '剪辑', '影像',
+    '内容生成', '内容创作', '创作', '文案', '素材',
+]
+
 DEFAULT_KEYWORD_SETTINGS = {
     'sample_min': 6,
     'sample_max': 10,
@@ -95,6 +105,9 @@ DEFAULT_KEYWORD_SETTINGS = {
     'target_count': 100,
     'refresh_day': 1,
     'refresh_retry_hours': 6,
+    'fallback_ratio': 0.3,
+    'fallback_keywords': DEFAULT_FALLBACK_KEYWORDS,
+    'fallback_markers': DEFAULT_FALLBACK_MARKERS,
     'seed_queries': [
         'AI产品经理', 'AIGC产品经理', '大模型产品经理', '智能体产品经理', 'Agent产品经理',
         '多模态产品经理', 'AI对话产品经理', 'AI商业化产品经理', 'AI平台产品经理',
@@ -141,6 +154,7 @@ _AI_TERMS = [
     'COPILOT', 'CHATBOT', 'RAG', 'MLOPS', 'FOUNDATION MODEL',
     '向量', 'EMBEDDING', 'TRANSFORMER', '预训练', '微调',
     '推荐', '搜索', '策略', '数据', '对话', '知识图谱',
+    '视频生成', '文生视频', '图生视频', '短视频', '短剧', '剪辑', '数字人', '虚拟人', '影像',
 ]
 _PM_TERMS = [
     '产品', 'PRODUCT', '产品经理', '产品负责', '产品总监', '产品专家',
@@ -151,7 +165,8 @@ _KEYWORD_DIRECTION_TERMS = [
     '大模型', 'AIGC', '生成式AI', 'LLM', '智能体', 'AGENT', '多模态', 'NLP', 'COPILOT', 'RAG',
     '平台', '工具', '商业化', '增长', '数据', '搜索', '推荐', '策略', '对话', '客服', '电商', '营销',
     '内容', '内容中台', '内容平台', '内容生成', '创作', '文案', '素材', '图文', '导购', '商家工具', '选品',
-    '视频', '语音', '视觉', '机器人', '办公', '教育', '医疗', '金融', '风控', 'SAAS', '工作流', '解决方案',
+    '视频', '短视频', '短剧', '视频生成', '文生视频', '图生视频', '剪辑', '数字人', '虚拟人',
+    '语音', '视觉', '机器人', '办公', '教育', '医疗', '金融', '风控', 'SAAS', '工作流', '解决方案',
 ]
 _EXCLUDED_KEYWORD_TERMS = [
     '销售', '运营', '开发', '工程师', '测试', '实施', '运维', '实习', '兼职', '主播', '顾问', '助理', '管培',
@@ -168,8 +183,7 @@ _CANONICAL_KEYWORD_RULES = [
     ('AI私域产品经理', ['AI私域产品经理', 'AI私域']),
     ('AI智能营销产品经理', ['AI智能营销产品经理', '智能营销']),
     ('AI用户增长产品经理', ['AI用户增长产品经理', 'AI用户增长', '用户增长']),
-    ('AI内容中台产品经理', ['AI内容中台产品经理', 'AI内容中台']),
-    ('内容中台产品经理', ['内容中台产品经理']),
+    ('AI内容中台产品经理', ['AI内容中台产品经理', 'AI内容中台', '内容中台产品经理']),
     ('AIGC内容中台产品经理', ['AIGC内容中台产品经理', 'AIGC内容中台']),
     ('AI内容平台产品经理', ['AI内容平台产品经理', 'AI内容平台']),
     ('AI内容生成产品经理', ['AI内容生成产品经理', 'AI内容生成']),
@@ -188,7 +202,7 @@ _CANONICAL_KEYWORD_RULES = [
     ('AIGC工具产品经理', ['AIGC工具产品经理', 'AIGC工具']),
     ('AIGC内容产品经理', ['AIGC内容产品经理', 'AIGC内容']),
     ('AIGC创作产品经理', ['AIGC创作产品经理', 'AIGC创作']),
-    ('AIGC视频产品经理', ['AIGC视频产品经理', 'AIGC视频']),
+    ('AIGC视频产品经理', ['AIGC视频产品经理', 'AIGC视频', 'AIGC视频生成']),
     ('AIGC短视频产品经理', ['AIGC短视频产品经理', 'AIGC短视频']),
     ('AIGC短剧产品经理', ['AIGC短剧产品经理', 'AIGC短剧']),
     ('AIGC图像产品经理', ['AIGC图像产品经理', 'AIGC图像']),
@@ -227,7 +241,7 @@ _CANONICAL_KEYWORD_RULES = [
     ('AI营销产品经理', ['营销', '广告', '投放']),
     ('AI电商产品经理', ['电商', '淘宝', '天猫', '京东', '拼多多', '亚马逊', 'SHOPEE', '独立站']),
     ('AI内容产品经理', ['内容', '文案', '创作']),
-    ('AI视频产品经理', ['视频', '短视频', '短剧', '直播', '影像']),
+    ('AI视频产品经理', ['AI视频产品经理', '视频', '短视频', '短剧', '直播', '影像', '视频生成', '文生视频', '图生视频', '剪辑', '数字人', '虚拟人']),
     ('AI语音产品经理', ['语音', 'TTS', 'ASR', '音乐', '写歌']),
     ('AI视觉产品经理', ['视觉', '图像', 'CV']),
     ('AI机器人产品经理', ['机器人', '具身']),
@@ -312,6 +326,52 @@ def _merge_unique_terms(*groups):
                 merged.append(term)
     return merged
 
+def is_fallback_keyword(term, settings=None):
+    term = _clean_keyword(term)
+    if not term:
+        return False
+    settings = settings or DEFAULT_KEYWORD_SETTINGS
+    upper = term.upper()
+    markers = settings.get('fallback_markers') or DEFAULT_FALLBACK_MARKERS
+    return any(str(marker or '').upper() in upper for marker in markers)
+
+def _fallback_required_count(settings, max_count=None):
+    settings = settings or DEFAULT_KEYWORD_SETTINGS
+    ratio = settings.get('fallback_ratio', DEFAULT_KEYWORD_SETTINGS['fallback_ratio'])
+    try:
+        ratio = float(ratio)
+    except Exception:
+        ratio = DEFAULT_KEYWORD_SETTINGS['fallback_ratio']
+    ratio = min(1.0, max(0.0, ratio))
+    base_count = max_count or len(settings.get('_base_keywords_for_ratio') or []) or settings.get('sample_max') or DEFAULT_KEYWORD_SETTINGS['sample_max']
+    try:
+        base_count = int(base_count)
+    except Exception:
+        base_count = DEFAULT_KEYWORD_SETTINGS['sample_max']
+    ratio_min = int(math.ceil(max(1, base_count) * ratio)) if ratio > 0 else 0
+    if 'fallback_ratio' in settings:
+        return ratio_min
+    return max(0, _safe_int(settings.get('fallback_min'), ratio_min))
+
+def ensure_fallback_keywords(keywords, all_keywords=None, settings=None, max_count=None):
+    settings = settings or DEFAULT_KEYWORD_SETTINGS
+    selected = _merge_unique_terms(keywords or [])
+    all_keywords = _merge_unique_terms(all_keywords or [], DEFAULT_FALLBACK_KEYWORDS)
+    fallback_target = _fallback_required_count(settings, max_count=max_count)
+    fallback_pool = _merge_unique_terms(
+        [kw for kw in all_keywords if is_fallback_keyword(kw, settings)],
+        settings.get('fallback_keywords') or [],
+        DEFAULT_FALLBACK_KEYWORDS,
+    )
+    current = [kw for kw in selected if is_fallback_keyword(kw, settings)]
+    for kw in fallback_pool:
+        if len(current) >= fallback_target:
+            break
+        if kw not in selected:
+            selected.append(kw)
+            current.append(kw)
+    return selected
+
 def _keyword_settings(config):
     settings = dict(DEFAULT_KEYWORD_SETTINGS)
     settings.update(config.get('keyword_settings') or {})
@@ -322,6 +382,12 @@ def _keyword_settings(config):
     settings['target_count'] = max(10, _safe_int(settings.get('target_count'), DEFAULT_KEYWORD_SETTINGS['target_count']))
     settings['refresh_day'] = min(28, max(1, _safe_int(settings.get('refresh_day'), DEFAULT_KEYWORD_SETTINGS['refresh_day'])))
     settings['refresh_retry_hours'] = max(1, _safe_int(settings.get('refresh_retry_hours'), DEFAULT_KEYWORD_SETTINGS['refresh_retry_hours']))
+    try:
+        settings['fallback_ratio'] = min(1.0, max(0.0, float(settings.get('fallback_ratio', DEFAULT_KEYWORD_SETTINGS['fallback_ratio']))))
+    except Exception:
+        settings['fallback_ratio'] = DEFAULT_KEYWORD_SETTINGS['fallback_ratio']
+    settings['fallback_keywords'] = _merge_unique_terms(settings.get('fallback_keywords') or [], DEFAULT_FALLBACK_KEYWORDS)
+    settings['fallback_markers'] = _merge_unique_terms(settings.get('fallback_markers') or [], DEFAULT_FALLBACK_MARKERS)
     settings['seed_queries'] = _merge_unique_terms(settings.get('seed_queries') or [], DEFAULT_KEYWORD_SETTINGS['seed_queries'])
     settings['focus_keywords'] = _merge_unique_terms(settings.get('focus_keywords') or [], DEFAULT_FOCUS_KEYWORDS)
     settings['last_refreshed_at'] = str(settings.get('last_refreshed_at') or '')
@@ -368,6 +434,7 @@ def sanitize_keyword_library(terms, target_count=50):
         if variants:
             cleaned.extend(variants)
     cleaned = _merge_unique_terms(cleaned)
+    cleaned = ensure_fallback_keywords(cleaned, cleaned, DEFAULT_KEYWORD_SETTINGS, max_count=target_count)
     if len(cleaned) < target_count:
         for term in DEFAULT_KEYWORDS:
             if term not in cleaned:
@@ -465,7 +532,7 @@ def load_keywords(quick=False):
     """加载关键词：每轮随机抽取 6-10 个搜索词"""
     config = load_config()
     settings = config['keyword_settings']
-    all_kw = _merge_unique_terms(config.get('keywords') or [], DEFAULT_KEYWORDS)
+    all_kw = ensure_fallback_keywords(config.get('keywords') or [], config.get('keywords') or [], settings)
     if not all_kw:
         return []
     low = min(settings['sample_min'], len(all_kw))
@@ -488,10 +555,14 @@ def load_keywords(quick=False):
     if remain_count > 0:
         focus_remaining = [kw for kw in focus_pool if kw not in selected]
         selected.extend(random.sample(focus_remaining, min(remain_count, len(focus_remaining))))
+    ratio_settings = dict(settings)
+    ratio_settings['_base_keywords_for_ratio'] = list(selected)
+    selected = ensure_fallback_keywords(selected, all_kw, ratio_settings)
     random.shuffle(selected)
     mode_label = '快速模式' if quick else '全量模式'
     selected_focus_count = len([kw for kw in selected if kw in set(settings.get('focus_keywords') or [])])
-    logger.info(f'[{mode_label}] 词库 {len(all_kw)} 个，本轮随机抽取 {len(selected)} 个关键词，其中重点方向 {selected_focus_count} 个: {selected}')
+    selected_fallback_count = len([kw for kw in selected if is_fallback_keyword(kw, settings)])
+    logger.info(f'[{mode_label}] 词库 {len(all_kw)} 个，本轮随机抽样+强相关增补共 {len(selected)} 个关键词，其中重点方向 {selected_focus_count} 个，AIGC/AI视频强相关 {selected_fallback_count} 个: {selected}')
     return selected
 
 def random_delay(lo=MIN_DELAY, hi=MAX_DELAY):
