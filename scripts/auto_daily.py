@@ -107,7 +107,30 @@ def load_parallel_schedule():
         'enabled': bool(parallel.get('enabled', False)),
         'workers': int(parallel.get('workers', 2) or 2),
         'strategy': str(parallel.get('strategy') or 'balanced'),
+        'ports': parallel.get('ports') or [9222, 9223],
     }
+
+
+def parallel_ready(parallel_cfg):
+    try:
+        ports = parallel_cfg.get('ports') or [9222, 9223]
+        if len(ports) < 2 or int(ports[0]) == int(ports[1]):
+            return False, '并行端口配置无效：需要两个不同端口'
+        sys.path.insert(0, str(SCRIPT_DIR))
+        import account_pool
+        cfg = account_pool.load_config()
+        summary = account_pool.get_summary()
+        state_by_alias = {a.get('alias'): a for a in summary.get('accounts', [])}
+        enabled = [a for a in cfg.get('accounts', []) if a.get('enabled', True) and a.get('alias')]
+        healthy = [
+            a for a in enabled
+            if state_by_alias.get(a['alias'], {}).get('status', 'healthy') == 'healthy'
+        ]
+        if len(healthy) < 2:
+            return False, f'并行模式需要至少2个 healthy 账号，当前{len(healthy)}/{len(enabled)}'
+        return True, ''
+    except Exception as e:
+        return False, str(e)
 
 
 def should_run_daily_cleanup():
@@ -872,6 +895,11 @@ def _run_one_round(round_num):
         error_msg = ''
         parallel_cfg = load_parallel_schedule()
         use_parallel = parallel_cfg.get('enabled') and parallel_cfg.get('workers') == 2 and parallel_cfg.get('strategy') == 'balanced'
+        if use_parallel:
+            ready, reason = parallel_ready(parallel_cfg)
+            if not ready:
+                logger.warning(f'🔀 双浏览器并行不可用，自动降级单账号爬取: {reason}')
+                use_parallel = False
         _write_runtime_state(
             round_num,
             'parallel_crawl' if use_parallel else 'daily_update',

@@ -70,6 +70,8 @@ def check_login():
     """启动浏览器，检测登录状态"""
     logger.info('=' * 40)
     logger.info('开始登录状态检查')
+    spider = None
+    unattended = False
 
     try:
         try:
@@ -194,8 +196,15 @@ def check_login():
         notify('AI 岗位爬取 ❌', f'登录检查异常: {str(e)[:50]}')
         return 'error'
     finally:
-        # 不关闭浏览器 — 保持 Profile 活跃，让用户可以手动登录
-        logger.info('登录检查完成（浏览器保持打开，Cookie 会自动保存）')
+        if unattended and spider is not None:
+            try:
+                if spider.page:
+                    spider.page.quit()
+            except Exception:
+                pass
+            logger.info('登录检查完成（无人值守模式已关闭检查浏览器，Cookie 会自动保存）')
+        else:
+            logger.info('登录检查完成（浏览器保持打开，Cookie 会自动保存）')
 
 
 def _apply_account_env(alias: str):
