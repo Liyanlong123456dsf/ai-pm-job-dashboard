@@ -210,8 +210,10 @@ def _check_login(page) -> bool:
 def main():
     parser = argparse.ArgumentParser(description='定期老数据清洗')
     parser.add_argument('--dry-run', action='store_true', help='只检查不修改')
-    parser.add_argument('--limit', type=int, default=100, help='本次最多检查N条（默认100，0=不限）')
+    parser.add_argument('--limit', type=int, default=None, help='本次最多检查N条（默认100；--all 默认不限；0=不限）')
     parser.add_argument('--max-age', type=int, default=0, help='覆盖最大天数（0=用配置）')
+    parser.add_argument('--all', action='store_true', help='检查全部有链接岗位，不按 _date 过滤')
+    parser.add_argument('--normalize-first', action='store_true', help='在线验证前先对全量数据规范化、去重并过滤17K以下')
     args = parser.parse_args()
 
     config = load_config()
@@ -230,6 +232,41 @@ def main():
     today = date.today()
     cutoff = (today - timedelta(days=max_age)).isoformat()
     today_str = today.isoformat()
+
+    if args.normalize_first:
+        try:
+            from merger import clean_jobs
+            before_normalize = len(jobs)
+            jobs, clean_stats = clean_jobs(jobs)
+            salary_filtered = []
+            removed_below_salary = 0
+            for job in jobs:
+                try:
+                    avg = float(job.get('avg') or 0)
+                except Exception:
+                    avg = 0
+                if avg >= 17:
+                    salary_filtered.append(job)
+                else:
+                    removed_below_salary += 1
+            jobs = salary_filtered
+            clean_stats['removed_below_salary'] = removed_below_salary
+            clean_stats['input_before_salary'] = clean_stats.get('output', len(jobs) + removed_below_salary)
+            clean_stats['output'] = len(jobs)
+            data['jobs'] = jobs
+            data.setdefault('meta', {})
+            data['meta']['updated'] = datetime.now().strftime('%Y-%m-%d %H:%M')
+            data['meta']['total'] = len(jobs)
+            data['meta']['cleaned'] = clean_stats
+            with open(JSON_PATH, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False)
+            logger.info(f'🧽 全量规范化完成: {before_normalize} → {len(jobs)} ({clean_stats})')
+            _step('全量规范化', True, f'{before_normalize} → {len(jobs)} 条')
+        except Exception as e:
+            logger.error(f'全量规范化失败: {e}', exc_info=True)
+            _step('全量规范化', False, str(e)[:200])
+            _write_progress(100, '❌ 清洗中止', f'全量规范化失败: {e}', _steps, done=True)
+            return
 
     # === 第一阶段：清理无 URL 的超期岗位（无法验证，直接删除） ===
     no_url_removed = 0
@@ -251,17 +288,20 @@ def main():
     # === 第二阶段：筛选有 URL 的超期岗位（用 _date 最后活跃日期判断） ===
     stale_indices = []
     for i, job in enumerate(jobs):
-        # _date = 爬虫最后一次看到该岗位的日期，若多天未更新说明可能已下架
         job_date = job.get('_date', '') or job.get('_crawled_at', '9999-99-99')
         has_url = bool(job.get('url'))
-        if has_url and job_date[:10] < cutoff:
+        if has_url and (args.all or job_date[:10] < cutoff):
             stale_indices.append(i)
 
     total_stale = len(stale_indices)
-    limit = args.limit if args.limit > 0 else len(stale_indices)
+    if args.limit is None:
+        limit = len(stale_indices) if args.all else 100
+    else:
+        limit = args.limit if args.limit > 0 else len(stale_indices)
     stale_indices = stale_indices[:limit]
 
-    logger.info(f'总岗位: {len(jobs)}, 超过 {max_age} 天且有链接: {total_stale}, 本次检查: {len(stale_indices)}')
+    scope_label = '全部有链接' if args.all else f'超过 {max_age} 天且有链接'
+    logger.info(f'总岗位: {len(jobs)}, {scope_label}: {total_stale}, 本次检查: {len(stale_indices)}')
     if no_url_removed:
         _step('清理无链接岗位', True, f'删除 {no_url_removed} 条')
     _write_progress(5, '🧹 筛选完成', f'待检查 {len(stale_indices)} 条', _steps)
