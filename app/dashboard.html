@@ -1292,19 +1292,26 @@ const SFX = (() => {
 // === LOAD DATA (external JSON) ===
 let DATA = [];
 let DATA_META = {};
+let DATA_SIGNATURE = '';
 const IS_ELECTRON = navigator.userAgent.toLowerCase().includes('electron');
 // localhost / 127.x / file:// 也视作本地环境（用相对路径读同域 jobs_data.json）
 const IS_LOCAL = IS_ELECTRON
   || location.protocol === 'file:'
   || /^(localhost|127\.|0\.0\.0\.0|\[::1\])/.test(location.hostname);
-const DATA_URL = '../jobs_data.json?t=' + Date.now();
-const STATUS_URL = '../run_status.json?t=' + Date.now();
+const DATA_URL = '../jobs_data.json';
+const STATUS_URL = '../run_status.json';
+function dataSignature(json) {
+  const jobs = json.jobs || json;
+  const meta = json.meta || {};
+  return [jobs.length || 0, meta.updated || '', meta.total || ''].join('|');
+}
 async function boot() {
   try {
-    const resp = await fetch(DATA_URL);
+    const resp = await fetch(DATA_URL, { cache: 'default' });
     const json = await resp.json();
     DATA = json.jobs || json;
     DATA_META = json.meta || {};
+    DATA_SIGNATURE = dataSignature(json);
     initAll();
   } catch(e) {
     document.getElementById('kpis').innerHTML = '<div class="empty">数据加载失败，请确认 jobs_data.json 存在</div>';
@@ -3592,14 +3599,14 @@ function initAll(isRefresh){
   renderHero();
   renderOverview();
   renderDir();
-  renderSalary();
-  renderCities();
-  renderCompanies();
-  renderDeep();
   renderExplore();
   setupGlobalFilter();
-  renderChinaMap().catch(e => console.error('[geo] init render failed:', e));
   if (!isRefresh) setupHeroGraph();
+  scheduleRender(() => renderSalary());
+  scheduleRender(() => renderCities());
+  scheduleRender(() => renderCompanies());
+  scheduleRender(() => renderDeep());
+  scheduleRender(() => renderChinaMap().catch(e => console.error('[geo] init render failed:', e)));
 }
 boot();
 
@@ -3610,6 +3617,9 @@ let LAST_LOAD_TS = Date.now();
 let LAST_JOB_COUNT = 0;
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const MIN_VISIBILITY_REFRESH_GAP_MS = 60 * 1000;
+const scheduleRender = window.requestIdleCallback
+  ? fn => window.requestIdleCallback(fn, { timeout: 1200 })
+  : fn => setTimeout(fn, 0);
 
 function showToast(msg, kind){
   const el = document.getElementById('toast');
@@ -3626,13 +3636,20 @@ async function reloadData(manual){
   const btn = document.getElementById('navRefresh');
   if (btn) btn.classList.add('spin');
   try {
-    const url = '../jobs_data.json?t=' + Date.now();
-    const resp = await fetch(url, { cache: 'no-store' });
+    const url = manual ? '../jobs_data.json?t=' + Date.now() : DATA_URL;
+    const resp = await fetch(url, { cache: manual ? 'no-store' : 'no-cache' });
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const json = await resp.json();
+    const nextSignature = dataSignature(json);
     const oldCount = LAST_JOB_COUNT || DATA.length;
+    if (nextSignature === DATA_SIGNATURE) {
+      LAST_LOAD_TS = Date.now();
+      if (manual) showToast('已是最新（共 ' + DATA.length + '）', 'ok');
+      return;
+    }
     DATA = json.jobs || json;
     DATA_META = json.meta || {};
+    DATA_SIGNATURE = nextSignature;
     initAll(true);
     const diff = DATA.length - oldCount;
     LAST_JOB_COUNT = DATA.length;
