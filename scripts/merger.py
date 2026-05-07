@@ -186,6 +186,11 @@ def save(jobs: list, clean: bool = False):
 
     with open(DATA_FILE, 'w', encoding='utf-8') as f:
         json.dump({'meta': meta, 'jobs': frontend_jobs}, f, ensure_ascii=False)
+    try:
+        from build_job_index import build_index
+        build_index(DATA_FILE)
+    except Exception as e:
+        logger.warning(f'Build jobs_index.json failed: {e}')
 
     logger.info(f'Saved {len(jobs)} jobs to {DATA_FILE} ({clean_stats})')
 

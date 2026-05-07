@@ -465,6 +465,11 @@ def _final_save(data, jobs, today_str, checked, refreshed, removed, skipped, no_
     data['meta']['total'] = len(jobs)
     with open(JSON_PATH, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False)
+    try:
+        from build_job_index import build_index
+        build_index(JSON_PATH)
+    except Exception as e:
+        logger.warning(f'生成轻量索引失败: {e}')
 
     _clear_checkpoint()
 

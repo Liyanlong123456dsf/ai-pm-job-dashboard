@@ -1293,11 +1293,14 @@ const SFX = (() => {
 let DATA = [];
 let DATA_META = {};
 let DATA_SIGNATURE = '';
+let DATA_IS_LIGHT = false;
+let FULL_DATA_LOADING = false;
 const IS_ELECTRON = navigator.userAgent.toLowerCase().includes('electron');
 // localhost / 127.x / file:// 也视作本地环境（用相对路径读同域 jobs_data.json）
 const IS_LOCAL = IS_ELECTRON
   || location.protocol === 'file:'
   || /^(localhost|127\.|0\.0\.0\.0|\[::1\])/.test(location.hostname);
+const INDEX_URL = '../jobs_index.json';
 const DATA_URL = '../jobs_data.json';
 const STATUS_URL = '../run_status.json';
 function dataSignature(json) {
@@ -1307,15 +1310,28 @@ function dataSignature(json) {
 }
 async function boot() {
   try {
-    const resp = await fetch(DATA_URL, { cache: 'default' });
+    const resp = await fetch(INDEX_URL, { cache: 'default' });
     const json = await resp.json();
     DATA = json.jobs || json;
     DATA_META = json.meta || {};
+    DATA_IS_LIGHT = !!DATA_META.light;
     DATA_SIGNATURE = dataSignature(json);
     initAll();
+    loadFullData(false);
   } catch(e) {
-    document.getElementById('kpis').innerHTML = '<div class="empty">数据加载失败，请确认 jobs_data.json 存在</div>';
-    console.error('Data load error:', e);
+    console.warn('Light data load error:', e);
+    try {
+      const resp = await fetch(DATA_URL, { cache: 'default' });
+      const json = await resp.json();
+      DATA = json.jobs || json;
+      DATA_META = json.meta || {};
+      DATA_IS_LIGHT = false;
+      DATA_SIGNATURE = dataSignature(json);
+      initAll();
+    } catch(err) {
+      document.getElementById('kpis').innerHTML = '<div class="empty">数据加载失败，请确认 jobs_data.json 存在</div>';
+      console.error('Data load error:', err);
+    }
   }
 }
 const norm = c => c.replace(/·.*/,'');
@@ -1349,7 +1365,7 @@ function cardH(j){
     </div>
     <div class="c-co">${j.company} · ${j.city} ${_freshBadge(j)}</div>
     <div class="c-tags">${j.cats.map(c=>`<span class="tag tag-c">${c}</span>`).join('')}${j.kw.slice(0,3).map(k=>`<span class="tag tag-k">${k}</span>`).join('')}</div>
-    <div class="c-desc">${j.desc||'暂无描述'}</div>
+    <div class="c-desc">${j.desc||j.desc_short||'暂无描述'}</div>
     <div class="c-foot">${j.exp?`<span class="badge">${j.exp}</span>`:''}${j.edu?`<span class="badge">${j.edu}</span>`:''}${j.avg?`<span class="badge">≈${j.avg}K/月</span>`:''}${_perkBadges(j)}</div>
   </div>`;
 }
@@ -3632,25 +3648,55 @@ function showToast(msg, kind){
   showToast._t = setTimeout(() => el.classList.remove('show'), 2800);
 }
 
+async function loadFullData(manual){
+  if (FULL_DATA_LOADING) return;
+  FULL_DATA_LOADING = true;
+  try {
+    const url = manual ? DATA_URL + '?t=' + Date.now() : DATA_URL;
+    const resp = await fetch(url, { cache: manual ? 'no-store' : 'default' });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const json = await resp.json();
+    const nextSignature = dataSignature(json);
+    const wasLight = DATA_IS_LIGHT;
+    DATA = json.jobs || json;
+    DATA_META = json.meta || {};
+    DATA_IS_LIGHT = false;
+    DATA_SIGNATURE = nextSignature;
+    initAll(true);
+    LAST_JOB_COUNT = DATA.length;
+    LAST_LOAD_TS = Date.now();
+    if (wasLight) showToast('完整数据已加载完成（共 ' + DATA.length + '）', 'ok');
+  } catch(e) {
+    console.warn('full data load error:', e);
+    if (manual) showToast('完整数据加载失败：' + (e.message || e), 'err');
+  } finally {
+    FULL_DATA_LOADING = false;
+  }
+}
+
 async function reloadData(manual){
   const btn = document.getElementById('navRefresh');
   if (btn) btn.classList.add('spin');
   try {
-    const url = manual ? '../jobs_data.json?t=' + Date.now() : DATA_URL;
-    const resp = await fetch(url, { cache: manual ? 'no-store' : 'no-cache' });
+    if (manual) {
+      await loadFullData(true);
+      return;
+    }
+    const resp = await fetch(INDEX_URL, { cache: 'no-cache' });
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const json = await resp.json();
     const nextSignature = dataSignature(json);
     const oldCount = LAST_JOB_COUNT || DATA.length;
     if (nextSignature === DATA_SIGNATURE) {
       LAST_LOAD_TS = Date.now();
-      if (manual) showToast('已是最新（共 ' + DATA.length + '）', 'ok');
       return;
     }
     DATA = json.jobs || json;
     DATA_META = json.meta || {};
+    DATA_IS_LIGHT = !!DATA_META.light;
     DATA_SIGNATURE = nextSignature;
     initAll(true);
+    loadFullData(false);
     const diff = DATA.length - oldCount;
     LAST_JOB_COUNT = DATA.length;
     LAST_LOAD_TS = Date.now();
