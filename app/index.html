@@ -35,7 +35,7 @@
   <section class="panel active" data-panel="control">
     <div class="hero">
       <h1>控制台</h1>
-      <p>一键启动 · 实时监控 · 全流程托管</p>
+      <p>17K+ 严格入库 · 原抽样基础上 AIGC/AI视频 +30% · 杭沪京各 2 轮</p>
     </div>
 
     <!-- 动作卡片 -->
@@ -43,7 +43,7 @@
       <div class="action-card primary" data-runner="auto_daily">
         <div class="a-icon">🚀</div>
         <div class="a-title">守护进程</div>
-        <div class="a-desc">全天候循环爬取 · 每轮间隔 10 分钟</div>
+        <div class="a-desc">循环执行最新策略 · 每轮随机 6-10 词 · 重点方向保底 3-5 词</div>
         <div class="a-ctrl">
           <button class="btn btn-primary" onclick="startRunner('auto_daily')">启动</button>
           <button class="btn btn-danger" onclick="stopRunner('auto_daily')">停止</button>
@@ -54,12 +54,23 @@
       <div class="action-card" data-runner="one_round">
         <div class="a-icon">⚡</div>
         <div class="a-title">单轮爬取</div>
-        <div class="a-desc">仅执行一轮全量抓取流程</div>
+        <div class="a-desc">执行一轮 17K+ 抓取 · 杭州/上海/北京各 2 轮</div>
         <div class="a-ctrl">
           <button class="btn btn-primary" onclick="startRunner('one_round')">执行</button>
           <button class="btn btn-danger" onclick="stopRunner('one_round')">停止</button>
         </div>
         <div class="a-pid" id="pid-one_round">未运行</div>
+      </div>
+
+      <div class="action-card" data-runner="parallel_crawl">
+        <div class="a-icon">🔀</div>
+        <div class="a-title">双浏览器并行</div>
+        <div class="a-desc">两个账号/两个 Chrome Profile 均衡分片 · 主控统一合并</div>
+        <div class="a-ctrl">
+          <button class="btn btn-primary" onclick="startRunner('parallel_crawl')">执行</button>
+          <button class="btn btn-danger" onclick="stopRunner('parallel_crawl')">停止</button>
+        </div>
+        <div class="a-pid" id="pid-parallel_crawl">未运行</div>
       </div>
 
       <div class="action-card" data-runner="sync_feishu">
@@ -71,6 +82,36 @@
           <button class="btn btn-danger" onclick="stopRunner('sync_feishu')">停止</button>
         </div>
         <div class="a-pid" id="pid-sync_feishu">未运行</div>
+      </div>
+    </div>
+
+    <div class="strategy-grid">
+      <div class="card strategy-card">
+        <div class="card-head">
+          <h3>🎯 当前爬取策略</h3>
+          <span class="card-meta" id="strategyMeta">读取中…</span>
+        </div>
+        <div class="strategy-list">
+          <div class="strategy-item"><span class="s-label">薪资范围</span><strong>搜索 15-20K / 20-30K / 30-50K / 50K+</strong><small>最终入库严格 avg ≥ 17K</small></div>
+          <div class="strategy-item"><span class="s-label">关键词抽样</span><strong id="strategySample">6-10 个/轮</strong><small id="strategyKeywordPool">全局关键词池读取中…</small></div>
+          <div class="strategy-item"><span class="s-label">重点保底</span><strong id="strategyFocus">3-5 个/轮</strong><small>AI营销 / AI内容中台 / AIGC / AI电商方向</small></div>
+          <div class="strategy-item"><span class="s-label">强相关加权</span><strong id="strategyFallback">AIGC / AI视频 ≥ 30%</strong><small id="strategyFallbackDetail">增加 AIGC产品经理、AI视频产品经理等强相关词占比</small></div>
+          <div class="strategy-item"><span class="s-label">城市策略</span><strong id="strategyCityRounds">杭 / 沪 / 京各 2 轮</strong><small id="strategyCities">其他城市各 1 轮</small></div>
+          <div class="strategy-item"><span class="s-label">并行模式</span><strong id="strategyParallel">默认关闭</strong><small id="strategyParallelDetail">单账号轮换更稳，双浏览器需手动开启</small></div>
+        </div>
+      </div>
+
+      <div class="card strategy-card risk">
+        <div class="card-head">
+          <h3>🛡 反扒 / 账号保护策略</h3>
+          <span class="card-meta">当前偏省时</span>
+        </div>
+        <div class="strategy-list compact">
+          <div class="strategy-item"><span class="s-label">访问节奏</span><strong>页面 0.8-1.8s · 城市 2-6s · 关键词 1-3s</strong><small>详情页 0.8-1.5s，每 25 条休息 1-5s</small></div>
+          <div class="strategy-item"><span class="s-label">行为模拟</span><strong>随机滚动、随机短暂停顿、少量模拟浏览</strong><small>标准模式最多 3 页，每页最多 2 次滚动</small></div>
+          <div class="strategy-item"><span class="s-label">账号池</span><strong>独立 Chrome Profile 轮换</strong><small>账号最少休息 5 分钟；全部失效冷却 60 分钟并告警</small></div>
+          <div class="strategy-item"><span class="s-label">风险提醒</span><strong>昨天仍出现封控，说明当前不是强保护模式</strong><small>若继续封控，建议降低杭州倍频或增加等待时间</small></div>
+        </div>
       </div>
     </div>
 
@@ -186,6 +227,8 @@
         <button class="log-tab" data-log="auto_daily">auto_daily.log</button>
         <button class="log-tab" data-log="crawler">crawler.log</button>
         <button class="log-tab" data-log="daily">daily_update.log</button>
+        <button class="log-tab" data-log="parallel">parallel_crawl.log</button>
+        <button class="log-tab" data-log="worker">parallel_worker.log</button>
         <button class="log-tab" data-log="cleanup">stale_cleanup.log</button>
       </div>
       <div class="log-actions">
@@ -237,6 +280,14 @@
             </select>
           </label>
           <label class="check"><input type="checkbox" id="cfgAlwaysFull"> 每轮全量模式</label>
+          <label class="check"><input type="checkbox" id="cfgParallelEnabled"> 启用双浏览器并行（2账号/2端口）</label>
+          <label>并行端口（A / B）
+            <div class="dual">
+              <input type="number" id="cfgParallelPortA" min="9000" max="9999">
+              <span>/</span>
+              <input type="number" id="cfgParallelPortB" min="9000" max="9999">
+            </div>
+          </label>
           <label>关键词每轮采样数（min ~ max）
             <div class="dual">
               <input type="number" id="cfgSampleMin" min="1" max="50">
@@ -244,6 +295,20 @@
               <input type="number" id="cfgSampleMax" min="1" max="50">
             </div>
           </label>
+          <label>重点方向保底抽样数（min ~ max）
+            <div class="dual">
+              <input type="number" id="cfgFocusSampleMin" min="0" max="20">
+              <span>~</span>
+              <input type="number" id="cfgFocusSampleMax" min="0" max="20">
+            </div>
+          </label>
+          <label>AIGC / AI视频强相关占比（%）
+            <input type="number" id="cfgFallbackRatio" min="0" max="100">
+          </label>
+          <label>关键词库上限
+            <input type="number" id="cfgTargetCount" min="10" max="300">
+          </label>
+          <div class="config-note">当前固定策略：搜索 15-20K 及以上档位，最终入库严格 avg ≥ 17K；杭州/上海/北京各 2 轮，其他城市 1 轮。</div>
           <button class="btn btn-primary" onclick="saveSchedule()">💾 保存调度</button>
         </div>
       </div>

@@ -12,13 +12,13 @@ import sys, io, os
 if sys.stdout.encoding != 'utf-8':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
-import json
-import time
-import random
+import time, json, random, logging, argparse, re
 import math
+from pathlib import Path
 import logging
 import argparse
 import re
+from urllib.parse import urlencode
 from pathlib import Path
 
 logger = logging.getLogger('spider.boss_dp')
@@ -44,29 +44,78 @@ CHROME_PORT = int(os.environ.get('AI_PM_CHROME_PORT', '9222'))
 
 DEFAULT_KEYWORDS = [
     'AI产品经理', 'AIGC产品经理', '大模型产品经理', 'LLM产品经理', '智能体产品经理',
-    'Agent产品经理', '多模态产品经理', 'NLP产品经理', '对话产品经理',
-    'AI平台产品经理', 'AI工具产品经理', 'AI应用产品经理', 'AI交互产品经理', 'AI搜索产品经理', 'AI推荐产品经理',
-    'AI策略产品经理', 'AI商业化产品经理', 'AI增长产品经理', 'AI数据产品经理', 'AI中台产品经理',
-    'AI产品专家', '生成式AI产品经理', 'Copilot产品经理', 'RAG产品经理', 'AI助手产品经理',
-    '智能客服产品经理', 'AI办公产品经理', 'AI教育产品经理', 'AI医疗产品经理', 'AI金融产品经理',
-    'AI风控产品经理', 'AI电商产品经理', 'AI营销产品经理', 'AI内容产品经理', 'AI视频产品经理',
-    'AI语音产品经理', 'AI视觉产品经理', 'AI机器人产品经理', '机器学习产品经理', '深度学习产品经理',
-    '模型平台产品经理', 'AISaaS产品经理', 'ToB AI产品经理', '企业AI产品经理', '智能产品经理',
+    'Agent产品经理', '多模态产品经理', 'NLP产品经理', 'AI对话产品经理',
+    'AI商业化产品经理', 'AI增长产品经理', 'AI平台产品经理', 'AI交互产品经理', 'AI搜索产品经理', 'AI推荐产品经理',
+    'AI策略产品经理', 'AI工具产品经理', 'AI应用产品经理', 'AI数据产品经理', 'AI中台产品经理',
+    'AI产品专家',
+    'AI营销产品经理', 'AI内容产品经理', 'AI内容中台产品经理', 'AIGC内容中台产品经理', 'AI电商产品经理', 'AI跨境电商产品经理',
+    'AIGC营销产品经理', 'AI广告产品经理', 'AI投放产品经理', 'AI品牌营销产品经理', 'AI营销中台产品经理',
+    'AI营销工具产品经理', 'AI获客产品经理', 'AI私域产品经理', 'AI智能营销产品经理', 'AI用户增长产品经理',
+    'AI内容平台产品经理', 'AI内容生成产品经理', 'AI内容管理产品经理', 'AI内容审核产品经理',
+    'AI素材中台产品经理', 'AI素材管理产品经理', 'AI创作平台产品经理', 'AI创作工具产品经理',
+    'AI文案产品经理', 'AI图文产品经理', 'AI内容分发产品经理', 'AI内容推荐产品经理',
+    'AIGC应用产品经理', 'AIGC平台产品经理', 'AIGC工具产品经理', 'AIGC内容产品经理',
+    'AIGC创作产品经理', 'AIGC视频产品经理', 'AIGC短视频产品经理', 'AIGC短剧产品经理',
+    'AIGC图像产品经理', 'AIGC文案产品经理', 'AIGC素材产品经理', 'AIGC商业化产品经理',
+    'AIGC设计产品经理', 'AIGC电商产品经理', 'AI电商营销产品经理', 'AI导购产品经理',
+    'AI智能导购产品经理', 'AI商品产品经理', 'AI商家工具产品经理', 'AI选品产品经理',
+    'AI内容电商产品经理', 'AI电商增长产品经理', 'AI直播电商产品经理',
+    'AI模型平台产品经理', 'AISaaS产品经理', 'ToB AI产品经理', '企业AI产品经理', 'AI智能产品经理',
     '大模型应用产品经理', '智能体平台产品经理', 'AI工作流产品经理', 'AI解决方案产品经理', 'AI产品负责人',
+    '生成式AI产品经理', 'AI Copilot产品经理', 'RAG产品经理', 'AI助手产品经理', 'AI智能客服产品经理',
+    'AI办公产品经理', 'AI教育产品经理', 'AI医疗产品经理', 'AI金融产品经理', 'AI风控产品经理',
+    'AI机器人产品经理', '机器学习产品经理', '深度学习产品经理', 'AI视频产品经理',
+    'AI语音产品经理', 'AI视觉产品经理',
+]
+
+DEFAULT_FOCUS_KEYWORDS = [
+    'AI营销产品经理', 'AIGC营销产品经理', 'AI广告产品经理', 'AI投放产品经理',
+    'AI增长产品经理', 'AI商业化产品经理', 'AI品牌营销产品经理', 'AI营销中台产品经理',
+    'AI营销工具产品经理', 'AI智能营销产品经理', 'AI用户增长产品经理',
+    'AI内容产品经理', 'AI内容中台产品经理', 'AIGC内容中台产品经理', 'AI内容平台产品经理',
+    'AI内容生成产品经理', 'AI内容管理产品经理', 'AI素材中台产品经理',
+    'AI创作平台产品经理', 'AI创作工具产品经理', 'AI文案产品经理',
+    'AI图文产品经理', 'AI内容分发产品经理', 'AI内容推荐产品经理',
+    'AIGC产品经理', '生成式AI产品经理', 'AIGC应用产品经理', 'AIGC平台产品经理',
+    'AIGC工具产品经理', 'AIGC内容产品经理', 'AIGC创作产品经理',
+    'AIGC视频产品经理', 'AIGC短视频产品经理', 'AIGC短剧产品经理', 'AIGC图像产品经理',
+    'AIGC文案产品经理', 'AIGC素材产品经理', 'AIGC商业化产品经理',
+    'AI电商产品经理', 'AIGC电商产品经理', 'AI电商营销产品经理',
+    'AI跨境电商产品经理', 'AI导购产品经理', 'AI智能导购产品经理',
+    'AI商品产品经理', 'AI商家工具产品经理', 'AI选品产品经理',
+    'AI内容电商产品经理', 'AI电商增长产品经理',
+]
+
+DEFAULT_FALLBACK_KEYWORDS = [
+    'AIGC产品经理', 'AIGC内容产品经理', 'AIGC应用产品经理', 'AIGC工具产品经理',
+    'AIGC视频产品经理', 'AIGC短视频产品经理', 'AIGC创作产品经理',
+    'AI视频产品经理', 'AI内容生成产品经理', 'AI创作工具产品经理',
+]
+
+DEFAULT_FALLBACK_MARKERS = [
+    'AIGC', '生成式', 'GENAI', '视频', '短视频', '短剧', '剪辑', '影像',
+    '内容生成', '内容创作', '创作', '文案', '素材',
 ]
 
 DEFAULT_KEYWORD_SETTINGS = {
-    'sample_min': 5,
-    'sample_max': 8,
-    'target_count': 50,
+    'sample_min': 6,
+    'sample_max': 10,
+    'focus_sample_min': 3,
+    'focus_sample_max': 5,
+    'target_count': 100,
     'refresh_day': 1,
     'refresh_retry_hours': 6,
+    'fallback_ratio': 0.3,
+    'fallback_keywords': DEFAULT_FALLBACK_KEYWORDS,
+    'fallback_markers': DEFAULT_FALLBACK_MARKERS,
     'seed_queries': [
         'AI产品经理', 'AIGC产品经理', '大模型产品经理', '智能体产品经理', 'Agent产品经理',
-        '多模态产品经理', '对话产品经理', 'AI商业化产品经理', 'AI平台产品经理',
+        '多模态产品经理', 'AI对话产品经理', 'AI商业化产品经理', 'AI平台产品经理',
         'AI交互产品经理',
-        'AI工具产品经理', 'AI应用产品经理',
+        'AI工具产品经理', 'AI应用产品经理', 'AI营销产品经理', 'AI内容中台产品经理',
+        'AIGC内容中台产品经理', 'AI电商产品经理', 'AI跨境电商产品经理',
     ],
+    'focus_keywords': DEFAULT_FOCUS_KEYWORDS,
     'last_refreshed_at': '',
     'last_refreshed_month': '',
     'last_refresh_source_counts': {
@@ -82,10 +131,10 @@ MAX_SCROLLS_PER_PAGE = 2
 
 # 防封参数 — 强硬省时版，在安全边界内压缩等待
 MIN_DELAY, MAX_DELAY = 0.8, 1.8
-KEYWORD_REST_MIN, KEYWORD_REST_MAX = 2, 5
-CITY_REST_MIN, CITY_REST_MAX = 3, 8
+KEYWORD_REST_MIN, KEYWORD_REST_MAX = 1, 3
+CITY_REST_MIN, CITY_REST_MAX = 2, 6
 DETAIL_DELAY_MIN, DETAIL_DELAY_MAX = 0.8, 1.5
-DETAIL_BATCH_PAUSE = (3, 6)    # 每批详情后的短休息
+DETAIL_BATCH_PAUSE = (1, 5)    # 每批详情后的短休息
 DETAIL_BATCH_SIZE = 25         # 每批25个，减少批次间休息次数
 
 # 强相关过滤：岗位名必须命中以下任一关键词才算"AI PM 强相关"
@@ -105,6 +154,7 @@ _AI_TERMS = [
     'COPILOT', 'CHATBOT', 'RAG', 'MLOPS', 'FOUNDATION MODEL',
     '向量', 'EMBEDDING', 'TRANSFORMER', '预训练', '微调',
     '推荐', '搜索', '策略', '数据', '对话', '知识图谱',
+    '视频生成', '文生视频', '图生视频', '短视频', '短剧', '剪辑', '数字人', '虚拟人', '影像',
 ]
 _PM_TERMS = [
     '产品', 'PRODUCT', '产品经理', '产品负责', '产品总监', '产品专家',
@@ -114,19 +164,69 @@ _PM_TERMS = [
 _KEYWORD_DIRECTION_TERMS = [
     '大模型', 'AIGC', '生成式AI', 'LLM', '智能体', 'AGENT', '多模态', 'NLP', 'COPILOT', 'RAG',
     '平台', '工具', '商业化', '增长', '数据', '搜索', '推荐', '策略', '对话', '客服', '电商', '营销',
-    '内容', '视频', '语音', '视觉', '机器人', '办公', '教育', '医疗', '金融', '风控', 'SAAS', '工作流', '解决方案',
+    '内容', '内容中台', '内容平台', '内容生成', '创作', '文案', '素材', '图文', '导购', '商家工具', '选品',
+    '视频', '短视频', '短剧', '视频生成', '文生视频', '图生视频', '剪辑', '数字人', '虚拟人',
+    '语音', '视觉', '机器人', '办公', '教育', '医疗', '金融', '风控', 'SAAS', '工作流', '解决方案',
 ]
 _EXCLUDED_KEYWORD_TERMS = [
-    '销售', '开发', '工程师', '测试', '实施', '运维', '实习', '兼职', '主播', '顾问', '助理', '管培',
+    '销售', '运营', '开发', '工程师', '测试', '实施', '运维', '实习', '兼职', '主播', '顾问', '助理', '管培',
 ]
 
 _CANONICAL_KEYWORD_RULES = [
+    ('AIGC营销产品经理', ['AIGC营销产品经理', 'AIGC营销']),
+    ('AI广告产品经理', ['AI广告产品经理', 'AI广告']),
+    ('AI投放产品经理', ['AI投放产品经理', 'AI投放']),
+    ('AI品牌营销产品经理', ['AI品牌营销产品经理', 'AI品牌营销']),
+    ('AI营销中台产品经理', ['AI营销中台产品经理', 'AI营销中台']),
+    ('AI营销工具产品经理', ['AI营销工具产品经理', 'AI营销工具']),
+    ('AI获客产品经理', ['AI获客产品经理', 'AI获客']),
+    ('AI私域产品经理', ['AI私域产品经理', 'AI私域']),
+    ('AI智能营销产品经理', ['AI智能营销产品经理', '智能营销']),
+    ('AI用户增长产品经理', ['AI用户增长产品经理', 'AI用户增长', '用户增长']),
+    ('AI内容中台产品经理', ['AI内容中台产品经理', 'AI内容中台', '内容中台产品经理']),
+    ('AIGC内容中台产品经理', ['AIGC内容中台产品经理', 'AIGC内容中台']),
+    ('AI内容平台产品经理', ['AI内容平台产品经理', 'AI内容平台']),
+    ('AI内容生成产品经理', ['AI内容生成产品经理', 'AI内容生成']),
+    ('AI内容管理产品经理', ['AI内容管理产品经理', 'AI内容管理']),
+    ('AI内容审核产品经理', ['AI内容审核产品经理', 'AI内容审核']),
+    ('AI素材中台产品经理', ['AI素材中台产品经理', 'AI素材中台']),
+    ('AI素材管理产品经理', ['AI素材管理产品经理', 'AI素材管理']),
+    ('AI创作平台产品经理', ['AI创作平台产品经理', 'AI创作平台']),
+    ('AI创作工具产品经理', ['AI创作工具产品经理', 'AI创作工具']),
+    ('AI文案产品经理', ['AI文案产品经理', 'AI文案']),
+    ('AI图文产品经理', ['AI图文产品经理', 'AI图文']),
+    ('AI内容分发产品经理', ['AI内容分发产品经理', 'AI内容分发']),
+    ('AI内容推荐产品经理', ['AI内容推荐产品经理', 'AI内容推荐']),
+    ('AIGC应用产品经理', ['AIGC应用产品经理', 'AIGC应用']),
+    ('AIGC平台产品经理', ['AIGC平台产品经理', 'AIGC平台']),
+    ('AIGC工具产品经理', ['AIGC工具产品经理', 'AIGC工具']),
+    ('AIGC内容产品经理', ['AIGC内容产品经理', 'AIGC内容']),
+    ('AIGC创作产品经理', ['AIGC创作产品经理', 'AIGC创作']),
+    ('AIGC视频产品经理', ['AIGC视频产品经理', 'AIGC视频', 'AIGC视频生成']),
+    ('AIGC短视频产品经理', ['AIGC短视频产品经理', 'AIGC短视频']),
+    ('AIGC短剧产品经理', ['AIGC短剧产品经理', 'AIGC短剧']),
+    ('AIGC图像产品经理', ['AIGC图像产品经理', 'AIGC图像']),
+    ('AIGC文案产品经理', ['AIGC文案产品经理', 'AIGC文案']),
+    ('AIGC素材产品经理', ['AIGC素材产品经理', 'AIGC素材']),
+    ('AIGC商业化产品经理', ['AIGC商业化产品经理', 'AIGC商业化']),
+    ('AIGC设计产品经理', ['AIGC设计产品经理', 'AIGC设计']),
+    ('AIGC电商产品经理', ['AIGC电商产品经理', 'AIGC电商']),
+    ('AI电商营销产品经理', ['AI电商营销产品经理', 'AI电商营销']),
+    ('AI跨境电商产品经理', ['AI跨境电商产品经理', 'AI跨境电商']),
+    ('AI导购产品经理', ['AI导购产品经理', 'AI导购']),
+    ('AI智能导购产品经理', ['AI智能导购产品经理', '智能导购']),
+    ('AI商品产品经理', ['AI商品产品经理', 'AI商品']),
+    ('AI商家工具产品经理', ['AI商家工具产品经理', 'AI商家工具']),
+    ('AI选品产品经理', ['AI选品产品经理', 'AI选品']),
+    ('AI内容电商产品经理', ['AI内容电商产品经理', 'AI内容电商']),
+    ('AI电商增长产品经理', ['AI电商增长产品经理', 'AI电商增长']),
+    ('AI直播电商产品经理', ['AI直播电商产品经理', 'AI直播电商']),
     ('AI产品经理', ['AI产品经理', 'AI 产品经理', 'AI方向', 'AI NATIVE', 'AI C 端', 'AI服务', '产品经理(AI', '产品经理-AI']),
     ('智能体平台产品经理', ['智能体平台']),
-    ('模型平台产品经理', ['模型平台']),
+    ('AI模型平台产品经理', ['模型平台']),
     ('大模型应用产品经理', ['大模型应用']),
     ('RAG产品经理', ['RAG']),
-    ('Copilot产品经理', ['COPILOT']),
+    ('AI Copilot产品经理', ['COPILOT']),
     ('AI工作流产品经理', ['工作流', 'WORKFLOW']),
     ('AI解决方案产品经理', ['解决方案']),
     ('AI搜索产品经理', ['搜索', '搜推']),
@@ -136,12 +236,12 @@ _CANONICAL_KEYWORD_RULES = [
     ('AI增长产品经理', ['增长', '流量']),
     ('AI数据产品经理', ['数据']),
     ('AI中台产品经理', ['中台']),
-    ('智能客服产品经理', ['客服', '坐席', '呼叫']),
-    ('对话产品经理', ['对话', '聊天', 'CHATBOT', '问答', '陪伴', 'CHATGPT', '智能对话']),
+    ('AI智能客服产品经理', ['客服', '坐席', '呼叫']),
+    ('AI对话产品经理', ['对话', '聊天', 'CHATBOT', '问答', '陪伴', 'CHATGPT', '智能对话']),
     ('AI营销产品经理', ['营销', '广告', '投放']),
     ('AI电商产品经理', ['电商', '淘宝', '天猫', '京东', '拼多多', '亚马逊', 'SHOPEE', '独立站']),
     ('AI内容产品经理', ['内容', '文案', '创作']),
-    ('AI视频产品经理', ['视频', '短视频', '短剧', '直播', '影像']),
+    ('AI视频产品经理', ['AI视频产品经理', '视频', '短视频', '短剧', '直播', '影像', '视频生成', '文生视频', '图生视频', '剪辑', '数字人', '虚拟人']),
     ('AI语音产品经理', ['语音', 'TTS', 'ASR', '音乐', '写歌']),
     ('AI视觉产品经理', ['视觉', '图像', 'CV']),
     ('AI机器人产品经理', ['机器人', '具身']),
@@ -168,7 +268,7 @@ _CANONICAL_KEYWORD_RULES = [
     ('深度学习产品经理', ['深度学习', 'DL']),
     ('AI产品负责人', ['产品负责人', '产品总监']),
     ('AI产品专家', ['产品专家']),
-    ('智能产品经理', ['智能产品', '智能硬件']),
+    ('AI智能产品经理', ['智能产品', '智能硬件']),
 ]
 
 def _safe_int(value, default):
@@ -226,15 +326,70 @@ def _merge_unique_terms(*groups):
                 merged.append(term)
     return merged
 
+def is_fallback_keyword(term, settings=None):
+    term = _clean_keyword(term)
+    if not term:
+        return False
+    settings = settings or DEFAULT_KEYWORD_SETTINGS
+    upper = term.upper()
+    markers = settings.get('fallback_markers') or DEFAULT_FALLBACK_MARKERS
+    return any(str(marker or '').upper() in upper for marker in markers)
+
+def _fallback_required_count(settings, max_count=None):
+    settings = settings or DEFAULT_KEYWORD_SETTINGS
+    ratio = settings.get('fallback_ratio', DEFAULT_KEYWORD_SETTINGS['fallback_ratio'])
+    try:
+        ratio = float(ratio)
+    except Exception:
+        ratio = DEFAULT_KEYWORD_SETTINGS['fallback_ratio']
+    ratio = min(1.0, max(0.0, ratio))
+    base_count = max_count or len(settings.get('_base_keywords_for_ratio') or []) or settings.get('sample_max') or DEFAULT_KEYWORD_SETTINGS['sample_max']
+    try:
+        base_count = int(base_count)
+    except Exception:
+        base_count = DEFAULT_KEYWORD_SETTINGS['sample_max']
+    ratio_min = int(math.ceil(max(1, base_count) * ratio)) if ratio > 0 else 0
+    if 'fallback_ratio' in settings:
+        return ratio_min
+    return max(0, _safe_int(settings.get('fallback_min'), ratio_min))
+
+def ensure_fallback_keywords(keywords, all_keywords=None, settings=None, max_count=None):
+    settings = settings or DEFAULT_KEYWORD_SETTINGS
+    selected = _merge_unique_terms(keywords or [])
+    all_keywords = _merge_unique_terms(all_keywords or [], DEFAULT_FALLBACK_KEYWORDS)
+    fallback_target = _fallback_required_count(settings, max_count=max_count)
+    fallback_pool = _merge_unique_terms(
+        [kw for kw in all_keywords if is_fallback_keyword(kw, settings)],
+        settings.get('fallback_keywords') or [],
+        DEFAULT_FALLBACK_KEYWORDS,
+    )
+    current = [kw for kw in selected if is_fallback_keyword(kw, settings)]
+    for kw in fallback_pool:
+        if len(current) >= fallback_target:
+            break
+        if kw not in selected:
+            selected.append(kw)
+            current.append(kw)
+    return selected
+
 def _keyword_settings(config):
     settings = dict(DEFAULT_KEYWORD_SETTINGS)
     settings.update(config.get('keyword_settings') or {})
     settings['sample_min'] = max(1, _safe_int(settings.get('sample_min'), DEFAULT_KEYWORD_SETTINGS['sample_min']))
     settings['sample_max'] = max(settings['sample_min'], _safe_int(settings.get('sample_max'), DEFAULT_KEYWORD_SETTINGS['sample_max']))
+    settings['focus_sample_min'] = max(0, _safe_int(settings.get('focus_sample_min'), DEFAULT_KEYWORD_SETTINGS['focus_sample_min']))
+    settings['focus_sample_max'] = max(settings['focus_sample_min'], _safe_int(settings.get('focus_sample_max'), DEFAULT_KEYWORD_SETTINGS['focus_sample_max']))
     settings['target_count'] = max(10, _safe_int(settings.get('target_count'), DEFAULT_KEYWORD_SETTINGS['target_count']))
     settings['refresh_day'] = min(28, max(1, _safe_int(settings.get('refresh_day'), DEFAULT_KEYWORD_SETTINGS['refresh_day'])))
     settings['refresh_retry_hours'] = max(1, _safe_int(settings.get('refresh_retry_hours'), DEFAULT_KEYWORD_SETTINGS['refresh_retry_hours']))
+    try:
+        settings['fallback_ratio'] = min(1.0, max(0.0, float(settings.get('fallback_ratio', DEFAULT_KEYWORD_SETTINGS['fallback_ratio']))))
+    except Exception:
+        settings['fallback_ratio'] = DEFAULT_KEYWORD_SETTINGS['fallback_ratio']
+    settings['fallback_keywords'] = _merge_unique_terms(settings.get('fallback_keywords') or [], DEFAULT_FALLBACK_KEYWORDS)
+    settings['fallback_markers'] = _merge_unique_terms(settings.get('fallback_markers') or [], DEFAULT_FALLBACK_MARKERS)
     settings['seed_queries'] = _merge_unique_terms(settings.get('seed_queries') or [], DEFAULT_KEYWORD_SETTINGS['seed_queries'])
+    settings['focus_keywords'] = _merge_unique_terms(settings.get('focus_keywords') or [], DEFAULT_FOCUS_KEYWORDS)
     settings['last_refreshed_at'] = str(settings.get('last_refreshed_at') or '')
     settings['last_refreshed_month'] = str(settings.get('last_refreshed_month') or '')
     counts = settings.get('last_refresh_source_counts') or {}
@@ -244,6 +399,12 @@ def _keyword_settings(config):
         'final_keywords': max(0, _safe_int(counts.get('final_keywords'), 0)),
     }
     return settings
+
+def get_focus_keywords(config=None):
+    if config is None:
+        config = load_config()
+    settings = config.get('keyword_settings') or {}
+    return _merge_unique_terms(settings.get('focus_keywords') or [], DEFAULT_FOCUS_KEYWORDS)
 
 def _keyword_variants_from_raw(raw):
     source = _normalize_keyword_source_text(raw)
@@ -273,6 +434,7 @@ def sanitize_keyword_library(terms, target_count=50):
         if variants:
             cleaned.extend(variants)
     cleaned = _merge_unique_terms(cleaned)
+    cleaned = ensure_fallback_keywords(cleaned, cleaned, DEFAULT_KEYWORD_SETTINGS, max_count=target_count)
     if len(cleaned) < target_count:
         for term in DEFAULT_KEYWORDS:
             if term not in cleaned:
@@ -296,6 +458,8 @@ def _looks_like_search_keyword(term):
 def _keyword_rank(term, entry):
     upper = term.upper()
     score = entry.get('score', 0)
+    if term in DEFAULT_FOCUS_KEYWORDS:
+        score += 8
     if '产品经理' in term:
         score += 10
     elif '产品负责人' in term or '产品专家' in term:
@@ -305,7 +469,7 @@ def _keyword_rank(term, entry):
     for token in ['大模型', 'AIGC', '生成式AI', 'LLM', 'AGENT', '智能体', '多模态', 'NLP', 'COPILOT', 'RAG', 'AI']:
         if token.upper() in upper:
             score += 2
-    for token in ['平台', '工具', '商业化', '增长', '数据', '搜索', '推荐', '策略', '对话', '客服', '电商', '营销', '内容', '视频', '语音', '视觉', '机器人', '办公', '教育', '医疗', '金融', '风控', 'SAAS', '工作流', '解决方案']:
+    for token in ['平台', '工具', '商业化', '增长', '数据', '搜索', '推荐', '策略', '对话', '客服', '电商', '营销', '内容', '内容中台', '创作', '文案', '素材', '图文', '导购', '商家工具', '选品', '视频', '语音', '视觉', '机器人', '办公', '教育', '医疗', '金融', '风控', 'SAAS', '工作流', '解决方案']:
         if token.upper() in upper:
             score += 1
     if entry.get('suggestion'):
@@ -365,18 +529,40 @@ def load_cities():
     return load_config()['cities']
 
 def load_keywords(quick=False):
-    """加载关键词：每轮随机抽取 5-8 个搜索词"""
+    """加载关键词：每轮随机抽取 6-10 个搜索词"""
     config = load_config()
     settings = config['keyword_settings']
-    all_kw = _merge_unique_terms(config.get('keywords') or [], DEFAULT_KEYWORDS)
+    all_kw = ensure_fallback_keywords(config.get('keywords') or [], config.get('keywords') or [], settings)
     if not all_kw:
         return []
     low = min(settings['sample_min'], len(all_kw))
     high = min(settings['sample_max'], len(all_kw))
     pick_count = random.randint(low, max(low, high))
-    selected = random.sample(all_kw, min(pick_count, len(all_kw)))
+    focus_pool = [kw for kw in all_kw if kw in set(settings.get('focus_keywords') or [])]
+    normal_pool = [kw for kw in all_kw if kw not in set(focus_pool)]
+    focus_count = 0
+    if focus_pool and settings.get('focus_sample_max', 0) > 0:
+        focus_low = min(settings['focus_sample_min'], pick_count, len(focus_pool))
+        focus_high = min(settings['focus_sample_max'], pick_count, len(focus_pool))
+        if focus_high >= focus_low:
+            focus_count = random.randint(focus_low, focus_high)
+    selected = random.sample(focus_pool, focus_count) if focus_count else []
+    remain_count = min(pick_count, len(all_kw)) - len(selected)
+    if remain_count > 0:
+        normal_pick = random.sample(normal_pool, min(remain_count, len(normal_pool)))
+        selected.extend(normal_pick)
+        remain_count -= len(normal_pick)
+    if remain_count > 0:
+        focus_remaining = [kw for kw in focus_pool if kw not in selected]
+        selected.extend(random.sample(focus_remaining, min(remain_count, len(focus_remaining))))
+    ratio_settings = dict(settings)
+    ratio_settings['_base_keywords_for_ratio'] = list(selected)
+    selected = ensure_fallback_keywords(selected, all_kw, ratio_settings)
+    random.shuffle(selected)
     mode_label = '快速模式' if quick else '全量模式'
-    logger.info(f'[{mode_label}] 词库 {len(all_kw)} 个，本轮随机抽取 {len(selected)} 个关键词: {selected}')
+    selected_focus_count = len([kw for kw in selected if kw in set(settings.get('focus_keywords') or [])])
+    selected_fallback_count = len([kw for kw in selected if is_fallback_keyword(kw, settings)])
+    logger.info(f'[{mode_label}] 词库 {len(all_kw)} 个，本轮随机抽样+强相关增补共 {len(selected)} 个关键词，其中重点方向 {selected_focus_count} 个，AIGC/AI视频强相关 {selected_fallback_count} 个: {selected}')
     return selected
 
 def random_delay(lo=MIN_DELAY, hi=MAX_DELAY):
@@ -388,6 +574,17 @@ def random_delay(lo=MIN_DELAY, hi=MAX_DELAY):
     if random.random() < 0.03:
         delay += random.uniform(1, 3)
     time.sleep(delay)
+
+def build_search_url(keyword: str, city_code: str, page_num: int = 1, salary_code: str = '') -> str:
+    params = {
+        'query': keyword,
+        'city': city_code,
+    }
+    if salary_code:
+        params['salary'] = str(salary_code)
+    if page_num and page_num > 1:
+        params['page'] = str(page_num)
+    return f'https://www.zhipin.com/web/geek/job?{urlencode(params)}'
 
 def is_relevant(job_name: str, skills: str = '') -> bool:
     """判断岗位是否与 AI 产品经理强相关（扩展词库 + 不区分大小写）"""
@@ -482,6 +679,7 @@ class BossDPSpider:
         self.page = None
         self.all_jobs = {}    # key -> raw job
         self.skipped = 0      # 被过滤掉的非相关岗位
+        self._processed_keys = set()
         self._progress_cb = None  # 进度回调: (combo_idx, total, kw, city, job_count)
         self._keyword_done_cb = None  # 关键词完成回调: (kw, raw_count, total_so_far)
 
@@ -724,7 +922,7 @@ class BossDPSpider:
                 new_count += 1
         return new_count, existing_count, relevant_count
 
-    def scrape_keyword(self, keyword: str, city_code: str) -> int:
+    def scrape_keyword(self, keyword: str, city_code: str, salary_code: str = '', salary_label: str = '', stop_on_no_new: bool = True) -> int:
         """用 API 拦截 + 翻页模式抓取一个关键词"""
         keyword_new = 0
         no_new_pages = 0
@@ -735,7 +933,7 @@ class BossDPSpider:
 
             if page_num == 1:
                 # 首页：正常导航
-                url = f'https://www.zhipin.com/web/geek/job?query={keyword}&city={city_code}'
+                url = build_search_url(keyword, city_code, salary_code=salary_code)
                 self.page.get(url)
             else:
                 # 后续页：尝试点击「下一页」按钮，更像真人
@@ -744,10 +942,10 @@ class BossDPSpider:
                     if next_btn:
                         next_btn.click()
                     else:
-                        url = f'https://www.zhipin.com/web/geek/job?query={keyword}&city={city_code}&page={page_num}'
+                        url = build_search_url(keyword, city_code, page_num=page_num, salary_code=salary_code)
                         self.page.get(url)
                 except:
-                    url = f'https://www.zhipin.com/web/geek/job?query={keyword}&city={city_code}&page={page_num}'
+                    url = build_search_url(keyword, city_code, page_num=page_num, salary_code=salary_code)
                     self.page.get(url)
 
             # 页面加载后等待（模拟阅读）
@@ -793,7 +991,7 @@ class BossDPSpider:
 
             self._safe_listen_stop()
 
-            if page_new == 0:
+            if stop_on_no_new and page_new == 0:
                 no_new_pages += 1
                 if no_new_pages >= 2:
                     break
@@ -805,7 +1003,7 @@ class BossDPSpider:
 
         return keyword_new
 
-    def scrape_keyword_greedy(self, keyword: str, city_code: str, city_name: str = '') -> int:
+    def scrape_keyword_greedy(self, keyword: str, city_code: str, city_name: str = '', salary_code: str = '', salary_label: str = '', stop_on_no_new: bool = True) -> int:
         """贪婪模式：翻到底为止（连续2页0新增判定翻到底）"""
         keyword_new = 0
         page_num = 0
@@ -818,7 +1016,7 @@ class BossDPSpider:
                 break
 
             if page_num == 1:
-                url = f'https://www.zhipin.com/web/geek/job?query={keyword}&city={city_code}'
+                url = build_search_url(keyword, city_code, salary_code=salary_code)
                 self.page.get(url)
             else:
                 try:
@@ -826,10 +1024,10 @@ class BossDPSpider:
                     if next_btn:
                         next_btn.click()
                     else:
-                        url = f'https://www.zhipin.com/web/geek/job?query={keyword}&city={city_code}&page={page_num}'
+                        url = build_search_url(keyword, city_code, page_num=page_num, salary_code=salary_code)
                         self.page.get(url)
                 except:
-                    url = f'https://www.zhipin.com/web/geek/job?query={keyword}&city={city_code}&page={page_num}'
+                    url = build_search_url(keyword, city_code, page_num=page_num, salary_code=salary_code)
                     self.page.get(url)
 
             random_delay(1.5, 3.0)
@@ -846,9 +1044,10 @@ class BossDPSpider:
             page_new, page_existing, page_relevant = self._add_jobs(page_jobs)
             keyword_new += page_new
 
-            logger.info(f'    ↳ 第{page_num}页: +{page_new}新 / {page_relevant}相关 / {page_existing}重复 (原始{len(page_jobs)}条)')
+            salary_part = f' [{salary_label}]' if salary_label else ''
+            logger.info(f'    ↳ 第{page_num}页{salary_part}: +{page_new}新 / {page_relevant}相关 / {page_existing}重复 (原始{len(page_jobs)}条)')
 
-            if page_new == 0:
+            if stop_on_no_new and page_new == 0:
                 consecutive_zero += 1
                 if consecutive_zero >= MAX_CONSECUTIVE_ZERO:
                     self._safe_listen_stop()
@@ -872,7 +1071,7 @@ class BossDPSpider:
 
         return keyword_new
 
-    def run_keyword(self, keyword: str, cities: dict, greedy: bool = False) -> list:
+    def run_keyword(self, keyword: str, cities: dict, greedy: bool = False, salary_code: str = '', salary_label: str = '', stop_on_no_new: bool = True) -> list:
         """爬取单个关键词×所有城市，获取详情，返回标准化结果"""
         if not self._browser_alive():
             logger.warning(f'浏览器已断连，跳过关键词 {keyword}')
@@ -887,8 +1086,9 @@ class BossDPSpider:
                 logger.warning(f'浏览器已断连，停止关键词 {keyword} (城市 {city_i}/{len(city_items)})')
                 break
 
-            n = self.scrape_keyword_greedy(keyword, city_code, city_name) if greedy else self.scrape_keyword(keyword, city_code)
-            print(f'  → {keyword} @ {city_name}: +{n} | 累计 {len(self.all_jobs)} (过滤 {self.skipped})')
+            n = self.scrape_keyword_greedy(keyword, city_code, city_name, salary_code=salary_code, salary_label=salary_label, stop_on_no_new=stop_on_no_new) if greedy else self.scrape_keyword(keyword, city_code, salary_code=salary_code, salary_label=salary_label, stop_on_no_new=stop_on_no_new)
+            salary_part = f' [{salary_label}]' if salary_label else ''
+            print(f'  → {keyword} @ {city_name}{salary_part}: +{n} | 累计 {len(self.all_jobs)} (过滤 {self.skipped})')
 
             # 进度回调
             if self._progress_cb:
@@ -901,7 +1101,7 @@ class BossDPSpider:
 
             # 城市间休息
             if city_i < len(city_items) - 1:
-                random_delay(KEYWORD_REST_MIN, KEYWORD_REST_MAX)
+                random_delay(CITY_REST_MIN, CITY_REST_MAX)
 
         # 获取该关键词下所有新岗位的详情
         kw_new_keys = {k for k, j in self.all_jobs.items() if k not in self._processed_keys}
@@ -1098,7 +1298,7 @@ class BossDPSpider:
 
             # 关键词间休息
             if kw_idx < total_kws:
-                rest = random.uniform(CITY_REST_MIN, CITY_REST_MAX)
+                rest = random.uniform(KEYWORD_REST_MIN, KEYWORD_REST_MAX)
                 print(f'  ☕ 关键词切换休息 {rest:.0f}s...')
                 simulate_human(self.page)
                 time.sleep(rest)

@@ -80,8 +80,8 @@ def load_config() -> dict:
     return {
         'accounts': enabled,
         'settings': {
-            'min_account_rest_min': int(settings.get('min_account_rest_min', 10) or 10),
-            'all_failed_cooldown_min': int(settings.get('all_failed_cooldown_min', 30) or 30),
+            'min_account_rest_min': int(settings.get('min_account_rest_min', 5) or 5),
+            'all_failed_cooldown_min': int(settings.get('all_failed_cooldown_min', 60) or 60),
             'alert_throttle_min': int(settings.get('alert_throttle_min', 60) or 60),
             'recovery_check_min': int(settings.get('recovery_check_min', 30) or 30),
         },
@@ -244,11 +244,12 @@ def mark_success(alias: str):
     logger.info(f'✅ 账号 [{alias}] 标记为 healthy（success_count={entry["success_count"]}）')
     if was_failed:
         logger.info(f'🔁 账号 [{alias}] 从 failed 恢复为 healthy')
-        try:
-            from feishu_alert import send_account_recovered
-            send_account_recovered(alias)
-        except Exception as e:
-            logger.debug(f'恢复通知发送失败（忽略）: {e}')
+        if os.environ.get('AI_PM_SKIP_ALERTS') != '1':
+            try:
+                from feishu_alert import send_account_recovered
+                send_account_recovered(alias)
+            except Exception as e:
+                logger.debug(f'恢复通知发送失败（忽略）: {e}')
 
 
 def mark_failure(alias: str, detail: str = ''):

@@ -100,36 +100,48 @@ def load_schedule():
         return {}
 
 
-def is_cleanup_day():
-    """判断今天是否是清洗日（优先用 cleanup_interval_days 间隔天数，回退到 cleanup_days 固定日期）"""
-    schedule = load_schedule()
-    interval = schedule.get('cleanup_interval_days', 0)
-    if interval and interval > 0:
-        # 基于间隔天数：读取上次清洗日期
-        record_file = LOG_DIR / 'cleanup_record.json'
-        try:
-            if record_file.exists():
-                records = json.loads(record_file.read_text(encoding='utf-8'))
-                if records:
-                    last_date = records[-1].get('date', '')
-                    if last_date:
-                        from datetime import timedelta
-                        last = datetime.strptime(last_date, '%Y-%m-%d').date()
-                        if (datetime.now().date() - last).days < interval:
-                            return False
-        except Exception:
-            pass
-        return True  # 无记录或已超过间隔
-    # 回退：固定日期模式（如 [1, 15]）
-    cleanup_days = schedule.get('cleanup_days', [1, 15])
-    today_day = datetime.now().day
-    return today_day in cleanup_days
+def load_parallel_schedule():
+    """读取双浏览器并行配置（默认关闭）"""
+    parallel = (load_schedule().get('parallel') or {})
+    return {
+        'enabled': bool(parallel.get('enabled', False)),
+        'workers': int(parallel.get('workers', 2) or 2),
+        'strategy': str(parallel.get('strategy') or 'balanced'),
+        'ports': parallel.get('ports') or [9222, 9223],
+    }
+
+
+def parallel_ready(parallel_cfg):
+    try:
+        ports = parallel_cfg.get('ports') or [9222, 9223]
+        if len(ports) < 2 or int(ports[0]) == int(ports[1]):
+            return False, '并行端口配置无效：需要两个不同端口'
+        sys.path.insert(0, str(SCRIPT_DIR))
+        import account_pool
+        cfg = account_pool.load_config()
+        summary = account_pool.get_summary()
+        state_by_alias = {a.get('alias'): a for a in summary.get('accounts', [])}
+        enabled = [a for a in cfg.get('accounts', []) if a.get('enabled', True) and a.get('alias')]
+        healthy = [
+            a for a in enabled
+            if state_by_alias.get(a['alias'], {}).get('status', 'healthy') == 'healthy'
+        ]
+        if len(healthy) < 2:
+            return False, f'并行模式需要至少2个 healthy 账号，当前{len(healthy)}/{len(enabled)}'
+        return True, ''
+    except Exception as e:
+        return False, str(e)
+
+
+def should_run_daily_cleanup():
+    """每日自动执行数据清洗，确保上传前 jobs_data.json 始终是清洗后的数据"""
+    return True
 
 
 def run_stale_cleanup():
     """执行老数据清洗（调用 stale_cleanup.py）"""
     script = SCRIPT_DIR / 'stale_cleanup.py'
-    logger.info('🧹 开始月度老数据清洗...')
+    logger.info('🧹 开始每日老数据清洗...')
     try:
         result = subprocess.run(
             [sys.executable, str(script)],
@@ -139,18 +151,18 @@ def run_stale_cleanup():
             timeout=7200,  # 2小时超时
         )
         if result.returncode == 0:
-            logger.info('🧹 老数据清洗完成')
+            logger.info('🧹 每日老数据清洗完成')
             if result.stdout:
                 for line in result.stdout.strip().split('\n')[-5:]:
                     logger.info(f'  | {line}')
         else:
-            logger.warning(f'🧹 老数据清洗异常（退出码 {result.returncode}）')
+            logger.warning(f'🧹 每日老数据清洗异常（退出码 {result.returncode}）')
             if result.stderr:
                 logger.warning(f'  stderr: {result.stderr[:200]}')
     except subprocess.TimeoutExpired:
-        logger.warning('🧹 老数据清洗超时（2小时）')
+        logger.warning('🧹 每日老数据清洗超时（2小时）')
     except Exception as e:
-        logger.warning(f'🧹 老数据清洗异常: {e}')
+        logger.warning(f'🧹 每日老数据清洗异常: {e}')
 
 
 def get_crawl_mode():
@@ -383,6 +395,119 @@ def run_daily_update(quick=False, account: str = ''):
     else:
         last_lines = '\n'.join(output_lines[-5:])
         return False, f'退出码 {rc}: {last_lines or "无输出"}'
+
+
+def run_parallel_update(quick=False):
+    """以子进程方式运行 parallel_crawl.py；默认仅在配置显式开启时使用"""
+    script = SCRIPT_DIR / 'parallel_crawl.py'
+    cmd = [sys.executable, str(script)]
+    if quick:
+        cmd.append('--quick')
+
+    mode_label = '快速' if quick else '全量'
+    logger.info(f'🔀 启动 parallel_crawl.py [{mode_label}模式]（双浏览器均衡分片）')
+    proc = subprocess.Popen(
+        cmd,
+        cwd=str(BASE_DIR),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        encoding='utf-8',
+        errors='replace',
+        bufsize=1,
+        env=_child_env(),
+    )
+    output_lines = []
+    start = time.time()
+    last_activity = start
+    last_idle_log = start
+    last_stall_warn = start
+    tracked_files = [PROGRESS_FILE, RUN_STATUS_FILE, JOBS_DATA_FILE]
+    tracked_mtimes = {str(path): _tracked_mtime(path) for path in tracked_files}
+    output_queue = queue.Queue()
+
+    def _reader_thread():
+        try:
+            for line in iter(proc.stdout.readline, ''):
+                output_queue.put(line.rstrip())
+        except Exception as e:
+            output_queue.put(f'[stdout-reader-error] {e}')
+        finally:
+            try:
+                proc.stdout.close()
+            except Exception:
+                pass
+
+    reader = threading.Thread(target=_reader_thread, daemon=True)
+    reader.start()
+    try:
+        while True:
+            saw_output = False
+            while True:
+                try:
+                    line = output_queue.get_nowait()
+                except queue.Empty:
+                    break
+                if line:
+                    logger.info(f'  | {line}')
+                    output_lines.append(line)
+                    saw_output = True
+            if saw_output:
+                last_activity = time.time()
+
+            for path in tracked_files:
+                key = str(path)
+                mtime = _tracked_mtime(path)
+                if mtime > tracked_mtimes[key]:
+                    tracked_mtimes[key] = mtime
+                    last_activity = time.time()
+
+            if proc.poll() is not None and output_queue.empty() and not reader.is_alive():
+                break
+
+            idle_sec = time.time() - last_activity
+            if idle_sec >= STALL_WARN_SEC and time.time() - last_stall_warn >= STALL_WARN_SEC:
+                logger.warning(f'⏳ parallel_crawl 已静默 {int(idle_sec // 60)} 分钟，进程仍在运行，继续等待...')
+                last_stall_warn = time.time()
+            elif time.time() - last_idle_log >= 300:
+                logger.info(f'⏳ parallel_crawl 运行中，最近活动距今 {int(idle_sec)} 秒')
+                last_idle_log = time.time()
+
+            if STALL_KILL_SEC > 0 and idle_sec >= STALL_KILL_SEC:
+                logger.error(f'💀 parallel_crawl 已静默 {int(idle_sec // 60)} 分钟且无数据更新，判定为僵尸进程，强制终止')
+                try:
+                    proc.kill()
+                    proc.wait(timeout=30)
+                except Exception:
+                    pass
+                return False, f'并行僵尸进程(静默 {int(idle_sec // 60)} 分钟)'
+
+            if MAX_RUNTIME_SEC > 0 and time.time() - start > MAX_RUNTIME_SEC:
+                logger.error(f'⏰ 并行模式超时！已运行 {MAX_RUNTIME_SEC // 60} 分钟，强制终止')
+                proc.kill()
+                proc.wait()
+                return False, '并行模式超时终止'
+            time.sleep(1)
+    except Exception as e:
+        try:
+            proc.kill()
+            proc.wait(timeout=30)
+        except Exception:
+            pass
+        return False, str(e)
+
+    while True:
+        try:
+            line = output_queue.get_nowait()
+        except queue.Empty:
+            break
+        if line:
+            logger.info(f'  | {line}')
+            output_lines.append(line)
+    rc = proc.returncode
+    if rc == 0:
+        return True, '并行模式正常完成'
+    return False, f'并行模式退出码 {rc}: {"; ".join(output_lines[-5:]) or "无输出"}'
 
 
 def preflight_check():
@@ -752,25 +877,41 @@ def _run_one_round(round_num):
             cfg = account_pool.load_config()
             fallback_sec = cfg['settings']['all_failed_cooldown_min'] * 60
         except Exception:
-            fallback_sec = 1800
-        suggested_wait_sec = max(int(login_state.get('retry_after_sec') or fallback_sec), 300)
+            fallback_sec = 3600
+        suggested_wait_sec = max(int(login_state.get('retry_after_sec') or 0), fallback_sec, 300)
         success = False
         error_msg = f'登录未就绪[{login_state.get("status", "unknown")}]: {login_state.get("detail", "")}'
     else:
         maybe_refresh_keyword_library(round_num)
-        # ② 清洗日检查（每月 1/15）
-        if is_cleanup_day():
-            logger.info('📅 今天是清洗日，先执行老数据清洗')
-            notify('AI 岗位爬取', '清洗日：先执行老数据清洗')
-            _write_runtime_state(round_num, 'stale_cleanup', '正在执行老数据清洗')
+        # ② 每日先执行数据清洗
+        if should_run_daily_cleanup():
+            logger.info('📅 每日流程：先执行老数据清洗')
+            notify('AI 岗位爬取', '每日流程：先执行老数据清洗')
+            _write_runtime_state(round_num, 'stale_cleanup', '正在执行每日老数据清洗')
             run_stale_cleanup()
 
-        # ③ 全量爬取（用选中的账号 Profile）
+        # ③ 全量爬取（默认单账号；配置开启时使用双浏览器并行）
         success = False
         error_msg = ''
-        _write_runtime_state(round_num, 'daily_update', f'账号 [{active_account or "默认"}] 正在抓取/清洗/上传')
+        parallel_cfg = load_parallel_schedule()
+        use_parallel = parallel_cfg.get('enabled') and parallel_cfg.get('workers') == 2 and parallel_cfg.get('strategy') == 'balanced'
+        if use_parallel:
+            ready, reason = parallel_ready(parallel_cfg)
+            if not ready:
+                logger.warning(f'🔀 双浏览器并行不可用，自动降级单账号爬取: {reason}')
+                use_parallel = False
+        _write_runtime_state(
+            round_num,
+            'parallel_crawl' if use_parallel else 'daily_update',
+            '双浏览器均衡分片正在抓取/清洗/上传' if use_parallel else f'账号 [{active_account or "默认"}] 正在抓取/清洗/上传',
+        )
         try:
-            success, error_msg = run_daily_update(quick=False, account=active_account)
+            if use_parallel:
+                mode = 'parallel'
+                mode_label = '双浏览器并行'
+                success, error_msg = run_parallel_update(quick=False)
+            else:
+                success, error_msg = run_daily_update(quick=False, account=active_account)
         except Exception as e:
             error_msg = traceback.format_exc()
             logger.error(f'❌ 执行异常: {e}')

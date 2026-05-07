@@ -42,9 +42,10 @@ api.onRunnerStatus(status => {
     if (wasRunning && !isRunning) {
       if (k === 'stale_cleanup') refreshCleanupStatus();
       if (k === 'sync_feishu') refreshFeishuStatus();
-      if (k === 'auto_daily' || k === 'one_round') {
+      if (k === 'auto_daily' || k === 'one_round' || k === 'parallel_crawl') {
         refreshCleanupStatus();
         refreshFeishuStatus();
+        refreshStrategySummary();
       }
     }
 
@@ -140,6 +141,7 @@ function refreshFileLog() {
 const TASK_META = {
   crawl:   { title: '📊 当前爬取进度',  badge: '🔍 爬取', cls: 'badge-crawl' },
   cleanup: { title: '🧹 当前清洗进度',  badge: '🧹 清洗', cls: 'badge-cleanup' },
+  parallel_crawl: { title: '🔀 双浏览器并行进度', badge: '🔀 并行', cls: 'badge-crawl' },
 };
 
 api.onTick(({ progress, status, pool }) => {
@@ -372,12 +374,53 @@ async function refreshCleanupStatus() {
   } catch (_) {}
 }
 
+async function refreshStrategySummary() {
+  try {
+    const cfg = await api.readConfig();
+    if (cfg) updateStrategySummary(cfg);
+  } catch (_) {
+    setText('strategyMeta', '配置读取失败');
+  }
+}
+
+function updateStrategySummary(cfg) {
+  const keywords = cfg.keywords || [];
+  const cities = cfg.cities || {};
+  const ks = cfg.keyword_settings || {};
+  const focusKeywords = ks.focus_keywords || [];
+  const sampleMin = ks.sample_min ?? 6;
+  const sampleMax = ks.sample_max ?? 10;
+  const focusMin = ks.focus_sample_min ?? 3;
+  const focusMax = ks.focus_sample_max ?? 5;
+  const fallbackRatio = ks.fallback_ratio ?? 0.3;
+  const fallbackKeywords = ks.fallback_keywords || [];
+  const targetCount = ks.target_count ?? keywords.length;
+  const cityNames = Object.keys(cities);
+  const primaryCities = ['杭州', '上海', '北京'].filter(c => cityNames.includes(c));
+  const otherCityCount = cityNames.filter(c => !['杭州', '上海', '北京'].includes(c)).length;
+  const parallel = (cfg.schedule && cfg.schedule.parallel) || {};
+  const parallelEnabled = !!parallel.enabled;
+  const ports = parallel.ports || [9222, 9223];
+
+  setText('strategyMeta', `${keywords.length}/${targetCount} 词 · ${focusKeywords.length} 重点`);
+  setText('strategySample', `${sampleMin}-${sampleMax} 个/轮`);
+  setText('strategyFocus', `${focusMin}-${focusMax} 个/轮`);
+  setText('strategyFallback', `额外增加 ${Math.round(fallbackRatio * 100)}%`);
+  setText('strategyFallbackDetail', `${fallbackKeywords.slice(0, 4).join('、') || 'AIGC产品经理、AI视频产品经理'} 等强相关词，不删除原有抽样`);
+  setText('strategyKeywordPool', `全局关键词 ${keywords.length} 个 · 上限 ${targetCount}`);
+  setText('strategyCityRounds', `${primaryCities.join(' / ') || '重点城市'} 各 2 轮`);
+  setText('strategyCities', `其他 ${otherCityCount} 城各 1 轮`);
+  setText('strategyParallel', parallelEnabled ? '已启用 · 双浏览器均衡分片' : '默认关闭 · 单账号轮换');
+  setText('strategyParallelDetail', parallelEnabled ? `Worker A/B 端口 ${ports[0] || 9222}/${ports[1] || 9223}，主控统一合并` : '可在配置页手动开启，需至少 2 个可用账号');
+}
+
 // ========== 配置 ==========
 let CFG_CACHE = null;
 async function loadConfig() {
   const cfg = await api.readConfig();
   if (!cfg) { toast('读取配置失败', 'err'); return; }
   CFG_CACHE = cfg;
+  updateStrategySummary(cfg);
 
   document.getElementById('kwList').value = (cfg.keywords || []).join('\n');
   setText('kwCount', `${(cfg.keywords || []).length} 个`);
@@ -390,10 +433,19 @@ async function loadConfig() {
   document.getElementById('cfgInterval').value = s.interval_minutes ?? 10;
   document.getElementById('cfgMode').value = s.mode || 'continuous';
   document.getElementById('cfgAlwaysFull').checked = !!s.always_full;
+  const parallel = s.parallel || {};
+  const parallelPorts = parallel.ports || [9222, 9223];
+  document.getElementById('cfgParallelEnabled').checked = !!parallel.enabled;
+  document.getElementById('cfgParallelPortA').value = parallelPorts[0] ?? 9222;
+  document.getElementById('cfgParallelPortB').value = parallelPorts[1] ?? 9223;
 
   const ks = cfg.keyword_settings || {};
-  document.getElementById('cfgSampleMin').value = ks.sample_min ?? 5;
-  document.getElementById('cfgSampleMax').value = ks.sample_max ?? 8;
+  document.getElementById('cfgSampleMin').value = ks.sample_min ?? 6;
+  document.getElementById('cfgSampleMax').value = ks.sample_max ?? 10;
+  document.getElementById('cfgFocusSampleMin').value = ks.focus_sample_min ?? 3;
+  document.getElementById('cfgFocusSampleMax').value = ks.focus_sample_max ?? 5;
+  document.getElementById('cfgFallbackRatio').value = Math.round((ks.fallback_ratio ?? 0.3) * 100);
+  document.getElementById('cfgTargetCount').value = ks.target_count ?? 100;
 
   const info = await api.sysInfo();
   const box = document.getElementById('sysInfoBox');
@@ -427,7 +479,7 @@ async function saveKeywords() {
   if (list.length < 3) { toast('至少保留 3 个关键词', 'err'); return; }
   CFG_CACHE.keywords = Array.from(new Set(list));
   const ok = await api.writeConfig(CFG_CACHE);
-  if (ok) { toast(`已保存 ${CFG_CACHE.keywords.length} 个关键词`, 'ok'); setText('kwCount', `${CFG_CACHE.keywords.length} 个`); }
+  if (ok) { toast(`已保存 ${CFG_CACHE.keywords.length} 个关键词`, 'ok'); setText('kwCount', `${CFG_CACHE.keywords.length} 个`); updateStrategySummary(CFG_CACHE); }
   else toast('保存失败', 'err');
 }
 
@@ -442,22 +494,54 @@ async function saveCities() {
   if (Object.keys(cities).length < 1) { toast('至少保留 1 个城市', 'err'); return; }
   CFG_CACHE.cities = cities;
   const ok = await api.writeConfig(CFG_CACHE);
-  if (ok) { toast(`已保存 ${Object.keys(cities).length} 个城市`, 'ok'); setText('cityCount', `${Object.keys(cities).length} 个`); }
+  if (ok) { toast(`已保存 ${Object.keys(cities).length} 个城市`, 'ok'); setText('cityCount', `${Object.keys(cities).length} 个`); updateStrategySummary(CFG_CACHE); }
   else toast('保存失败', 'err');
 }
 
 async function saveSchedule() {
   if (!CFG_CACHE) await loadConfig();
+  const sampleMin = parseInt(document.getElementById('cfgSampleMin').value, 10);
+  const sampleMax = parseInt(document.getElementById('cfgSampleMax').value, 10);
+  const focusSampleMin = parseInt(document.getElementById('cfgFocusSampleMin').value, 10);
+  const focusSampleMax = parseInt(document.getElementById('cfgFocusSampleMax').value, 10);
+  const fallbackRatio = parseInt(document.getElementById('cfgFallbackRatio').value, 10);
+  const targetCount = parseInt(document.getElementById('cfgTargetCount').value, 10);
+  const parallelPortA = parseInt(document.getElementById('cfgParallelPortA').value, 10);
+  const parallelPortB = parseInt(document.getElementById('cfgParallelPortB').value, 10);
+  const finalSampleMin = Number.isFinite(sampleMin) ? sampleMin : 6;
+  const finalSampleMax = Number.isFinite(sampleMax) ? sampleMax : 10;
+  const finalFocusMin = Number.isFinite(focusSampleMin) ? focusSampleMin : 3;
+  const finalFocusMax = Number.isFinite(focusSampleMax) ? focusSampleMax : 5;
+  const finalFallbackRatio = Number.isFinite(fallbackRatio) ? fallbackRatio : 30;
+  const finalTargetCount = Number.isFinite(targetCount) ? targetCount : 100;
+  if (finalSampleMax < finalSampleMin) { toast('关键词采样 max 不能小于 min', 'err'); return; }
+  if (finalFocusMax < finalFocusMin) { toast('重点保底 max 不能小于 min', 'err'); return; }
+  if (finalFallbackRatio < 0 || finalFallbackRatio > 100) { toast('AIGC / AI视频强相关占比需在 0 到 100 之间', 'err'); return; }
+  const finalPortA = Number.isFinite(parallelPortA) ? parallelPortA : 9222;
+  const finalPortB = Number.isFinite(parallelPortB) ? parallelPortB : 9223;
+  if (finalPortA === finalPortB) { toast('并行端口 A/B 不能相同', 'err'); return; }
   CFG_CACHE.schedule = CFG_CACHE.schedule || {};
   CFG_CACHE.schedule.interval_minutes = parseInt(document.getElementById('cfgInterval').value, 10) || 10;
   CFG_CACHE.schedule.mode = document.getElementById('cfgMode').value;
   CFG_CACHE.schedule.always_full = document.getElementById('cfgAlwaysFull').checked;
+  CFG_CACHE.schedule.parallel = {
+    enabled: document.getElementById('cfgParallelEnabled').checked,
+    workers: 2,
+    strategy: 'balanced',
+    ports: [finalPortA, finalPortB],
+  };
   CFG_CACHE.keyword_settings = CFG_CACHE.keyword_settings || {};
-  CFG_CACHE.keyword_settings.sample_min = parseInt(document.getElementById('cfgSampleMin').value, 10) || 5;
-  CFG_CACHE.keyword_settings.sample_max = parseInt(document.getElementById('cfgSampleMax').value, 10) || 8;
+  CFG_CACHE.keyword_settings.sample_min = finalSampleMin;
+  CFG_CACHE.keyword_settings.sample_max = finalSampleMax;
+  CFG_CACHE.keyword_settings.focus_sample_min = finalFocusMin;
+  CFG_CACHE.keyword_settings.focus_sample_max = finalFocusMax;
+  CFG_CACHE.keyword_settings.fallback_ratio = finalFallbackRatio / 100;
+  delete CFG_CACHE.keyword_settings.fallback_min;
+  CFG_CACHE.keyword_settings.target_count = finalTargetCount;
 
   const ok = await api.writeConfig(CFG_CACHE);
-  toast(ok ? '调度配置已保存' : '保存失败', ok ? 'ok' : 'err');
+  if (ok) { toast('调度配置已保存', 'ok'); updateStrategySummary(CFG_CACHE); }
+  else toast('保存失败', 'err');
 }
 
 // ========== 历史 ==========
@@ -575,4 +659,5 @@ function toast(msg, type = 'ok') {
   refreshPool();
   refreshFeishuStatus();
   refreshCleanupStatus();
+  refreshStrategySummary();
 })();

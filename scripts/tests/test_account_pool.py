@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """account_pool 集成测试（从磁盘读写 state 文件）"""
 import sys, io, json
+import os
 if sys.stdout.encoding != 'utf-8':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+os.environ['AI_PM_SKIP_ALERTS'] = '1'
 
 from pathlib import Path
 BASE = Path(__file__).parent.parent.parent
